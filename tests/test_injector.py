@@ -69,6 +69,46 @@ class InjectorTests(unittest.TestCase):
                         pass
             self.assertFalse((root / "locks" / f"{lock_name_for_pane('/tmp/tmux/default', '%1')}.lock").exists())
 
+    def test_idle_composer_ignores_historical_approval_words(self) -> None:
+        for history in ("approval prompt visible", "Approve command?",
+                        "User approved the update", "running command",
+                        '"last_error": "unsafe pane: approval prompt visible"'):
+            for footer in ("gpt-6 · Context 86% left", "gpt-5 · 86% context left"):
+                with self.subTest(history=history, footer=footer):
+                    self.assertIsNone(unsafe_pane_reason(
+                        f"{history}\n› Ask Codex to do anything\n{footer}"))
+
+    def test_busy_composer_stays_blocked(self) -> None:
+        self.assertEqual(unsafe_pane_reason(
+            "• Working (13s • esc to interrupt)\n\n› Ask Codex to do anything\n"
+            "gpt-6 · Context 86% left"), "agent appears to be running")
+
+    def test_draft_composer_stays_blocked(self) -> None:
+        self.assertEqual(unsafe_pane_reason(
+            "› my unsent draft\ngpt-6 · Context 86% left"),
+            "composer contains a draft or unrecognized prompt")
+
+    def test_actual_approval_dialogs_stay_blocked(self) -> None:
+        for dialog in ("Approve command?", "Approval required\n› 1. Yes\n2. No",
+                       "Allow this command?\nDeny / Allow",
+                       "› Ask Codex to do anything\nApproval required\n"
+                       "gpt-6 · Context 86% left"):
+            with self.subTest(dialog=dialog):
+                self.assertIsNotNone(unsafe_pane_reason(dialog))
+
+    def test_historical_approval_does_not_prevent_dispatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wake"
+            found = self.make_firing_record(root, Path(tmp))
+            runner = FakeTmuxRunner(capture="approval prompt visible\n"
+                "› Ask Codex to do anything\ngpt-6 · Context 86% left")
+            (root / "acks").mkdir(exist_ok=True)
+            (root / "acks" / "wake_test.submitted").touch()
+            result = dispatch_firing_record(root, found, runner=runner,
+                now=datetime(2026, 5, 18, 21, 15, tzinfo=UTC), ack_timeout_override=0)
+            self.assertEqual(result.status, "submitted")
+            self.assertEqual(len(runner.pastes), 1)
+
     def test_pane_lock_removes_stale_dead_pid_lock(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

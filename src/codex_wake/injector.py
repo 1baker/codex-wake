@@ -133,6 +133,22 @@ def tmux_visibility_result(
 
 
 def unsafe_pane_reason(text: str) -> str | None:
+    # A confirmed bottom composer separates live controls from transcript text.
+    # Keep the conservative legacy checks when this UI shape is not recognized.
+    lines = [line.rstrip() for line in text.splitlines() if line.strip()]
+    prompts = [i for i, line in enumerate(lines) if re.match(r"^\s*›(?:\s|$)", line)]
+    if prompts:
+        index = prompts[-1]
+        tail = lines[index + 1:]
+        footer = re.compile(r"\b(?:context\s+\d+%\s+left|\d+%\s+context\s+left)\b", re.I)
+        if len(tail) == 1 and footer.search(tail[0]):
+            recent = "\n".join(lines[max(0, index - 3):index]).lower()
+            if re.search(r"esc to interrupt|esc to cancel", recent):
+                return "agent appears to be running"
+            composer = lines[index].strip()[1:].strip()
+            if composer not in ("", "Ask Codex to do anything"):
+                return "composer contains a draft or unrecognized prompt"
+            return None
     lowered = text.lower()
     patterns = (
         (r"\bapprove\b|\bapproval\b", "approval prompt visible"),
