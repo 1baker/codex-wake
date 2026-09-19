@@ -25,12 +25,39 @@ def wake_root_for_payload(payload: dict[str, Any]) -> Path:
     return cwd / ".codex" / "wake"
 
 
+def monitored_wake_roots() -> list[Path]:
+    """Return durable wake roots registered by local monitor health records."""
+    state_dir = Path.home() / ".local" / "state" / "codex-wake" / "monitors"
+    roots: list[Path] = []
+    for health_path in sorted(state_dir.glob("*.json")):
+        try:
+            health = json.loads(health_path.read_text(encoding="utf-8"))
+            root_value = health.get("wake_root") if isinstance(health, dict) else None
+            root = Path(root_value).expanduser().resolve() if isinstance(root_value, str) and root_value else None
+        except (OSError, json.JSONDecodeError):
+            continue
+        if root is not None and root not in roots:
+            roots.append(root)
+    return roots
+
+
 def find_trigger_path(wake_root: Path, wake_id: str) -> Path | None:
     for status in ("firing", "pending", "submitted", "failed", "cancelled", "expired"):
         path = wake_root / status / f"{wake_id}.json"
         if path.exists():
             return path
     return None
+
+
+def resolve_wake_root(payload: dict[str, Any], wake_id: str) -> Path:
+    """Find the authoritative wake root even when a resumed TUI has another cwd."""
+    payload_root = wake_root_for_payload(payload)
+    if find_trigger_path(payload_root, wake_id) is not None:
+        return payload_root
+    for candidate in monitored_wake_roots():
+        if find_trigger_path(candidate, wake_id) is not None:
+            return candidate
+    return payload_root
 
 
 def write_ack(wake_root: Path, wake_id: str, payload: dict[str, Any]) -> Path:
@@ -86,7 +113,7 @@ def handle_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
     wake_id = extract_wake_id(prompt)
     if not wake_id:
         return None
-    wake_root = wake_root_for_payload(payload)
+    wake_root = resolve_wake_root(payload, wake_id)
     write_ack(wake_root, wake_id, payload)
     trigger_path = find_trigger_path(wake_root, wake_id)
     if trigger_path is None:

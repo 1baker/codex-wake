@@ -69,6 +69,31 @@ class HookTests(unittest.TestCase):
             context = output["hookSpecificOutput"]["additionalContext"]
             self.assertIn("trigger file was not found", context)
 
+    def test_resolves_monitored_root_when_resumed_tui_cwd_differs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            repo = base / "repo"
+            repo.mkdir()
+            wake_root = repo / ".codex" / "wake"
+            record = build_record(
+                predicate={"type": "not_before"},
+                prompt="Verify managed resume",
+                cwd=repo,
+                target={"transport": "tmux", "tmux_socket": "/tmp/tmux/default", "pane": "%1"},
+            )
+            record["id"] = "wake_monitored"
+            record["status"] = "firing"
+            write_record(wake_root, record)
+            monitor_dir = base / ".local" / "state" / "codex-wake" / "monitors"
+            monitor_dir.mkdir(parents=True)
+            (monitor_dir / "root.json").write_text(json.dumps({"wake_root": str(wake_root)}), encoding="utf-8")
+
+            with patch("codex_wake.hook.Path.home", return_value=base):
+                output = handle_payload(self.make_payload(base, "WAKE_TRIGGER_ID=wake_monitored\nResume"))
+
+            self.assertTrue((wake_root / "acks" / "wake_monitored.submitted").exists())
+            self.assertIn("Verify managed resume", output["hookSpecificOutput"]["additionalContext"])
+
     def test_main_prints_hook_output(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             payload = self.make_payload(Path(tmp), "WAKE_TRIGGER_ID=wake_missing\nResume")
