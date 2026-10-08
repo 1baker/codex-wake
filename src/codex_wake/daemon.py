@@ -164,8 +164,13 @@ def poll_once(
     dispatch: bool = True,
     runner: TmuxRunner | None = None,
     ack_timeout_override: float | None = None,
+    allow_owner_dispatch: bool = True,
 ) -> PollResult:
     current = now or utc_now()
+    from .owner_delivery import reconcile_owner_records
+    reconcile_owner_records(root, now=current)
+    from .app_server import reconcile_app_server_records
+    reconcile_app_server_records(root, now=current)
     checked = fired = failed = pending = dispatched = requeued = submitted = 0
     for item in pending_records(root):
         checked += 1
@@ -201,6 +206,8 @@ def poll_once(
             pending += 1
     if dispatch:
         for item in firing_records(root):
+            if item.record.get("target", {}).get("owner_thread_id") and not allow_owner_dispatch:
+                continue  # Exact-owner receipt tracking requires a persistent loop monitor.
             dispatched += 1
             result = dispatch_firing_record(
                 root,
@@ -251,7 +258,7 @@ def run(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = (args.wake_root or default_wake_root()).resolve()
     if args.once:
-        result = poll_once(root, dispatch=not args.no_dispatch, ack_timeout_override=args.ack_timeout)
+        result = poll_once(root, dispatch=not args.no_dispatch, ack_timeout_override=args.ack_timeout, allow_owner_dispatch=False)
         write_monitor_health(
             wake_root=root,
             repo_root=Path.cwd(),

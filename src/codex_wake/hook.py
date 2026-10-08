@@ -125,6 +125,15 @@ def handle_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
             f"Wake trigger {wake_id} was submitted, but its trigger file is not valid JSON. "
             "Inspect .codex/wake before continuing."
         )
+    if "WAKE_PAYLOAD_INCLUDED=1" in prompt:
+        from .owner_delivery import inline_prompt
+        from .records import WakeError
+        try:
+            exact = prompt.rstrip("\n") == inline_prompt(trigger).rstrip("\n")
+        except WakeError:
+            exact = False
+        if exact:
+            return None  # Ack is already written; the exact payload is in the user prompt.
     return hook_output(additional_context_for_trigger(wake_id, trigger))
 
 

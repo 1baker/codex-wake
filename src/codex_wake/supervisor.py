@@ -329,7 +329,7 @@ def supervisor_poll_once(config: SupervisorConfig, *, mode: str = "once", dispat
         repo_root_text = entry.get("repo_root")
         repo_root = Path(repo_root_text).expanduser().resolve() if isinstance(repo_root_text, str) and repo_root_text else None
         try:
-            result = poll_once(wake_root, dispatch=dispatch)
+            result = poll_once(wake_root, dispatch=dispatch, allow_owner_dispatch=mode != "once")
             poll_summary = {
                 "checked": result.checked,
                 "fired": result.fired,

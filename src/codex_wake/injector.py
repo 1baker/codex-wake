@@ -38,12 +38,29 @@ class TmuxRunner(Protocol):
 
 
 class SubprocessTmuxRunner:
+    def paste_owner_prompt(self, socket: str, pane: str, wake_id: str, prompt: str) -> None:
+        buffer_name = f"codex-owner-wake-{wake_id}"
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
+            handle.write(prompt)
+            prompt_path = handle.name
+        try:
+            subprocess.run(["tmux", "-S", socket, "load-buffer", "-b", buffer_name, prompt_path],
+                           check=True, capture_output=True, text=True, timeout=3)
+            subprocess.run(["tmux", "-S", socket, "paste-buffer", "-p", "-d", "-b", buffer_name, "-t", pane],
+                           check=True, capture_output=True, text=True, timeout=3)
+            time.sleep(0.2)
+            subprocess.run(["tmux", "-S", socket, "send-keys", "-t", pane, "C-m"],
+                           check=True, capture_output=True, text=True, timeout=3)
+        finally:
+            Path(prompt_path).unlink(missing_ok=True)
+
     def capture_pane(self, socket: str, pane: str) -> str:
         result = subprocess.run(
             ["tmux", "-S", socket, "capture-pane", "-p", "-t", pane],
             check=True,
             text=True,
             capture_output=True,
+            timeout=3,
         )
         return result.stdout
 
@@ -58,12 +75,14 @@ class SubprocessTmuxRunner:
                 check=True,
                 text=True,
                 capture_output=True,
+                timeout=3,
             )
             subprocess.run(
                 ["tmux", "-S", socket, "paste-buffer", "-d", "-b", buffer_name, "-t", pane],
                 check=True,
                 text=True,
                 capture_output=True,
+                timeout=3,
             )
             # Codex's tmux-hosted multiline composer needs the paste to settle,
             # then a blank-line submit for the two-line canonical prompt.
@@ -73,6 +92,7 @@ class SubprocessTmuxRunner:
                 check=True,
                 text=True,
                 capture_output=True,
+                timeout=3,
             )
             time.sleep(0.2)
             subprocess.run(
@@ -80,6 +100,7 @@ class SubprocessTmuxRunner:
                 check=True,
                 text=True,
                 capture_output=True,
+                timeout=3,
             )
         finally:
             Path(prompt_path).unlink(missing_ok=True)
@@ -262,6 +283,9 @@ def dispatch_firing_record(
     if not isinstance(wake_id, str) or not wake_id:
         raise WakeError("wake record missing id")
     target = record.get("target")
+    if isinstance(target, dict) and target.get("owner_thread_id"):
+        from .owner_delivery import dispatch_owner_record
+        return dispatch_owner_record(root, found, runner=runner, now=current)
     if isinstance(target, dict) and target.get("transport") == "app-server":
         from .app_server import dispatch_app_server_record
 

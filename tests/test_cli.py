@@ -479,7 +479,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(code, 0, stderr.getvalue())
             wake_id = stdout.getvalue().split()[0]
             data = json.loads((root / "pending" / f"{wake_id}.json").read_text())
-            self.assertEqual(data["target"], {"transport": "app-server", "endpoint": "stdio://", "thread_id": "thread_abc"})
+            self.assertEqual(data["target"], {"transport": "app-server", "endpoint": "stdio://", "thread_id": "thread_abc", "inline_payload": True})
 
     def test_app_after_creates_app_server_target_without_tmux(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -505,7 +505,7 @@ class CliTests(unittest.TestCase):
             wake_id = stdout.getvalue().split()[0]
             data = json.loads((root / "pending" / f"{wake_id}.json").read_text())
             self.assertEqual(data["predicate"]["type"], "not_before")
-            self.assertEqual(data["target"], {"transport": "app-server", "endpoint": "stdio://", "thread_id": "thread_abc"})
+            self.assertEqual(data["target"], {"transport": "app-server", "endpoint": "stdio://", "thread_id": "thread_abc", "inline_payload": True})
 
     def test_app_after_can_persist_codex_cmd_for_daemon_dispatch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

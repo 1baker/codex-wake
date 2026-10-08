@@ -54,6 +54,14 @@ Dispatch-specific proof:
 
 ## Manual-Only Cases
 
+The local repair candidate supports exact-existing-owner tmux delivery only
+with process, foreground terminal and rollout identity verification. Require a
+persistent loop monitor; one-shot polling does not dispatch owner records.
+Short unowned stdio turns must finish within the bounded 30-second operation
+budget. Acceptance alone does not establish completion or visible response.
+This candidate is not a published release and must be verified through its
+isolated installed executable before adoption.
+
 Tmux is manual/operator-visible unless the operator captures pane visibility
 evidence. The product can verify that a target pane and hook ack exist, but the
 operator must still confirm the prompt landed in the intended active Codex pane

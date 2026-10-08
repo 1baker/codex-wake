@@ -331,6 +331,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def add_target_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--tmux-thread-id", help="exact UUID of an existing foreground managed Codex client")
+    parser.add_argument("--owner-pid", type=int, help="native foreground Codex client PID for exact-owner tmux mode")
     parser.add_argument(
         "--app-server-thread-id",
         help="create an app-server-targeted wake for the given Codex thread id instead of capturing tmux",
@@ -466,6 +468,7 @@ def create_app(args: argparse.Namespace, root: Path) -> int:
         "transport": "app-server",
         "endpoint": args.endpoint,
         "thread_id": args.thread_id,
+        "inline_payload": True,
     }
     if args.codex_path:
         target["codex_cmd"] = resolve_codex_cmd(args.codex_path, required=True)
@@ -722,12 +725,22 @@ def create_record(
         target=target or target_for_args(args),
         now=now,
     )
+    if record["target"].get("owner_thread_id") or record["target"].get("inline_payload"):
+        from .owner_delivery import payload_digest
+        payload_digest(prompt)
     path = write_record(root, record)
     print(f"{record['id']} {path}")
     return 0
 
 
 def target_for_args(args: argparse.Namespace) -> dict[str, str]:
+    if getattr(args, "tmux_thread_id", None):
+        if getattr(args, "app_server_thread_id", None) or not getattr(args, "owner_pid", None):
+            raise WakeError("exact-owner mode requires --owner-pid and cannot use app-server target")
+        from .owner_delivery import capture_owner_target
+        return capture_owner_target(capture_tmux_target(), args.tmux_thread_id, args.owner_pid)
+    if getattr(args, "owner_pid", None):
+        raise WakeError("--owner-pid requires --tmux-thread-id")
     if getattr(args, "app_server_thread_id", None):
         endpoint = getattr(args, "app_server_endpoint", "stdio://")
         if endpoint != "stdio://":
@@ -736,6 +749,7 @@ def target_for_args(args: argparse.Namespace) -> dict[str, str]:
             "transport": "app-server",
             "endpoint": endpoint,
             "thread_id": args.app_server_thread_id,
+            "inline_payload": True,
         }
         codex_path = getattr(args, "app_server_codex_path", None)
         if codex_path:

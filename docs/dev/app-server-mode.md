@@ -29,12 +29,60 @@ The implemented path starts or uses a stdio app-server client and sends:
 2. `thread/resume`
 3. `turn/start`
 
-The wake prompt sent to `turn/start` is still the canonical short prompt:
+The local owner-delivery repair candidate keeps the private client alive until
+the matching `turn/completed` event. Its total operation budget is 30 seconds,
+with at most two additional seconds for a best-effort deadline interrupt.
+Completion, interruption and uncertain delivery are recorded separately from
+acceptance. A held native writer lock or existing resume client refuses stdio
+before another writer is launched. Use stdio only for short, unowned turns,
+not for a long task in a live managed TUI.
+
+Older records send the canonical short prompt and still need the wake hook:
 
 ```text
 WAKE_TRIGGER_ID=<wake-id>
 Resume the scheduled wake task.
 ```
+
+In plain English: this identifies the wake; an older record relies on the hook
+to supply its saved instructions.
+
+New CLI records set the optional `inline_payload` target field and send the
+bounded saved instructions directly. The hook still writes its receipt, but
+does not duplicate an exact inline payload. `submitted` continues to mean
+accepted, not finished. Inspect `delivery.state` and the matching turn evidence.
+
+## Exact existing-owner TUI mode
+
+The repair candidate adds `--tmux-thread-id` and `--owner-pid` to the time and
+file/process commands. Capture `TMUX` and `TMUX_PANE` from the actual native
+client, not an unrelated tool shell or a saved pane label.
+
+```bash
+codex-wake after --require-monitor --tmux-thread-id EXACT_UUID --owner-pid NATIVE_PID 1m -- "Check the saved task and report its outcome."
+```
+
+In plain English: this schedules work in that existing Codex client. It will
+not create another writer. The command changes local wake state; the monitor
+can submit the task only after verifying the same foreground owner is idle.
+
+Owner mode verifies process lifetime, resume UUID, captured remote endpoint,
+pane ancestry and foreground terminal on each dispatch. It requires an empty
+composer and terminal lifecycle evidence, then repeats both checks before a
+bracketed paste and one submit. Payloads are capped at 8 KiB. No global hook
+installation, host restart or direct inference connection is required.
+
+The exact rollout provides acceptance and terminal-turn receipts through a
+bounded reader with saved inode and offset. A sending boundary is durable
+before paste; any uncertain or crashed submission is never replayed. A live
+foreign monitor is not stolen by a one-shot poll. Only a persistent loop may
+dispatch owner-mode records; `--once` does not submit them. Idle waiting expires
+after three hours and logs only its state transition.
+
+Completion and pane visibility are separate. The answer's joined completion
+token is intentionally absent from the input prompt, preventing an echoed
+prompt from falsely proving a visible answer. A completed canary with no pane
+readback remains `completion_visibility_unproven`.
 
 ## CLI
 

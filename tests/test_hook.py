@@ -69,6 +69,18 @@ class HookTests(unittest.TestCase):
             context = output["hookSpecificOutput"]["additionalContext"]
             self.assertIn("trigger file was not found", context)
 
+    def test_exact_inline_payload_writes_ack_without_duplicate_context(self) -> None:
+        from codex_wake.owner_delivery import inline_prompt
+        with tempfile.TemporaryDirectory() as tmp:
+            cwd = Path(tmp); root = cwd / ".codex" / "wake"
+            r = build_record(predicate={"type": "not_before"}, prompt="Do the saved task", cwd=cwd,
+                target={"transport": "tmux", "tmux_socket": "/tmp/socket", "pane": "%1"})
+            r["id"] = "wake_inline"; r["status"] = "firing"; write_record(root, r)
+            self.assertIsNone(handle_payload(self.make_payload(cwd, inline_prompt(r))))
+            self.assertTrue((root / "acks" / "wake_inline.submitted").exists())
+            forged = inline_prompt(r).replace("Do the saved task", "Different task")
+            self.assertIn("Do the saved task", handle_payload(self.make_payload(cwd, forged))["hookSpecificOutput"]["additionalContext"])
+
     def test_resolves_monitored_root_when_resumed_tui_cwd_differs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

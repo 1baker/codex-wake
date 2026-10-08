@@ -65,6 +65,17 @@ App-server target:
 ```
 
 Only `stdio://` app-server dispatch is implemented in schema version `1`.
+
+The local owner-delivery repair adds optional target and evidence fields without
+changing schema-v1 status meanings. New stdio targets may contain
+`inline_payload=true` and a `completion_timeout_seconds` value up to 30. Exact
+existing-TUI targets retain transport `tmux` and add `owner_thread_id`,
+`owner_pid`, `owner_start_ticks`, `owner_remote`, and `rollout_path`.
+`delivery.state` distinguishes sending, pasted, accepted, completed,
+interrupted, uncertain, and not_sent; `idle_wait` bounds pre-submission waiting.
+None is a new directory or a stronger meaning for `submitted`. An uncertain
+delivery is failed, inspectable, and never replayed automatically. Completion
+and operator-visible response evidence must be checked independently.
 `codex_cmd` is optional and may be absent. When present, it is a validated
 Codex CLI command or absolute path used by the daemon to launch local stdio
 app-server dispatch.
