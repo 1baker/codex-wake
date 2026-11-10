@@ -1,5 +1,23 @@
 # Codex Wake
 
+> **About this copy:** this is a personal fork of [CochranResearchGroup/codex-wake](https://github.com/CochranResearchGroup/codex-wake). The original project's documentation continues below.
+
+**In one sentence:** Codex Wake lets an AI agent set an alarm for itself ("wake me in 30 minutes" or "when this file appears"), and then resumes it in its terminal tab when the time comes.
+
+**Who it is for:** People who run long Codex jobs and want the agent to come back to a task by itself.
+
+**How it works:**
+
+```mermaid
+flowchart LR
+    Agent[Agent] -->|wake me at ...| Rec[(Saved wake request)]
+    D[Wake service] -->|watches clock / files| Rec
+    D -->|time is up| Tab[Resumes the agent's terminal tab]
+```
+
+---
+
+
 Codex Wake is a local wake spooler for TUI-bound Codex agents. It lets an agent register a durable wake request, lets a deterministic daemon wait for the trigger, and resumes a Codex TUI pane by submitting a short wake prompt.
 
 The current package supports:
