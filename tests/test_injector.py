@@ -4,12 +4,13 @@ import json
 import os
 import tempfile
 import unittest
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from codex_wake.injector import (
     PaneLock,
     canonical_prompt,
+    classify_pane,
     dispatch_firing_record,
     lock_name_for_pane,
     unsafe_pane_reason,
@@ -59,6 +60,103 @@ class InjectorTests(unittest.TestCase):
         self.assertEqual(unsafe_pane_reason("Approve command?"), "approval prompt visible")
         self.assertEqual(unsafe_pane_reason("user@host:~/repo$ "), "pane appears to be a shell prompt")
         self.assertIsNone(unsafe_pane_reason("Codex\nready for input"))
+
+    # Busy Codex screen whose transcript prose mentions approval. The composer
+    # has an extra hint line under it, so the idle-composer shape is not
+    # recognized; before #151 this returned "approval prompt visible".
+    BUSY_PROSE = ("Updated the approval gate notes; the deploy still needs human approval.\n"
+                  "• Working (4m 12s • esc to interrupt)\n"
+                  "› Ask Codex to do anything\n"
+                  "  tab to queue message\n"
+                  "gpt-6 · Context 40% left")
+
+    def test_busy_prose_with_approval_word_is_busy_not_prompt(self) -> None:
+        self.assertEqual(classify_pane(self.BUSY_PROSE), ("busy", "agent appears to be running"))
+        for prose in ("Reviewed the approval workflow; nothing to approve yet.",
+                      "We should allow the command to finish before deny/allow review."):
+            with self.subTest(prose=prose):
+                self.assertEqual(classify_pane(prose)[0], "busy")
+
+    def test_genuine_prompts_are_unsafe_not_busy(self) -> None:
+        for dialog in ("Approve command?", "Approval required\n› 1. Yes\n2. No",
+                       "Allow this command?\nDeny / Allow",
+                       "Would you like to run the following command?\n"
+                       "› 1. Yes, proceed (y)\n  2. No, and tell Codex what to do differently (esc)",
+                       "› Ask Codex to do anything\nApproval required\ngpt-6 · Context 86% left",
+                       "Press enter to continue"):
+            with self.subTest(dialog=dialog):
+                self.assertEqual(classify_pane(dialog)[0], "unsafe")
+
+    def run_dispatch(self, root: Path, found: WakePath, capture: str, now: datetime) -> tuple[object, FakeTmuxRunner]:
+        runner = FakeTmuxRunner(capture=capture)
+        result = dispatch_firing_record(root, found, runner=runner, now=now, ack_timeout_override=0)
+        return result, runner
+
+    def refire(self, root: Path) -> WakePath:
+        pending = root / "pending" / "wake_test.json"
+        data = json.loads(pending.read_text())
+        pending.unlink()
+        data["status"] = "firing"
+        return WakePath(path=write_record(root, data), record=data)
+
+    def test_busy_pane_requeues_without_consuming_attempts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wake"
+            found = self.make_firing_record(root, Path(tmp))
+            start = datetime(2026, 5, 18, 21, 15, tzinfo=UTC)
+            for minute in range(5):  # more than max_attempts=3
+                result, runner = self.run_dispatch(root, found, self.BUSY_PROSE, start + timedelta(minutes=minute))
+                self.assertEqual(result.status, "requeued")
+                self.assertEqual(runner.pastes, [])
+                found = self.refire(root)
+            data = found.record
+            self.assertEqual(data["attempts"], 0)
+            self.assertEqual(data["first_dispatch_attempt_at"], "2026-05-18T21:15:00Z")
+            self.assertEqual(data["events"][-2]["type"], "busy_pane")
+            self.assertEqual(data["next_attempt_at"], "2026-05-18T21:20:00Z")
+
+    def test_busy_pane_fails_after_deadline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wake"
+            found = self.make_firing_record(root, Path(tmp))
+            start = datetime(2026, 5, 18, 21, 15, tzinfo=UTC)
+            result, _ = self.run_dispatch(root, found, self.BUSY_PROSE, start)
+            self.assertEqual(result.status, "requeued")
+            found = self.refire(root)
+            result, runner = self.run_dispatch(root, found, self.BUSY_PROSE, start + timedelta(hours=2))
+            self.assertEqual(result.status, "failed")
+            self.assertEqual(runner.pastes, [])
+            data = json.loads((root / "failed" / "wake_test.json").read_text())
+            self.assertEqual(data["attempts"], 0)
+            self.assertIn("Busy pane deadline of 7200 seconds", data["events"][-1]["message"])
+
+    def test_busy_deadline_is_read_from_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wake"
+            found = self.make_firing_record(root, Path(tmp))
+            found.record["busy_deadline_seconds"] = 600
+            start = datetime(2026, 5, 18, 21, 15, tzinfo=UTC)
+            result, _ = self.run_dispatch(root, found, self.BUSY_PROSE, start)
+            self.assertEqual(result.status, "requeued")
+            found = self.refire(root)
+            result, _ = self.run_dispatch(root, found, self.BUSY_PROSE, start + timedelta(minutes=10))
+            self.assertEqual(result.status, "failed")
+
+    def test_busy_then_idle_composer_delivers(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wake"
+            found = self.make_firing_record(root, Path(tmp))
+            start = datetime(2026, 5, 18, 21, 15, tzinfo=UTC)
+            self.run_dispatch(root, found, self.BUSY_PROSE, start)
+            found = self.refire(root)
+            (root / "acks").mkdir(exist_ok=True)
+            (root / "acks" / "wake_test.submitted").touch()
+            idle = "Updated the approval gate notes.\n› Ask Codex to do anything\ngpt-6 · Context 40% left"
+            result, runner = self.run_dispatch(root, found, idle, start + timedelta(minutes=1))
+            self.assertEqual(result.status, "submitted")
+            self.assertEqual(len(runner.pastes), 1)
+            data = json.loads((root / "submitted" / "wake_test.json").read_text())
+            self.assertEqual(data["attempts"], 1)
 
     def test_pane_lock_rejects_concurrent_lock(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -15,12 +15,17 @@ from .records import (
     WakePath,
     append_event,
     format_utc,
+    parse_utc_timestamp,
     replace_record,
     utc_now,
 )
 
 
 DEFAULT_BACKOFF_SECONDS = (60, 300)
+# Busy panes are retried without consuming max_attempts, until this deadline
+# measured from the first dispatch attempt (record field busy_deadline_seconds).
+DEFAULT_BUSY_DEADLINE_SECONDS = 2 * 60 * 60
+BUSY_RETRY_SECONDS = 60
 
 
 @dataclass(frozen=True)
@@ -132,7 +137,40 @@ def tmux_visibility_result(
     return result
 
 
-def unsafe_pane_reason(text: str) -> str | None:
+# Line-anchored text from approval/confirmation UIs. These are synthetic,
+# UI-shaped patterns (no raw Codex approval capture is stored in this repo):
+# "Approve command?", "Approval required", "Would you like to run the
+# following command?", numbered "1. Yes ..." option menus, "Allow ...?",
+# "Deny / Allow", "Press enter to continue", "Continue?".
+PROMPT_PATTERNS = (
+    (r"^\s*(?:[›>]\s*)?approve\b[^\n]*\?\s*$", "approval prompt visible"),
+    (r"^\s*approval required\b", "approval prompt visible"),
+    (r"^\s*would you like to (?:run|make|apply|allow)\b[^\n]*\?\s*$", "approval prompt visible"),
+    (r"^\s*(?:[›>]\s*)?\d\.\s+yes\b", "approval prompt visible"),
+    (r"^\s*allow\b[^\n]*\?\s*$", "command approval prompt visible"),
+    (r"^\s*deny\s*/\s*allow\s*$", "confirmation prompt visible"),
+    (r"\bpress enter to continue\b", "confirmation prompt visible"),
+    (r"^\s*continue\?\s*$", "confirmation prompt visible"),
+)
+
+# Signs that an agent or tool is working, plus the legacy broad approval/allow
+# words. These words in transcript prose used to be read as an approval prompt;
+# they now mean "busy": still never typed into, but retried without spending
+# the attempt budget.
+BUSY_PATTERNS = (
+    (r"esc to interrupt|esc to cancel", "agent appears to be running"),
+    (r"\brunning\b.*\bcommand\b|\btool\b.*\brunning\b", "tool appears to be running"),
+    (r"\bapprove\b|\bapproval\b|\ballow\b.*\bcommand\b|\bdeny\b.*\ballow\b",
+     "agent busy: no idle composer or approval prompt recognized"),
+)
+
+
+def classify_pane(text: str) -> tuple[str, str] | None:
+    """Return None when it is safe to paste, else (kind, reason).
+
+    kind is "busy" (agent working; retry without consuming an attempt) or
+    "unsafe" (approval/confirmation prompt, draft, or shell; consumes one).
+    """
     # A confirmed bottom composer separates live controls from transcript text.
     # Keep the conservative legacy checks when this UI shape is not recognized.
     lines = [line.rstrip() for line in text.splitlines() if line.strip()]
@@ -144,28 +182,28 @@ def unsafe_pane_reason(text: str) -> str | None:
         if len(tail) == 1 and footer.search(tail[0]):
             recent = "\n".join(lines[max(0, index - 3):index]).lower()
             if re.search(r"esc to interrupt|esc to cancel", recent):
-                return "agent appears to be running"
+                return ("busy", "agent appears to be running")
             composer = lines[index].strip()[1:].strip()
             if composer not in ("", "Ask Codex to do anything"):
-                return "composer contains a draft or unrecognized prompt"
+                return ("unsafe", "composer contains a draft or unrecognized prompt")
             return None
     lowered = text.lower()
-    patterns = (
-        (r"\bapprove\b|\bapproval\b", "approval prompt visible"),
-        (r"\ballow\b.*\bcommand\b", "command approval prompt visible"),
-        (r"\bdeny\b.*\ballow\b", "confirmation prompt visible"),
-        (r"\brunning\b.*\bcommand\b|\btool\b.*\brunning\b", "tool appears to be running"),
-        (r"\bpress enter to continue\b|\bcontinue\?\b", "confirmation prompt visible"),
-    )
-    for pattern, reason in patterns:
+    for pattern, reason in PROMPT_PATTERNS:
         if re.search(pattern, lowered, re.MULTILINE):
-            return reason
-    lines = [line.rstrip() for line in text.splitlines() if line.strip()]
+            return ("unsafe", reason)
+    for pattern, reason in BUSY_PATTERNS:
+        if re.search(pattern, lowered, re.MULTILINE):
+            return ("busy", reason)
     if lines:
         last = lines[-1]
         if re.search(r"[$#%>]\s*$", last) and "codex" not in lowered:
-            return "pane appears to be a shell prompt"
+            return ("unsafe", "pane appears to be a shell prompt")
     return None
+
+
+def unsafe_pane_reason(text: str) -> str | None:
+    result = classify_pane(text)
+    return result[1] if result else None
 
 
 def lock_name_for_pane(socket: str, pane: str) -> str:
@@ -287,6 +325,7 @@ def dispatch_firing_record(
             attempt = int(record.get("attempts") or 0) + 1
             record["attempts"] = attempt
             record["updated_at"] = format_utc(current)
+            record.setdefault("first_dispatch_attempt_at", format_utc(current))
             record = append_event(
                 record,
                 "dispatch_attempt",
@@ -296,9 +335,14 @@ def dispatch_firing_record(
             )
             replace_record(root, found, record)
             captured = tmux.capture_pane(socket, pane)
-            unsafe = unsafe_pane_reason(captured)
-            if unsafe:
-                return requeue_or_fail(root, WakePath(root / "firing" / f"{wake_id}.json", record), record, f"unsafe pane: {unsafe}", current, "unsafe_pane")
+            pane_state = classify_pane(captured)
+            if pane_state:
+                kind, reason = pane_state
+                firing = WakePath(root / "firing" / f"{wake_id}.json", record)
+                if kind == "busy":
+                    record["attempts"] = attempt - 1
+                    return requeue_busy_or_fail(root, firing, record, f"busy pane: {reason}", current)
+                return requeue_or_fail(root, firing, record, f"unsafe pane: {reason}", current, "unsafe_pane")
             tmux.paste_prompt(socket, pane, wake_id, canonical_prompt(wake_id))
             timeout = ack_timeout_override
             if timeout is None:
@@ -367,5 +411,47 @@ def requeue_or_fail(
     record["status"] = "pending"
     record["next_attempt_at"] = format_utc(now + timedelta(seconds=delay))
     record = append_event(record, "requeued", f"Wake requeued after {delay} seconds", now, attempt=attempts)
+    replace_record(root, found, record)
+    return DispatchResult("requeued", message)
+
+
+def requeue_busy_or_fail(
+    root: Path,
+    found: WakePath,
+    record: dict,
+    message: str,
+    now: datetime,
+) -> DispatchResult:
+    """Requeue a wake whose pane is busy without consuming an attempt.
+
+    Fails once now passes first_dispatch_attempt_at + busy_deadline_seconds.
+    """
+    attempts = int(record.get("attempts") or 0)
+    deadline_seconds = int(record.get("busy_deadline_seconds") or DEFAULT_BUSY_DEADLINE_SECONDS)
+    first_text = record.get("first_dispatch_attempt_at")
+    first = parse_utc_timestamp(first_text) if isinstance(first_text, str) and first_text else now
+    record["updated_at"] = format_utc(now)
+    record["last_error"] = message
+    record = append_event(record, "busy_pane", message, now, attempt=attempts)
+    if now >= first + timedelta(seconds=deadline_seconds):
+        record["status"] = "failed"
+        record = append_event(
+            record,
+            "failed",
+            f"Busy pane deadline of {deadline_seconds} seconds reached",
+            now,
+            attempt=attempts,
+        )
+        replace_record(root, found, record)
+        return DispatchResult("failed", message)
+    record["status"] = "pending"
+    record["next_attempt_at"] = format_utc(now + timedelta(seconds=BUSY_RETRY_SECONDS))
+    record = append_event(
+        record,
+        "requeued",
+        f"Wake requeued after {BUSY_RETRY_SECONDS} seconds (busy; attempt not consumed)",
+        now,
+        attempt=attempts,
+    )
     replace_record(root, found, record)
     return DispatchResult("requeued", message)

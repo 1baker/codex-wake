@@ -82,6 +82,7 @@ def build_parser() -> argparse.ArgumentParser:
     after.add_argument("prompt", nargs=argparse.REMAINDER)
     add_target_options(after)
     add_monitor_gate_options(after)
+    add_retry_options(after)
 
     at = subparsers.add_parser("at", help="create a wake at an ISO-8601 timestamp with timezone")
     at.add_argument("timestamp")
@@ -171,12 +172,14 @@ def build_parser() -> argparse.ArgumentParser:
     file_cmd.add_argument("prompt", nargs=argparse.REMAINDER)
     add_target_options(file_cmd)
     add_monitor_gate_options(file_cmd)
+    add_retry_options(file_cmd)
 
     changed = subparsers.add_parser("changed", help="create a wake when a file is created or changes mtime/size")
     changed.add_argument("path")
     changed.add_argument("prompt", nargs=argparse.REMAINDER)
     add_target_options(changed)
     add_monitor_gate_options(changed)
+    add_retry_options(changed)
 
     pid = subparsers.add_parser("pid", help="create a wake when a process id exits")
     pid.add_argument("pid", type=int)
@@ -399,6 +402,39 @@ def add_monitor_gate_options(parser: argparse.ArgumentParser) -> None:
         "--require-monitor",
         action="store_true",
         help="fail before writing a wake record unless an active monitor owns this wake root",
+    )
+
+
+def positive_int(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid integer: {value}") from exc
+    if number < 1:
+        raise argparse.ArgumentTypeError("must be at least 1")
+    return number
+
+
+def duration_seconds(value: str) -> int:
+    try:
+        return int(parse_duration(value).total_seconds())
+    except WakeError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
+def add_retry_options(parser: argparse.ArgumentParser) -> None:
+    # Options must come before the positional arguments: prompt uses REMAINDER.
+    parser.add_argument(
+        "--max-attempts",
+        type=positive_int,
+        default=None,
+        help="dispatch attempts before failing (unsafe pane, ack timeout, tmux error); defaults to 3",
+    )
+    parser.add_argument(
+        "--busy-deadline",
+        type=duration_seconds,
+        default=None,
+        help="how long a busy pane is retried without consuming attempts, from the first dispatch attempt, such as 2h; defaults to 2h",
     )
 
 
@@ -722,6 +758,10 @@ def create_record(
         target=target or target_for_args(args),
         now=now,
     )
+    if getattr(args, "max_attempts", None) is not None:
+        record["max_attempts"] = args.max_attempts
+    if getattr(args, "busy_deadline", None) is not None:
+        record["busy_deadline_seconds"] = args.busy_deadline
     path = write_record(root, record)
     print(f"{record['id']} {path}")
     return 0

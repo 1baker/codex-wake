@@ -163,6 +163,14 @@ Current optional fields include:
   such as `run_id`, `status`, `summary`, `session_id`, provider/model, payload
   counts, and text summaries. It must not store raw assistant transcript text.
 - `visibility_result`: sanitized tmux operator-visibility evidence when checked.
+- `first_dispatch_attempt_at`: UTC timestamp of the first tmux dispatch attempt;
+  the busy-pane deadline is measured from it.
+- `busy_deadline_seconds`: how long a busy tmux pane (agent working, no
+  approval/confirmation prompt) is retried every 60 seconds without consuming
+  `attempts`; defaults to 7200 when absent. Set with `--busy-deadline`.
+  `max_attempts` can be set with `--max-attempts` on `after`, `changed` and
+  `file` (default 3); unsafe panes (approval/confirmation prompt, draft,
+  shell), ack timeouts and tmux errors still consume attempts.
 - app-server target `codex_cmd`: optional command path for launching local
   stdio app-server dispatch.
 - OpenClaw Gateway target `openclaw_cmd`: optional command path for launching
