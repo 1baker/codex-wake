@@ -53,6 +53,32 @@ class CliTests(unittest.TestCase):
             self.assertEqual(data["prompt"], "Continue later")
             self.assertEqual(data["status"], "pending")
 
+    def test_retry_options_land_in_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for argv in (["after", "--max-attempts", "5", "--busy-deadline", "3h", "45m", "--", "Later"],
+                         ["file", "--max-attempts", "5", "--busy-deadline", "3h", "done.flag", "--", "Later"],
+                         ["changed", "--max-attempts", "5", "--busy-deadline", "3h", "out.json", "--", "Later"]):
+                with self.subTest(argv=argv[0]):
+                    code, out, err = self.run_cli(argv, root)
+                    self.assertEqual(code, 0, err)
+                    data = json.loads((root / "pending" / f"{out.split()[0]}.json").read_text())
+                    self.assertEqual(data["max_attempts"], 5)
+                    self.assertEqual(data["busy_deadline_seconds"], 10800)
+                    self.assertEqual(data["prompt"], "Later")
+            code, out, err = self.run_cli(["after", "45m", "--", "Default"], root)
+            data = json.loads((root / "pending" / f"{out.split()[0]}.json").read_text())
+            self.assertEqual(data["max_attempts"], 3)
+            self.assertNotIn("busy_deadline_seconds", data)
+
+    def test_retry_options_reject_invalid_values(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            for argv in (["after", "--max-attempts", "0", "45m", "x"],
+                         ["after", "--busy-deadline", "soon", "45m", "x"]):
+                with self.subTest(argv=argv):
+                    with self.assertRaises(SystemExit):
+                        self.run_cli(argv, Path(tmp))
+
     def test_schema_command_reports_version_and_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -216,6 +216,8 @@ def schema_summary() -> dict[str, Any]:
             "archived_at",
             "dispatch_result",
             "visibility_result",
+            "busy_deadline_seconds",
+            "first_dispatch_attempt_at",
         ],
         "schema_bump_required_for": [
             "rename_or_remove_required_fields",
