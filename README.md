@@ -6,6 +6,10 @@
 
 **Who it is for:** People who run long Codex jobs and want the agent to come back to a task by itself.
 
+![Terminal showing codex-wake help: wake after a delay, at a time, when a file appears, and more](docs/images/how-it-works.png)
+
+*Real output of `codex-wake --help`: the kinds of alarms an agent can set.*
+
 **How it works:**
 
 ```mermaid
