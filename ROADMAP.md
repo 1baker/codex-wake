@@ -1742,3 +1742,11 @@ Current State: All eleven child tickets CLOSED; one two-axis review and one TDD
 pass resolved accepted findings. Source/installed-candidate evidence and limits:
 [validation](docs/dev/evidence/plan0234/validation.md), [review](docs/dev/evidence/plan0234/review.md).
 Operator subsequently authorized review/merge/deploy. [Deployment evidence](docs/dev/evidence/plan0234/deployment.md); live provider acceptance excluded.
+
+## P235 | External OAuth connector
+
+Status: OPEN. Work item: #646. Owner: root / ecochran76.
+Plan: [External OAuth connector](docs/dev/plans/0235-2026-11-14-external-oauth-connector.md).
+Current State: Existing grant authority/SDK and Previews/LitScout examples qualified;
+implement browser owner consent and external Streamable HTTP without ambient-authority
+stdio forwarding. Keep existing webhook route and client identity intact.

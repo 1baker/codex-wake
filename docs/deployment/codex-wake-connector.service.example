@@ -1,0 +1,19 @@
+# Replace RELEASE_PREFIX and PRIVATE_POLICY with reviewed absolute paths.
+[Unit]
+Description=Codex Wake external OAuth MCP connector
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=RELEASE_PREFIX/bin/codex-wake connectors serve --config PRIVATE_POLICY
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONNOUSERSITE=1
+Environment=PATH=%h/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin
+UMask=0077
+KillMode=process
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
