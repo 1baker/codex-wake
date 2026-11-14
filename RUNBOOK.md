@@ -9879,3 +9879,11 @@ dev22 connector on8822. Exact ingress/routes and Cooper rule adopted; public
 metadata200, MCP401, nonowner403. No owner grant or client linking performed.
 [Deployment receipt](docs/dev/evidence/plan0235/deployment.md). Task checkout retires
 after documentation integration; unrelated root changes remain preserved.
+
+## 2026-11-14 | P236 delegated setup repair
+
+#650 records operator-authorized agent consent incorrectly denied by an
+owner-only check. Named, exact-client, expiring private delegations preserve
+separate IdP identity and grant subject, scope/target/mode ceilings and actual
+consenter audit. Regression initially403 instead of200; source repair green.
+Existing browser connection retained; no implicit mode or grant creation.
