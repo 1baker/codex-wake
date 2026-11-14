@@ -29,7 +29,7 @@ Python3.11 matrix, live provider, authenticated public owner/OpenAI-client claim
 Raw receipts: ~/.local/state/codex-wake/external-oauth-0235/ outside Git.
 
 Current deployment gate: codex-wake HTTPS inventory exists only for exact POST
-/github/webhook8820. Eight exact OAuth/MCP route candidates use8821 and preserve
+/github/webhook8820. Eight exact OAuth/MCP route candidates use8822 and preserve
 that webhook. The existing Cooper Authelia rules have no matching codex-wake host;
 consent needs one new exact-host sign-in rule. Applying the supported helper
 recreates shared Cooper Authelia and requires existing local sessions to sign in
@@ -41,5 +41,5 @@ separate Linux UID1017/Python3.12.3 installed seven connector tests PASS7.661s,
 no skips. First setup attempt inherited an inaccessible cwd; corrected from/tmp
 with uv configuration disabled, without changing product code or tests.
 Ingress renderer nine cases PASS; inventory validates. Proposed backend port
-revised from37186 to pinned8821 after the validator identified the ephemeral-range
+revised from37186 to pinned8822 after the validator identified the ephemeral-range
 risk. No Python/package change; current candidate artifact remains identical.

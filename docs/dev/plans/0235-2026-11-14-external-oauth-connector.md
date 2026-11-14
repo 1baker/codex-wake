@@ -41,7 +41,7 @@ external ingress and account installation separately. Preserve first failures.
 
 One implementation branch/PR with local checks, installer/service/ingress packet
 and nonsecret readiness handoff. New HTTPS OAuth routes must remain protocol routes;
-protect consent without changing webhook/auth policy. Proposed fixed loopback8821;
+protect consent without changing webhook/auth policy. Proposed fixed loopback8822;
 exact public host already owned: codex-wake.ecochran.dyndns.org. Deployment follows
 merged-main/qualification policy and applicable operator authorization. No native
 upgrade, session input, production wake/grant creation or account-wide publishing.

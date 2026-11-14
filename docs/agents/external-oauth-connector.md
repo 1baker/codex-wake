@@ -18,7 +18,7 @@ configuration. Example (replace owner/host/root and confirm the client's callbac
   "host": "YOUR_HOST",
   "environment": "posix",
   "wake_root": "/ABSOLUTE/PRIVATE/WAKE_ROOT",
-  "port": 8821,
+  "port": 8822,
   "targets": [{"host": "YOUR_HOST", "environment": "posix"}],
   "scopes": ["observe"],
   "grant_seconds": 86400,
@@ -75,7 +75,7 @@ bounded. Cookies/tokens/authorization queries are not written to application acc
 ## Ingress and client handoff
 
 Preserve existing exact POST `/github/webhook` on8820. Add only the above exact paths
-to the connector backend8821 in canonical Cooper Webservices inventory. Keep
+to the connector backend8822 in canonical Cooper Webservices inventory. Keep
 paths-only publication; do not forward the hostname root or arbitrary local routes.
 Protocol routes must reach OAuth/MCP, not an HTML Authelia redirect. Interactive
 identity checks remain in the app against Cooper Authelia; never trust proxy identity
