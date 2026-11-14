@@ -8,8 +8,9 @@ Installed version0.22.0.dev22 in the content-addressed user release prefix
 0.22.0.dev22-c03fbfb; wheel SHA256
 c03fbfb2840085e4baf230e4fae35063b7abb5f70f3227bfe42dc742e4f2d430.
 All338 codex_wake package payload members match merged source and working install.
-Earlier348-member qualification additionally counted installed scripts outside the
-package directory; retain the original receipts. Dependency31pins retained.
+Earlier receipt reports348 matching members; this narrower package-directory
+comparison independently verifies338. Retain original receipts without conflating
+the counts. Dependency31pins retained.
 The codex-wake-connector user service is enabled/active, bound127.0.0.1:8822.
 Core dev21 launchers/services and native sessions were not upgraded or restarted.
 
