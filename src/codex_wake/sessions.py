@@ -27,7 +27,7 @@ def tmux_inventory(socket_path: str | None, timeout: float, *, shell_metadata: b
     deadline = time.monotonic() + timeout
     command = ['tmux'] + (['-S', socket_path] if socket_path else [])
     fields = ['session_id', 'session_name', 'window_id', 'window_index', 'window_name',
-              'pane_id', 'pane_index', 'pane_title', 'pane_current_path', 'pane_tty']
+              'pane_id', 'pane_index', 'pane_title', 'pane_current_path', 'pane_tty', 'session_group']
     if shell_metadata:
         fields += ['pane_current_command', 'pane_pid']
     result = subprocess.run(command + ['list-panes', '-a', '-F', '\t'.join('#{' + x + '}' for x in fields)],
@@ -50,7 +50,38 @@ def tmux_inventory(socket_path: str | None, timeout: float, *, shell_metadata: b
         row['client_start_time_ticks'] = identity[1] if identity else None
         row['evidence'] = 'process_generation' if identity else 'no_unique_codex_client'
         rows.append(row)
-    return rows
+    return merge_grouped_session_aliases(rows)
+
+
+_PHYSICAL_PANE = ('pane_id', 'window_id', 'pane_tty', 'client_pid', 'client_start_time_ticks')
+
+
+def merge_grouped_session_aliases(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """tmux grouped sessions (byobu and its byobu-NN clones) list the same physical pane once per session, so
+    'exactly one attachment' checks saw two and refused (work-tracker #214: helper spawn stuck in
+    exact_idle_owned_client_not_ready; close refused). Merge only rows that are the same physical pane (same pane,
+    window, tty and Codex client process generation); keep every (session_id, session_name) as an alias. The
+    group's own session (name == session_group) is the primary, so existing session-name comparisons still match.
+    Rows that differ in any physical field are never merged and stay ambiguous."""
+    merged: dict[tuple, dict[str, Any]] = {}
+    for row in rows:
+        key = tuple(row.get(field) for field in _PHYSICAL_PANE)
+        alias = (row['session_id'], row['session_name'])
+        if key not in merged:
+            merged[key] = dict(row, session_aliases=[alias])
+            continue
+        kept = merged[key]
+        kept['session_aliases'].append(alias)
+        group = row.get('session_group')
+        if group and row['session_name'] == group and kept['session_name'] != group:
+            merged[key] = dict(row, session_aliases=kept['session_aliases'])
+    return list(merged.values())
+
+
+def in_session(pane: dict[str, Any], session: str) -> bool:
+    """A pane belongs to a session if any of its grouped-session aliases is that session id or name."""
+    aliases = pane.get('session_aliases') or [(pane['session_id'], pane['session_name'])]
+    return any(session in alias for alias in aliases)
 
 
 def build_snapshot(threads: list[dict[str, Any]], panes: list[dict[str, Any]], sources: dict[str, Any]) -> dict[str, Any]:
@@ -142,9 +173,9 @@ def resolve(snapshot: dict[str, Any], selector: str, *, session: str | None = No
                 if len(sessions) != 1:
                     raise SelectionError(4, 'qualify the tmux session', selector, sorted(sessions))
                 session = next(iter(sessions))[0]
-            attachments = [(r, p) for r, p in attachments if session in (p['session_id'], p['session_name'])]
+            attachments = [(r, p) for r, p in attachments if in_session(p, session)]
         elif session:
-            attachments = [(r, p) for r, p in attachments if session in (p['session_id'], p['session_name'])]
+            attachments = [(r, p) for r, p in attachments if in_session(p, session)]
         from .tab_matching import match_tabs
         attachments, resolution = match_tabs(attachments, selector)
         if len(attachments) > 1:

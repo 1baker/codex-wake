@@ -146,3 +146,42 @@ class SessionTests(unittest.TestCase):
             self.assertEqual(main(['sessions', 'list', '--timeout', 'nan', '--json']), 2)
         observe.assert_not_called()
         self.assertIn('"code": 2', out.getvalue())
+
+
+class GroupedSessionAliasTests(unittest.TestCase):
+    """#214: byobu grouped sessions list one physical pane twice; exactly-one checks refused a healthy idle tab."""
+
+    def raw(self, session_id, session_name, group='byobu', **changes):
+        row = pane(index='64', name='temp-source', identifier='%64', pid=2802727)
+        row.update(session_id=session_id, session_name=session_name, session_group=group, **changes)
+        return row
+
+    def test_same_physical_pane_in_grouped_sessions_is_one_attachment(self):
+        from codex_wake.sessions import merge_grouped_session_aliases
+        rows = merge_grouped_session_aliases([self.raw('$27', 'byobu-27'), self.raw('$1', 'byobu')])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['session_name'], 'byobu')            # the group's own session is primary
+        self.assertEqual(sorted(rows[0]['session_aliases']), [('$1', 'byobu'), ('$27', 'byobu-27')])
+        threads = [dict(id='helper-thread', name='Session', cwd='/repo', status={'type': 'idle'})]
+        s = build_snapshot(threads, rows, {k: dict(availability='available') for k in ['tmux', 'app_server']})
+        self.assertEqual(len(s['sessions'][0]['attachments']), 1)
+        self.assertEqual(resolve(s, 'pane:%64', session='byobu-27')['thread_id'], 'helper-thread')
+
+    def test_distinct_panes_or_client_generations_are_never_merged(self):
+        from codex_wake.sessions import merge_grouped_session_aliases
+        for change in (dict(pane_id='%65'), dict(window_id='@65'), dict(pane_tty='/dev/pts/9'),
+                       dict(client_pid=999), dict(client_start_time_ticks=1)):
+            with self.subTest(change=change):
+                rows = merge_grouped_session_aliases([self.raw('$1', 'byobu'), self.raw('$27', 'byobu-27', **change)])
+                self.assertEqual(len(rows), 2)
+
+    def test_tmux_inventory_merges_grouped_duplicates(self):
+        from codex_wake import sessions
+        line = '\t'.join(['{sid}', '{name}', '@64', '7', 'temp-source', '%64', '0', 'Session', '/repo', '/dev/pts/7', 'byobu'])
+        out = '\n'.join([line.format(sid='$1', name='byobu'), line.format(sid='$27', name='byobu-27')]) + '\n'
+        fake = type('R', (), {'stdout': out})()
+        with patch('codex_wake.sessions.subprocess.run', return_value=fake), \
+                patch('codex_wake.sessions.codex_client_identity_for_tty', return_value=(2802727, 20886589)):
+            rows = sessions.tmux_inventory('/tmp/sock', 5)
+        self.assertEqual([(r['pane_id'], r['session_name']) for r in rows], [('%64', 'byobu')])
+        self.assertEqual(len(rows[0]['session_aliases']), 2)
