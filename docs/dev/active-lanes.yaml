@@ -8,12 +8,12 @@ lanes:
     plan: docs/dev/plans/0236-2026-11-14-delegated-connector-consent.md
     branch: fix/connector-consent-delegation
     target: origin/main
-    plan_state: OPEN
-    custody_state: ACTIVE
+    plan_state: DONE
+    custody_state: MERGED
     dependencies: []
     overlaps: [P235]
     updated_at: 2026-11-14
-    disposition: Qualify exact package then deploy connector only; explicit mode remains required
+    disposition: Deployed; agent reaches consent; explicit mode remains required; checkout retiring
 
   - id: external-oauth-0235
     owner: root / ecochran76
