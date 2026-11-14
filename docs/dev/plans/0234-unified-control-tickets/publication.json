@@ -1,0 +1,360 @@
+{
+  "repo": "CochranResearchGroup/codex-wake",
+  "actor": "ecochran76",
+  "issues": {
+    "spec": {
+      "id": "I_kwDOShLp5M8AAAABfSMdQQ",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 623,
+      "state": "OPEN",
+      "title": "Spec: unified hierarchical control for my Byobu environment",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/623"
+    },
+    "ticket-1": {
+      "id": "I_kwDOShLp5M8AAAABfSMfDQ",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 624,
+      "state": "OPEN",
+      "title": "Canonical hierarchical contract and compatibility",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/624"
+    },
+    "ticket-2": {
+      "id": "I_kwDOShLp5M8AAAABfSMiHw",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 625,
+      "state": "OPEN",
+      "title": "Bounded control structures and typed semantic functions",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/625"
+    },
+    "ticket-3": {
+      "id": "I_kwDOShLp5M8AAAABfSMlKw",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 626,
+      "state": "OPEN",
+      "title": "Observe arbitrary existing turns with resumable results",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/626"
+    },
+    "ticket-4": {
+      "id": "I_kwDOShLp5M8AAAABfSMoZA",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 627,
+      "state": "OPEN",
+      "title": "Navigate the Byobu environment and resource relationships",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/627"
+    },
+    "ticket-5": {
+      "id": "I_kwDOShLp5M8AAAABfSMtuA",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 631,
+      "state": "OPEN",
+      "title": "Delegate connector access and route to the owning host",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/631"
+    },
+    "ticket-6": {
+      "id": "I_kwDOShLp5M8AAAABfSM0TQ",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 635,
+      "state": "OPEN",
+      "title": "Read terminal streams and explicitly write exact panes",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/635"
+    },
+    "ticket-7": {
+      "id": "I_kwDOShLp5M8AAAABfSM7jQ",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 638,
+      "state": "OPEN",
+      "title": "Control prompts, slash interactions and presentation lifecycle",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/638"
+    },
+    "ticket-8": {
+      "id": "I_kwDOShLp5M8AAAABfSNF_A",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 640,
+      "state": "OPEN",
+      "title": "Unify account harness and conversation-history controls",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/640"
+    },
+    "ticket-9": {
+      "id": "I_kwDOShLp5M8AAAABfSNNcQ",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 641,
+      "state": "OPEN",
+      "title": "Unify wakes and expose schedule operations to programs",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/641"
+    },
+    "ticket-10": {
+      "id": "I_kwDOShLp5M8AAAABfSNTAg",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 642,
+      "state": "OPEN",
+      "title": "Compose durable bulk and semantic management programs",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/642"
+    },
+    "ticket-11": {
+      "id": "I_kwDOShLp5M8AAAABfSNfFQ",
+      "labels": [
+        {
+          "id": "LA_kwDOShLp5M8AAAACjvSTZg",
+          "name": "enhancement",
+          "description": "New feature or request",
+          "color": "a2eeef"
+        },
+        {
+          "id": "LA_kwDOShLp5M8AAAAC8WtCJw",
+          "name": "ready-for-agent",
+          "description": "Matt engineering triage state: ready-for-agent",
+          "color": "ededed"
+        }
+      ],
+      "number": 643,
+      "state": "OPEN",
+      "title": "Deliver connector discovery documentation and acceptance",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/643"
+    }
+  },
+  "edges": [
+    [
+      627,
+      624
+    ],
+    [
+      631,
+      624
+    ],
+    [
+      631,
+      627
+    ],
+    [
+      635,
+      624
+    ],
+    [
+      635,
+      627
+    ],
+    [
+      638,
+      624
+    ],
+    [
+      638,
+      626
+    ],
+    [
+      638,
+      627
+    ],
+    [
+      640,
+      624
+    ],
+    [
+      640,
+      627
+    ],
+    [
+      641,
+      624
+    ],
+    [
+      642,
+      625
+    ],
+    [
+      642,
+      631
+    ],
+    [
+      642,
+      638
+    ],
+    [
+      642,
+      641
+    ],
+    [
+      643,
+      624
+    ],
+    [
+      643,
+      625
+    ],
+    [
+      643,
+      626
+    ],
+    [
+      643,
+      627
+    ],
+    [
+      643,
+      631
+    ],
+    [
+      643,
+      635
+    ],
+    [
+      643,
+      638
+    ],
+    [
+      643,
+      640
+    ],
+    [
+      643,
+      641
+    ],
+    [
+      643,
+      642
+    ]
+  ]
+}

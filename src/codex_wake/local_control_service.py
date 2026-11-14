@@ -32,9 +32,12 @@ def definitions():
         if verb=='set':
             properties.update(token_limit={'type':'integer','minimum':1},time_limit_seconds={'type':'integer','minimum':1});required=['token_limit','time_limit_seconds']
         result['local.self_limits.'+verb]=('wake_self_limits_'+verb,'Inspect or tighten voluntary own-session limits with automatic enforcement readiness.',schema(properties,required),partial(limits,verb),verb=='show')
+    from .local_session_observation import definitions as observation_definitions
+    result.update(observation_definitions())
     from .governor_commands import definitions as governor_definitions
     result.update(governor_definitions())
-    return result
+    from .unified_contract import local_aliases
+    return local_aliases(result)
 
 
 class LocalOperations:
@@ -70,6 +73,7 @@ def contract():
             cli=['governor',operation.rsplit('.',1)[1]]
         elif operation.startswith('local.self_limits.'):
             cli=['self-limits',operation.rsplit('.',1)[1]]
+        elif operation.startswith('environment.'):cli=operation.split('.')
         else:cli=['control',*operation.removeprefix('local.').split('.')]
         operations[operation]=dict(cli=cli,mcp_tool=tool,description=description,input_schema=schema,readonly=readonly)
     return dict(schema_version=1,operations=operations,

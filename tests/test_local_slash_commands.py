@@ -79,6 +79,31 @@ class LocalSlashCommandTests(unittest.TestCase):
             self.assertNotIn('thread/name/set',state['calls'])
             self.assertNotIn('turn/start',state['calls'])
 
+    def test_delegated_interaction_keeps_caller_identity_and_rechecks_content_grant(self):
+        import time
+        from dataclasses import replace
+        from codex_wake.controller_auth import Actor,AuthError
+        from codex_wake.local_slash_commands import LocalSlashCommands
+        from codex_wake.local_sessions import resolve
+        with self.native() as (root,endpoint,state):
+            target=resolve(root,'thread:one',endpoint=endpoint)['target']
+            actor=[Actor('operator','owner','connector','grant','https://issuer','wake:controller',frozenset({'control','observe','content.observe'}),[target],time.time()+120)]
+            revoked=[False]
+            def authorize(target,action):
+                if revoked[0] or action not in actor[0].scopes:raise AuthError('insufficient_scope')
+                return actor[0]
+            owner=LocalSlashCommands(root,authorize=authorize)
+            first=owner.run('thread:one','/rename','','delegated-one',endpoint=endpoint)['result']['operation']
+            owner.respond(first['operation_id'],'Delegated name','reply-one')
+            actor[0]=replace(actor[0],scopes=frozenset({'content.observe'}))
+            result=owner.result(first['operation_id'])['result']['operation']
+            self.assertEqual(result['execution'],'completed')
+            self.assertEqual(state['calls'].count('thread/name/set'),1)
+            revoked[0]=True
+            before=len(state['calls'])
+            with self.assertRaises(AuthError):owner.result(first['operation_id'])
+            self.assertEqual(len(state['calls']),before)
+
     @contextmanager
     def native(self):
         with tempfile.TemporaryDirectory() as temporary:

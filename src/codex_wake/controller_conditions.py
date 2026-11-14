@@ -67,7 +67,7 @@ class Conditions:
         self.registry=registry
         self.revision=hashlib.sha256(json.dumps(registry,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
-    def evaluate(self,expression,state,*,resolve,compare,save,now,semantic=None,evaluation_id=None,resume=False):
+    def evaluate(self,expression,state,*,resolve,compare,save,now,semantic=None,evaluation_id=None,resume=False,predicate=True):
         overall=limits(state.get('condition_limits',{}))
         usage=state.setdefault('condition_usage',dict(calls=0,tokens=0))
         retained={tuple(item['path']):item for item in state.get('condition_trace',[])
@@ -90,6 +90,8 @@ class Conditions:
                 trace=[];answer=True if value['op']=='and' else False
                 for index,child in enumerate(value['operands']):
                     item=run(child,parent,depth,path+(index,))
+                    if item['status']=='known' and type(item.get('value')) is not bool:
+                        item=result('error',reason='semantic_boolean_type')
                     trace.append(item)
                     stop=item['status']!='known' or (value['op']=='and' and item['value'] is False) or (value['op']=='or' and item['value'] is True)
                     answer=item['value']
@@ -106,6 +108,9 @@ class Conditions:
             key=value['function']+'@'+str(value['version'])
             function=self.registry.get(key)
             if not isinstance(function,dict):return result('error',reason='function_version_not_found',function=key)
+            from .controller_function_results import output_schema,typed_outcome
+            try:schema=output_schema(function)
+            except InventoryError as error:return result('error',reason=error.code,function=key)
             nested=limits(function.get('limits',{}),nested)
             if not previous and (depth>=nested['max_depth'] or nested['max_calls']<=0 or any(usage['calls']-calls>=bounds['max_calls'] for bounds,calls,tokens,began in frames)):
                 return result('error',reason='condition_call_limit')
@@ -127,13 +132,16 @@ class Conditions:
                 frames.append((nested,frame['calls'],frame['tokens'],frame['began']))
                 usage['calls']+=1
                 receipt=dict(function=key,depth=depth+1,effects=function.get('effects','observe'),status='admitted',value=None,
-                             evaluation_id=evaluation_id,path=list(path),arguments=args,limits=nested,frame=frame)
+                             evaluation_id=evaluation_id,path=list(path),arguments=args,limits=nested,frame=frame,output_schema=schema)
                 state.setdefault('condition_trace',[]).append(receipt)
                 save()  # durable admission before nested calls, including failures
             if function.get('kind')=='deterministic':
-                expression=local(function['expression'],args)
-                validate_condition(expression)
-                outcome=run(expression,nested,depth+1,path+(-1,))
+                if 'value' in function:
+                    outcome=dict(type=schema['type'],status='known',value=local(function['value'],args))
+                else:
+                    expression=local(function['expression'],args)
+                    validate_condition(expression)
+                    outcome=run(expression,nested,depth+1,path+(-1,))
             elif function.get('kind')=='semantic' and semantic:
                 if 'semantic_outcome' in receipt:
                     outcome=receipt['semantic_outcome']
@@ -173,9 +181,11 @@ class Conditions:
                     validate_condition(call)
                     receipt['delegation']=call
                     outcome=run(call,nested,depth+1,path+(-1,))
-            if outcome.get('status') not in ('known','unknown','error','timeout') or (outcome.get('status')=='known' and type(outcome.get('value')) is not bool):
-                outcome=result('error',reason='semantic_boolean_type')
+            outcome=typed_outcome(outcome,schema)
             frames.pop()
             receipt.update({key:value for key,value in outcome.items() if key!='function'});receipt['outcome']=outcome;save()
             return dict(outcome,function=key)
-        return run(expression,overall)
+        outcome=run(expression,overall)
+        if predicate and outcome.get('status')=='known' and type(outcome.get('value')) is not bool:
+            return result('error',reason='semantic_boolean_type')
+        return outcome

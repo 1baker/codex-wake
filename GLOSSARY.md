@@ -329,6 +329,11 @@ A terminal pane, TUI connection or structured client connection through which a
 runtime can be presented or accessed. Replacing an attachment does not by itself
 replace the conversation or logical agent.
 
+**Byobu environment**:
+The operator's collection of Byobu terminal sessions, including their tabs,
+panes and associated parent-child agent relationships.
+_Avoid_: "My tabs" when a precise resource identity is required.
+
 **Terminal session**:
 A named collection of terminal tabs whose saved definition can remain when it
 has no tabs. It is distinct from an agent conversation and a code repository.

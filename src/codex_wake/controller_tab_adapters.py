@@ -40,6 +40,25 @@ class TmuxAttachmentTransport(TmuxTransport):
     def capture(self, pane, lines, deadline):
         return self.command(deadline, 'capture-pane', '-p', '-t', pane, '-S', '-' + str(lines))
 
+    def paste_literal(self, pane, text, deadline):
+        import subprocess
+        import time
+        # The body travels over stdin, never through a shell or process argv.
+        # Check the pinned socket both before loading and before presentation.
+        self.command(deadline,'display-message','-p','#{pid}')
+        name='wake-paste-'+uuid.uuid4().hex
+        try:
+            subprocess.run(['tmux','-S',self.socket,'load-buffer','-b',name,'-'],
+                           input=text,text=True,capture_output=True,check=True,
+                           timeout=max(.001,deadline-time.monotonic()))
+            self.command(deadline,'paste-buffer','-p','-r','-d','-b',name,'-t',pane)
+        finally:
+            try:self.command(deadline,'delete-buffer','-b',name)
+            except (OSError,ValueError,subprocess.SubprocessError):pass
+
+    def send_key_tokens(self, pane, keys, deadline):
+        self.command(deadline,'send-keys','-t',pane,'--',*keys)
+
 
 class PsmuxAttachmentTransport:
     """Finite host broker protocol, also used for Windows qualification fixtures.
@@ -150,7 +169,8 @@ class OwnedTerminalBroker:
     """
     def __init__(self, transport, *, panes, owner_id):
         self.transport, self.panes = transport, frozenset(panes)
-        self.custody = dict(available=True,transport='terminal',owner_id=owner_id,generation=uuid.uuid4().hex)
+        self.custody = dict(available=True,transport='terminal',owner_id=owner_id,generation=uuid.uuid4().hex,
+                            input_modes=[mode for mode,method in [('paste','paste_literal'),('keys','send_key_tokens')] if callable(getattr(transport,method,None))])
         self.lock = threading.Lock()
 
     def inspect(self):
@@ -165,6 +185,23 @@ class OwnedTerminalBroker:
             self.transport.command(deadline,'send-keys','-t',pane,'-l','--',text)
             self.transport.command(deadline,'send-keys','-t',pane,'Enter')
             return dict(status='submitted',acceptance='unverified',transport='terminal')
+
+    def paste(self, pane, text, *, expected_custody):
+        return self._explicit(pane,'paste_literal',text,expected_custody)
+
+    def keys(self, pane, keys, *, expected_custody):
+        return self._explicit(pane,'send_key_tokens',keys,expected_custody)
+
+    def _explicit(self, pane, method, value, expected_custody):
+        import time
+        with self.lock:
+            if expected_custody != self.inspect() or pane not in self.panes:
+                raise InventoryError('input_custody_required','terminal custody changed')
+            action=getattr(self.transport,method,None)
+            if action is None:
+                raise InventoryError('unsupported_transport','explicit terminal action is not qualified by this broker')
+            action(pane,value,time.monotonic()+5)
+            return dict(delivery='sent',acceptance='terminal_adapter',semantic_execution='unknown')
 
 
 class ConfiguredBridge:
@@ -222,3 +259,9 @@ class UnixInputBroker:
 
     def send(self,pane,text,*,expected_custody):
         return self.request('send',dict(pane=pane,input=text,expected_custody=expected_custody))
+
+    def paste(self,pane,text,*,expected_custody):
+        return self.request('paste',dict(pane=pane,text=text,expected_custody=expected_custody))
+
+    def keys(self,pane,keys,*,expected_custody):
+        return self.request('keys',dict(pane=pane,keys=keys,expected_custody=expected_custody))

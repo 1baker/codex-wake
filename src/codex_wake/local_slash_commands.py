@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 from .daemon_commands import local_operator
+from .controller_runtime import encoded, identity
 from .local_session_operations import LocalSessionControl
 from .local_sessions import resolve
 from .managed_inventory import InventoryError
@@ -43,8 +44,29 @@ def _invocation(command, arguments):
 class LocalSlashCommands(LocalSessionControl):
     """Use the existing owner journal, target pins and same-user authority."""
 
+    def __init__(self, root, *, request=None, authorize=None):
+        super().__init__(root, **({'request':request} if request is not None else {}))
+        self.authorize_callback=authorize
+
+    def _authorized(self, target, capability):
+        if target.get('uid')!=os.getuid() or Path(target['home']).stat().st_uid!=os.getuid():
+            raise InventoryError('foreign_target','slash target is not owned by this user')
+        actor=(self.authorize_callback(target,capability) if self.authorize_callback is not None
+               else local_operator(target,('control','observe','content.observe')))
+        self.runtime.check_authority(actor,target,capability,
+            authorize=(lambda:self.authorize_callback(target,capability)) if self.authorize_callback else None)
+        return actor
+
+    def _actor(self, identifier, capability='content.observe'):
+        return self._authorized(self.runtime._load(identifier)['target'],capability)
+
+    def _identifier(self, prefix, key, actor):
+        source=key if self.authorize_callback is None else encoded([identity(actor),key])
+        return prefix+hashlib.sha256(source.encode()).hexdigest()[:32]
+
     def catalog(self, selector, *, endpoint='unix://', expected_target=None):
         row = resolve(self.root, selector, expected_target, endpoint=endpoint)
+        self._authorized(row['target'],'observe')
         return dict(schema_version=1, target=row['target'], harness='codex',
             catalog_source='qualified_native_adapter', complete_native_catalog=False,
             commands=list(CATALOG), unsupported=[dict(command='/model',
@@ -57,8 +79,8 @@ class LocalSlashCommands(LocalSessionControl):
             raise InventoryError('invalid_argument', 'bounded idempotency key required')
         row = resolve(self.root, selector, expected_target, endpoint=endpoint)
         row = {name: row[name] for name in ('thread_id', 'target', 'endpoint', 'codex_cmd')}
-        actor = local_operator(row['target'])
-        identifier = 'local-slash-' + hashlib.sha256(key.encode()).hexdigest()[:32]
+        actor = self._authorized(row['target'],'control')
+        identifier = self._identifier('local-slash-',key,actor)
         request = dict(operation_id=identifier, idempotency_key=key,
             correlation_id=identifier, binding='local-slash', target=row['target'])
         def dispatch(operation, payload):
@@ -72,7 +94,7 @@ class LocalSlashCommands(LocalSessionControl):
             return self._perform(current, payload['command'], payload['arguments'])
         value = self.runtime.execute(actor, 'sessions.slash',
             dict(session=row, command=command, arguments=arguments, _request=request),
-            authorize=lambda: actor, dispatch=dispatch)
+            authorize=lambda:self._authorized(row['target'],'control'), dispatch=dispatch)
         record = value['result']['operation']
         if record.get('result', {}).get('kind') == 'controller_interaction':
             with self._interaction_lock(record['operation_id']):
@@ -112,20 +134,24 @@ class LocalSlashCommands(LocalSessionControl):
             yield
 
     def result(self, operation_id):
-        actor = self._actor(operation_id)
+        actor = self._actor(operation_id,'content.observe')
         with self._interaction_lock(operation_id):
-            record = self.runtime._owned(actor, self.runtime._load(operation_id), lambda: actor)
+            current=self.runtime._load(operation_id)
+            guard=lambda:self._authorized(current['target'],'content.observe')
+            record = self.runtime._owned(actor,current,guard,capability='content.observe')
             if record['operation'] not in ('sessions.slash', 'sessions.slash.response'):
                 raise InventoryError('unsupported_operation', 'original operation is not a slash action')
-            if record['phase'] != 'terminal' and record.get('result', {}).get('response_operation_id'):
-                self._reconcile_response(actor, record)
-            return self.runtime.operation(actor, 'operations.result', dict(operation_id=operation_id),
-                authorize=lambda: actor, expected_operation=record['operation'])
+            if record['phase'] != 'terminal' and (record.get('result') or {}).get('response_operation_id'):
+                self._reconcile_response(actor,record,capability='content.observe')
+                record=self.runtime._load(operation_id)
+            self.runtime._owned(actor,record,guard,capability='content.observe')
+            return self.runtime.envelope('operations.result',record)
 
-    def _reconcile_response(self, actor, original):
+    def _reconcile_response(self, actor, original, capability='control'):
         handle = original['result']
         response = self.runtime._load(handle['response_operation_id'])
-        self.runtime._owned(actor, response, lambda: actor)
+        guard=lambda:self._authorized(original['target'],capability)
+        self.runtime._owned(actor,response,guard,capability=capability)
         if response['execution'] == 'completed':
             proof = response['result']
         else:
@@ -139,22 +165,24 @@ class LocalSlashCommands(LocalSessionControl):
                 reconciliation='requested_native_name_observed_without_replay',
                 observation=dict(thread_id=row['thread_id'], name=native['name']))
             self.runtime.reconcile_result(actor, response['operation_id'],
-                expected_operation='sessions.slash.response', authorize=lambda: actor,
-                observe=lambda _record: proof)
+                expected_operation='sessions.slash.response', authorize=guard,
+                observe=lambda _record: proof,capability=capability)
         proof = dict(proof, interaction_id=original['operation_id'],
             presentation='controller_interaction', native_popup=False,
             response_operation_id=response['operation_id'])
         self.runtime.reconcile_result(actor, original['operation_id'],
-            expected_operation='sessions.slash', authorize=lambda: actor,
-            observe=lambda _record: proof)
+            expected_operation='sessions.slash', authorize=guard,
+            observe=lambda _record: proof,capability=capability)
 
     def respond(self, interaction_id, value, idempotency_key):
         _invocation('/rename', value)
         if not value:
             raise InventoryError('invalid_argument', 'explicit nonempty interaction input required')
-        actor = self._actor(interaction_id)
+        actor = self._actor(interaction_id,'control')
         with self._interaction_lock(interaction_id):
-            original = self.runtime._owned(actor, self.runtime._load(interaction_id), lambda: actor, capability='control')
+            original = self.runtime._load(interaction_id)
+            guard=lambda:self._authorized(original['target'],'control')
+            self.runtime._owned(actor,original,guard,capability='control')
             if original['operation'] != 'sessions.slash' or original.get('result', {}).get('interaction_id') != interaction_id:
                 raise InventoryError('interaction_not_found', 'exact owned slash interaction required')
             if original['phase'] == 'terminal':
@@ -166,7 +194,7 @@ class LocalSlashCommands(LocalSessionControl):
             self._current(row)  # A stale selection fails before response admission/effects.
             if not isinstance(idempotency_key, str) or not 0 < len(idempotency_key) <= 128:
                 raise InventoryError('invalid_argument', 'bounded response idempotency key required')
-            identifier = 'local-slash-response-' + hashlib.sha256(idempotency_key.encode()).hexdigest()[:32]
+            identifier = self._identifier('local-slash-response-',idempotency_key,actor)
             prior = original['result'].get('response_operation_id')
             if prior is not None and (prior != identifier or original['result'].get('response_value') != value):
                 raise InventoryError('interaction_response_conflict', 'interaction already binds a different response; reconcile its original operation')
@@ -177,7 +205,7 @@ class LocalSlashCommands(LocalSessionControl):
                 correlation_id=original['correlation_id'], binding='local-slash', target=original['target'])
             response = self.runtime.execute(actor, 'sessions.slash.response',
                 dict(session=row, interaction_id=interaction_id, value=value, _request=request),
-                authorize=lambda: actor,
+                authorize=guard,
                 dispatch=lambda _operation, payload: self._perform(self._current(payload['session']), '/rename', payload['value']))
             result = response['result']['operation']
             if result['execution'] == 'completed':
@@ -185,9 +213,11 @@ class LocalSlashCommands(LocalSessionControl):
             return response
 
     def cancel(self, interaction_id):
-        actor = self._actor(interaction_id)
+        actor = self._actor(interaction_id,'control')
         with self._interaction_lock(interaction_id):
-            original = self.runtime._owned(actor, self.runtime._load(interaction_id), lambda: actor, capability='control')
+            original = self.runtime._load(interaction_id)
+            guard=lambda:self._authorized(original['target'],'control')
+            self.runtime._owned(actor,original,guard,capability='control')
             if original['operation'] != 'sessions.slash' or original.get('result', {}).get('interaction_id') != interaction_id:
                 raise InventoryError('interaction_not_found', 'exact owned slash interaction required')
             if original['phase'] != 'terminal' and original['result'].get('response_operation_id'):

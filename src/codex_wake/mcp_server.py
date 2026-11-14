@@ -221,14 +221,19 @@ SPECS.update(local_health_specs())
 from .local_control_commands import tool_specs as local_control_specs
 SPECS.update(local_control_specs())
 from .local_control_service import definitions as local_definitions
-for _operation, (_tool, _description, _schema, _handler, _readonly) in local_definitions().items():
-    if not _operation.startswith('local.self_limits.'):
-        _group = 'governor' if _operation.startswith('local.governor.') else 'local'
-        _verb = _operation.rsplit('.', 1)[1] if _group == 'governor' else _operation.removeprefix('local.')
+_local_definitions = local_definitions()
+from .unified_contract import original as original_operation
+for _operation, (_tool, _description, _schema, _handler, _readonly) in _local_definitions.items():
+    _legacy_operation = original_operation(_operation, [key for key in _local_definitions if key.startswith('local.')])
+    if not _legacy_operation.startswith(('local.self_limits.','wakes.')):
+        _group = 'governor' if _legacy_operation.startswith('local.governor.') else 'local' if _legacy_operation.startswith('local.') else 'unified'
+        _verb = _legacy_operation.rsplit('.', 1)[1] if _group == 'governor' else _legacy_operation.removeprefix('local.') if _group == 'local' else _legacy_operation
         SPECS[_tool]=(_group,_verb,_description,_schema['properties'],_schema['required'],_readonly)
 
 from .command_contract import apply_native_contract
 apply_native_contract(SPECS)
+from .unified_contract import native_aliases
+native_aliases(SPECS)
 
 class CommandRunner:
     def __init__(self, *, cli=None, bus_root=None, capability=None, app_server="unix://",
@@ -353,14 +358,14 @@ class CommandRunner:
             except (ValueError, OSError) as error:
                 return {'error': {'code': 'configuration_unavailable', 'message': str(error)}}, True
         local_root = self.wake_root
-        if group in ('local', 'local-slash', 'self-limits', 'governor') and local_root is None:
+        if group in ('local', 'local-slash', 'self-limits', 'governor', 'unified') and local_root is None:
             from .local_control_lifecycle import root_for
             from types import SimpleNamespace
             local_root = root_for(SimpleNamespace(wake_root=None))
-        if group == 'local':
+        if group in ('local','unified'):
             try:
                 from .local_control_service import LocalOperations
-                value = LocalOperations(local_root,native_endpoint=self.app_server).execute('local.'+verb,arguments)
+                value = LocalOperations(local_root,native_endpoint=self.app_server).execute('local.'+verb if group == 'local' else verb,arguments)
                 return value, value.get('status') == 'failed'
             except (ValueError, OSError) as error:
                 return {'error': {'code': getattr(error, 'code', 'local_control_unavailable'), 'message': str(error)}}, True

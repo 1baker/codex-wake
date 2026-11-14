@@ -9809,3 +9809,30 @@ No native upgrade, terminal input or production schedules; MCP imports refresh o
 normal reconnect. Exact proof/limits: [deployment](docs/dev/plans/0173-agent-harness/persistent-wake-deployment.md).
 Owned integration checkout retires after verified closeout remote custody; unrelated
 worktrees preserved. Memory forbidden, zero writes.
+
+## Turn | 2026-11-14 | Unified connector control implementation begins
+
+Operator approved Plan0234, public operation seam, eleven-ticket graph and fixed
+review base1aa49867. Spec623 and children624/625/626/627/631/635/638/640/641/642/643
+published with native blockers and subissue links. Primary624, workers625/626.
+Integration feat/unified-control-0234; no live effects. One final broad two-axis
+review and one bounded TDD remediation pass reserved. Reuse existing test harness.
+
+## Turn | 2026-11-14 | Unified connector control source delivery
+
+Plan0234 child tickets624/625/626/627/631/635/638/640/641/642/643 CLOSED; parent623
+remains open for integration. Primary canonical/environment/accounts/wakes lane
+integrated two individually assigned workers, each reusing its checkout for ready
+successors. All seven CLI/API/MCP roots retain owner authority and compatibility.
+One broad two-axis review at bf4b5e00 accepted Standards2/highestP1 and
+Spec3/highestP1. One bounded TDD pass resolved all three unique blockers and the
+duplication heuristic: content attenuation, original wait custody and uncertainty
+projection. [Review](docs/dev/evidence/plan0234/review.md) and
+[validation](docs/dev/evidence/plan0234/validation.md) preserve exact source/check
+mapping and disclosed unsupported/native/provider boundaries. Selected471-case
+presubmit and causal45-case auth acceptance pass; final affected checks and rebuilt
+candidate qualification recorded there. No full-suite/matrix/live claim.
+Worker checkouts removed after exact remote custody. Integration checkout retires
+on final remote readback; topic/worker refs retained. No merge, deployment or live
+provider effects. Memory disposition forbidden: developer permits memory updates
+only on explicit user request; none was made.

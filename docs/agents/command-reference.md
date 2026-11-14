@@ -6796,6 +6796,10 @@ See [workflow](local-session-control.md) and generated [transport contract](loca
 | `control slash cancel` | `local.slash.cancel` | `wake_control_slash_cancel` |
 | `self-limits show` | `local.self_limits.show` | `wake_self_limits_show` |
 | `self-limits set` | `local.self_limits.set` | `wake_self_limits_set` |
+| `control observe` | `local.observe` | `wake_local_observe` |
+| `control observation output` | `local.observation.output` | `wake_local_observation_output` |
+| `control observation result` | `local.observation.result` | `wake_local_observation_result` |
+| `control observation cancel` | `local.observation.cancel` | `wake_local_observation_cancel` |
 | `governor status` | `local.governor.status` | `wake_governor_status` |
 | `governor activate` | `local.governor.activate` | `wake_governor_activate` |
 | `governor extend` | `local.governor.extend` | `wake_governor_extend` |
@@ -6803,3 +6807,59 @@ See [workflow](local-session-control.md) and generated [transport contract](loca
 | `governor disable` | `local.governor.disable` | `wake_governor_disable` |
 | `governor resume` | `local.governor.resume` | `wake_governor_resume` |
 | `governor advisory` | `local.governor.advisory` | `wake_governor_advisory` |
+| `environment snapshot` | `environment.snapshot` | `wake_environment_snapshot` |
+| `environment children` | `environment.children` | `wake_environment_children` |
+| `control wakes schedules register` | `wakes.schedules.register` | `wake_wakes_schedules_register` |
+| `control wakes schedules list` | `wakes.schedules.list` | `wake_wakes_schedules_list` |
+| `control wakes schedules show` | `wakes.schedules.show` | `wake_wakes_schedules_show` |
+| `control wakes schedules revise` | `wakes.schedules.revise` | `wake_wakes_schedules_revise` |
+| `control wakes schedules cancel` | `wakes.schedules.cancel` | `wake_wakes_schedules_cancel` |
+| `control wakes intents after` | `wakes.intents.after` | `wake_wakes_intents_after` |
+| `control wakes intents at` | `wakes.intents.at` | `wake_wakes_intents_at` |
+| `control wakes intents file` | `wakes.intents.file` | `wake_wakes_intents_file` |
+| `environment panes capture` | `environment.panes.capture` | `wake_environment_panes_capture` |
+| `environment panes observe` | `environment.panes.observe` | `wake_environment_panes_observe` |
+| `environment panes output` | `environment.panes.output` | `wake_environment_panes_output` |
+| `environment panes paste` | `environment.panes.paste` | `wake_environment_panes_paste` |
+| `environment panes keys` | `environment.panes.keys` | `wake_environment_panes_keys` |
+| `environment conversations input submit` | `environment.conversations.input.submit` | `wake_environment_conversations_input_submit` |
+| `environment conversations input result` | `environment.conversations.input.result` | `wake_environment_conversations_input_result` |
+| `environment conversations presentation background` | `environment.conversations.presentation.background` | `wake_environment_conversations_presentation_background` |
+| `environment conversations presentation foreground` | `environment.conversations.presentation.foreground` | `wake_environment_conversations_presentation_foreground` |
+| `control connectors grants create` | `connectors.grants.create` | `wake_connectors_grants_create` |
+| `control connectors grants list` | `connectors.grants.list` | `wake_connectors_grants_list` |
+| `control connectors grants show` | `connectors.grants.show` | `wake_connectors_grants_show` |
+| `control connectors grants revoke` | `connectors.grants.revoke` | `wake_connectors_grants_revoke` |
+| `control programs bulk start` | `programs.bulk.start` | `wake_programs_bulk_start` |
+| `control programs bulk status` | `programs.bulk.status` | `wake_programs_bulk_status` |
+| `control programs bulk result` | `programs.bulk.result` | `wake_programs_bulk_result` |
+| `control programs bulk advance` | `programs.bulk.advance` | `wake_programs_bulk_advance` |
+| `control programs bulk reconcile` | `programs.bulk.reconcile` | `wake_programs_bulk_reconcile` |
+| `control programs bulk cancel` | `programs.bulk.cancel` | `wake_programs_bulk_cancel` |
+| `environment conversations create` | `environment.conversations.create` | `wake_environment_conversations_create` |
+| `environment conversations load` | `environment.conversations.load` | `wake_environment_conversations_load` |
+| `environment conversations prompt` | `environment.conversations.prompt` | `wake_environment_conversations_prompt` |
+| `environment conversations output` | `environment.conversations.output` | `wake_environment_conversations_output` |
+| `environment conversations result` | `environment.conversations.result` | `wake_environment_conversations_result` |
+| `environment conversations cancel` | `environment.conversations.cancel` | `wake_environment_conversations_cancel` |
+| `environment conversations list` | `environment.conversations.list` | `wake_environment_conversations_list` |
+| `environment conversations resolve` | `environment.conversations.resolve` | `wake_environment_conversations_resolve` |
+| `environment conversations health` | `environment.conversations.health` | `wake_environment_conversations_health` |
+| `environment conversations slash list` | `environment.conversations.slash.list` | `wake_environment_conversations_slash_list` |
+| `environment conversations slash run` | `environment.conversations.slash.run` | `wake_environment_conversations_slash_run` |
+| `environment conversations slash result` | `environment.conversations.slash.result` | `wake_environment_conversations_slash_result` |
+| `environment conversations slash respond` | `environment.conversations.slash.respond` | `wake_environment_conversations_slash_respond` |
+| `environment conversations slash cancel` | `environment.conversations.slash.cancel` | `wake_environment_conversations_slash_cancel` |
+| `control programs limits show` | `programs.limits.show` | `wake_programs_limits_show` |
+| `control programs limits set` | `programs.limits.set` | `wake_programs_limits_set` |
+| `environment conversations observe` | `environment.conversations.observe` | `wake_environment_conversations_observe` |
+| `environment conversations observation output` | `environment.conversations.observation.output` | `wake_environment_conversations_observation_output` |
+| `environment conversations observation result` | `environment.conversations.observation.result` | `wake_environment_conversations_observation_result` |
+| `environment conversations observation cancel` | `environment.conversations.observation.cancel` | `wake_environment_conversations_observation_cancel` |
+| `control programs governor status` | `programs.governor.status` | `wake_programs_governor_status` |
+| `control programs governor activate` | `programs.governor.activate` | `wake_programs_governor_activate` |
+| `control programs governor extend` | `programs.governor.extend` | `wake_programs_governor_extend` |
+| `control programs governor reset` | `programs.governor.reset` | `wake_programs_governor_reset` |
+| `control programs governor disable` | `programs.governor.disable` | `wake_programs_governor_disable` |
+| `control programs governor resume` | `programs.governor.resume` | `wake_programs_governor_resume` |
+| `control programs governor advisory` | `programs.governor.advisory` | `wake_programs_governor_advisory` |

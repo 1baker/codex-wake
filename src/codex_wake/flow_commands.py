@@ -15,6 +15,8 @@ def owner(root, *, actor, authorize, dispatch):
         raise InventoryError('host_wake_root_required', 'host Wake root required')
     def invoke(operation, arguments, *, authorize, request=None):
         from .controller_http import TOOLS
+        from .unified_contract import original
+        operation = original(operation, {verb for verb,schema in TOOLS.values()})
         schemas = [schema for name, (verb, schema) in TOOLS.items() if verb == operation]
         if not schemas or operation.startswith('flows.'):
             raise InventoryError('unsupported_flow_operation', 'flow child must be a registered non-flow operation')

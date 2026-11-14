@@ -32,7 +32,9 @@ def invoke(root,actor,function,arguments,bounds,tokens,receipt,*,authorize,reque
     if not isinstance(rubric,str) or not 0<len(rubric.encode())<=16384:
         raise InventoryError('configuration_unavailable','bounded host-authored semantic predicate required')
     receipt.update(authority='inherited',target=target,metering='estimate_opt_in',enforcement='estimate_only_no_native_stop',operation_id=request_id)
-    prompt=rubric+'\nTyped input: '+json.dumps(arguments,sort_keys=True)+'\nReturn only JSON {"value": true} or {"value": false}. If evidence is insufficient return {"status":"unknown"}. You may request one host-allowed nested callee with JSON {"call":{"function":"name","version":1,"arguments":{}}}; no other execution directives are accepted.'
+    from .controller_function_results import output_schema
+    schema=output_schema(function);receipt['output_schema']=schema
+    prompt=rubric+'\nDeclared output schema: '+json.dumps(schema,sort_keys=True)+'\nTyped input: '+json.dumps(arguments,sort_keys=True)+'\nReturn only JSON {"value": RESULT} matching the declared output schema. If evidence is insufficient return {"status":"unknown"}. You may request one host-allowed nested callee with JSON {"call":{"function":"name","version":1,"arguments":{}}}; no other execution directives are accepted.'
     request=dict(operation_id=request_id,idempotency_key=request_id,correlation_id=request_id,binding=binding,target=target)
     usage=dict(tokens=tokens,kind='estimate',enforcement='estimate_only_no_native_stop')
     def stop_timeout():
@@ -63,10 +65,12 @@ def invoke(root,actor,function,arguments,bounds,tokens,receipt,*,authorize,reque
         return stop_timeout()
     if record.get('phase')!='terminal' or record.get('execution') not in ('completed','failed','cancelled'):
         raise ConditionPending('native predicate turn result uncertain; observe original operation only')
-    return _outcome(record,usage,request_id)
+    return _outcome(record,usage,request_id,schema)
 
 
-def _outcome(record,usage,request_id):
+def _outcome(record,usage,request_id,schema=None):
+    from .controller_function_results import typed_outcome
+    schema=schema or {"type":"boolean"}
     if record.get('execution')!='completed':
         return dict(type='boolean',status='error',value=None,usage=usage,operation_id=request_id)
     try:
@@ -74,8 +78,8 @@ def _outcome(record,usage,request_id):
         if len(text.encode())>32768:raise ValueError()
         value=json.loads(text)
     except (ValueError,KeyError,TypeError):value=None
-    if isinstance(value,dict) and set(value)=={'value'} and type(value['value']) is bool:
-        return dict(type='boolean',status='known',value=value['value'],usage=usage,operation_id=request_id)
+    if isinstance(value,dict) and set(value)=={'value'}:
+        return typed_outcome(dict(status='known',value=value['value'],usage=usage,operation_id=request_id),schema)
     if isinstance(value,dict) and set(value)=={'call'}:
         return dict(type='boolean',status='delegate',value=None,call=value['call'],usage=usage,operation_id=request_id)
     if value=={'status':'unknown'}:
@@ -101,4 +105,4 @@ def recover(root,actor,receipt,*,authorize):
     if record.get('phase')!='terminal' or record.get('execution') not in ('completed','failed','cancelled'):
         raise ConditionPending('original semantic operation pending or uncertain')
     usage=dict(tokens=receipt['reserved_tokens'],kind='estimate',enforcement='estimate_only_no_native_stop')
-    return _outcome(record,usage,identifier)
+    return _outcome(record,usage,identifier,receipt.get('output_schema'))

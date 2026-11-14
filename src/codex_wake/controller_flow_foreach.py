@@ -94,7 +94,7 @@ def expand(definition, state, resolve, unknown):
             nodes.extend(generated)
         else:
             copied = dict(node)
-            for edge in ('next', 'then', 'else', 'unknown'):
+            for edge in ('next', 'then', 'else', 'unknown', 'error', 'timeout'):
                 if edge in copied:
                     copied[edge] = starts.get(copied[edge], copied[edge])
             nodes.append(copied)

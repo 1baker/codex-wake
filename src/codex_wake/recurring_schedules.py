@@ -147,10 +147,11 @@ class ScheduleStore:
                 return revision
         raise WakeError('occurrence_revision_context_missing')
 
-    def register(self, request, *, codex_path='codex', endpoint='unix://', principal=None):
+    def register(self, request, *, codex_path='codex', endpoint='unix://', principal=None, authorize=None):
         request = validate_request(request)
         from .session_permissions import PermissionStore
-        if principal is not None and principal.role != 'operator' and principal.subject != request['thread_id']:
+        if authorize is not None: authorize(request['thread_id'])
+        if authorize is None and principal is not None and principal.role != 'operator' and principal.subject != request['thread_id']:
             raise WakeError('schedule_exact_self_required')
         if PermissionStore(self.root).active() and principal is None:
             raise WakeError('schedule_verified_principal_required')
@@ -161,7 +162,7 @@ class ScheduleStore:
                 old = self.read(identifier)
                 if old['request'] != request:
                     raise WakeError('idempotency_conflict: schedule differs')
-                self.authorize(old, principal)
+                self.authorize(old, principal, authorize)
                 return self.receipt(old)
             due = first_due(request['cadence'])
             args = self.native_args(request, due, 'schedule-admission:' + identifier, codex_path, endpoint)
@@ -186,18 +187,21 @@ class ScheduleStore:
             wake_routes=None, idempotency_key=key, time_tolerance='5m', stop_at=None,
             as_json=True, require_monitor=False, busy_policy='wait')
 
-    def authorize(self, value, principal):
+    def authorize(self, value, principal, authorize=None):
+        if authorize is not None:
+            authorize(value["request"]["thread_id"])
+            return
         if principal is not None and principal.role != 'operator' and principal.subject != value['request']['thread_id']:
             raise WakeError('schedule_authority_denied')
         context = (value.get('wake_policy') or {}).get('permission_context')
         if context and (principal is None or principal.role != 'operator' and principal.subject != context['subject']):
             raise WakeError('schedule_authority_denied')
 
-    def revise(self, identifier, request, expected_revision, *, principal=None, codex_path='codex', endpoint='unix://'):
+    def revise(self, identifier, request, expected_revision, *, principal=None, codex_path='codex', endpoint='unix://', authorize=None):
         request = validate_request(request)
         with WakeLifecycleLock(self.root, 'recurring-schedules'):
             value = self.read(identifier)
-            self.authorize(value, principal)
+            self.authorize(value, principal, authorize)
             if value['revision'] != expected_revision:
                 raise WakeError('schedule_revision_conflict')
             if value['state'] == 'cancelled':
@@ -237,10 +241,10 @@ class ScheduleStore:
             self.save(value)
             return self.receipt(value)
 
-    def cancel(self, identifier, expected_revision, *, principal=None):
+    def cancel(self, identifier, expected_revision, *, principal=None, authorize=None):
         with WakeLifecycleLock(self.root, 'recurring-schedules'):
             value = self.read(identifier)
-            self.authorize(value, principal)
+            self.authorize(value, principal, authorize)
             if value['revision'] != expected_revision:
                 raise WakeError('schedule_revision_conflict')
             value['state'] = 'cancelled'

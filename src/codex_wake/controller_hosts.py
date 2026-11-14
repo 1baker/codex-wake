@@ -20,6 +20,21 @@ READ_OPERATIONS = frozenset({'inventory.list', 'inventory.resolve', 'accounts.li
 CAPABILITIES = {'inventory.list': 'observe', 'inventory.resolve': 'observe',
                 'accounts.list': 'account.observe', 'accounts.resolve': 'account.observe',
                 'configuration.explain': 'configuration.observe'}
+# New connector observations can be registered explicitly; preserve the legacy
+# default capability set for existing host-registration identity comparisons.
+CONNECTOR_READS={'environment.snapshot':'observe','environment.children':'observe',
+    'local.observe':'content.observe','local.observation.output':'content.observe',
+    'local.observation.result':'content.observe','local.observation.cancel':'content.observe'}
+REGISTERED_MANAGEMENT={**{'flows.'+verb:'control' for verb in ('publish','start','advance','reconcile','cancel')},
+    **{'sessions.'+verb:'control' for verb in ('create','prompt','cancel','fork')},
+    'environment.panes.paste':'terminal.input','environment.panes.keys':'terminal.input'}
+CONNECTOR_READS.update({'flows.'+verb:'observe' for verb in ('propose','definition','inspect')})
+CONNECTOR_READS.update({'environment.panes.'+verb:'content.observe' for verb in ('capture','observe','output')})
+CAPABILITIES.update(CONNECTOR_READS)
+CAPABILITIES.update(REGISTERED_MANAGEMENT)
+from .unified_contract import canonical
+CAPABILITIES.update({canonical(operation):scope for operation,scope in list(CAPABILITIES.items())})
+
 _ID = re.compile(r'[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}\Z')
 
 
@@ -54,8 +69,8 @@ class HostRegistry:
             raise InventoryError('invalid_argument', 'invalid registered SSH destination')
         if not isinstance(command, str) or not command or len(command) > 2048 or any(ord(c) < 32 for c in command):
             raise InventoryError('invalid_argument', 'invalid operator-configured remote command')
-        if not capabilities or not set(capabilities) <= READ_OPERATIONS:
-            raise InventoryError('unsupported_operation', 'only existing read operations may be registered')
+        if not capabilities or not set(capabilities) <= CAPABILITIES.keys():
+            raise InventoryError('unsupported_operation', 'only explicitly supported host operations may be registered')
         if not isinstance(ssh_executable, str) or not ssh_executable or any(ord(c) < 32 for c in ssh_executable):
             raise InventoryError('invalid_argument', 'invalid local SSH executable')
         if generation is not None and (not isinstance(generation, str) or not re.fullmatch(r'[A-Za-z0-9_-]{8,128}', generation)):
@@ -173,12 +188,19 @@ class SSHReceiver:
         if request['operation'] not in registered['capabilities']:
             raise InventoryError('unsupported_operation', 'execution authority does not support this operation')
         constraints = request['constraints']
-        if not isinstance(constraints, dict) or set(constraints) != {'scopes', 'targets'}:
+        if not isinstance(constraints, dict) or set(constraints)-{'scopes','targets','actions','expires_at'} or not {'scopes','targets'}<=set(constraints):
             raise InventoryError('invalid_argument', 'caller attenuation constraints required')
         if not isinstance(constraints['scopes'], list) or not isinstance(constraints['targets'], list) or not constraints['targets']:
             raise InventoryError('invalid_argument', 'invalid caller attenuation')
         if any(not isinstance(t, dict) or not t or any(not isinstance(v, str) for v in t.values()) for t in constraints['targets']):
             raise InventoryError('invalid_argument', 'invalid caller targets')
+        if 'actions' in constraints:
+            from .unified_connectors import canonical_actions
+            requested_actions=canonical_actions(constraints['actions'])
+        else:requested_actions=None
+        expiry=constraints.get('expires_at',float('inf'))
+        if 'expires_at' in constraints and (type(expiry) not in (int,float) or not self.registry.now()<expiry<float('inf')):
+            raise AuthError('insufficient_scope')
         receiver = self
         class MappedAuthority:
             def authenticate(self, token):
@@ -189,7 +211,8 @@ class SSHReceiver:
                         if not any(k in granted and granted[k] != value for k, value in requested.items()):
                             targets.append(dict(granted, **requested))
                 if not targets: raise AuthError('insufficient_scope')
-                return replace(actor, scopes=actor.scopes & frozenset(constraints['scopes']), targets=targets)
+                actions=actor.actions if requested_actions is None else requested_actions if actor.actions is None else actor.actions & requested_actions
+                return replace(actor, scopes=actor.scopes & frozenset(constraints['scopes']), targets=targets,actions=actions,expires_at=min(actor.expires_at,expiry),delegated=actor.delegated or 'actions' in constraints or 'expires_at' in constraints)
         return ProtectedOperations(MappedAuthority(), self.operations).execute('fixed-ssh-principal', request['operation'], request['arguments'])
 
 
@@ -276,8 +299,8 @@ class HostOperations:
         identifier(arguments['operation_id']); identifier(arguments['idempotency_key'])
         if not set(target) == {'host', 'environment', 'authority', 'generation'}:
             raise InventoryError('invalid_argument', 'full pinned authority target required')
-        if operation not in READ_OPERATIONS:
-            raise InventoryError('unsupported_operation', 'mutation routing is unsupported; no offline queue or implied cancellation')
+        if operation not in CAPABILITIES:
+            raise InventoryError('unsupported_operation', 'operation has no qualified host route; no offline queue or fallback')
         if actor is None and self.local_operator:
             actor = Actor('local-operator', 'owner', 'local-cli', 'local-cli', 'local://operator', 'wake:controller', frozenset(CAPABILITIES.values()),
                 [dict(target)], self.registry.now() + 10)
@@ -285,15 +308,19 @@ class HostOperations:
             raise InventoryError('unauthorized_target', 'authenticated caller lacks routed operation capability')
         # Namespace/account restrictions are carried as attenuation constraints to
         # the receiver. They can narrow, never expand its fixed SSH mapping.
+        from .unified_connectors import check_action
+        check_action(actor,operation)
         compatible = [scope for scope in actor.targets if set(target) <= set(scope) and not any(k in target and target[k] != value for k, value in scope.items())]
         if not compatible: raise InventoryError('unauthorized_target', 'caller is outside the pinned host/environment target scope')
         registered = self.registry.resolve(target['host'], target['environment'], expected_target=target)
         if operation not in registered['capabilities']: raise InventoryError('unsupported_operation', 'registered authority lacks operation capability')
         request = dict(target=target, operation=operation, arguments=arguments['arguments'], constraints=dict(scopes=sorted(actor.scopes), targets=[{k: v for k, v in scope.items() if k not in ('authority', 'generation')} for scope in compatible]))
+        request['constraints']['expires_at']=actor.expires_at
+        if actor.actions is not None:request['constraints']['actions']=sorted(actor.actions)
         fingerprint = hashlib.sha256(json.dumps(request, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
         key = hashlib.sha256((actor.issuer + '\0' + actor.grant_id + '\0' + arguments['idempotency_key']).encode()).hexdigest()
         receipt = dict(operation_id=arguments['operation_id'], target=target, submission='admitted',
-            execution='unknown', delivery='uncertain', acceptance='unknown', effect='none_read_only',
+            execution='unknown', delivery='uncertain', acceptance='unknown', effect='management_action' if operation in REGISTERED_MANAGEMENT or operation in {canonical(op) for op in REGISTERED_MANAGEMENT} else 'none_read_only',
             reason='submission_in_progress_or_interrupted')
         with self.registry.connect() as db:
             db.execute('BEGIN IMMEDIATE')
@@ -307,7 +334,7 @@ class HostOperations:
         try:
             if authorize is not None:
                 current = authorize()
-                if not isinstance(current, Actor) or current.issuer != actor.issuer or current.grant_id != actor.grant_id or current.scopes != actor.scopes or current.targets != actor.targets or current.expires_at <= self.registry.now():
+                if not isinstance(current, Actor) or current.issuer != actor.issuer or current.grant_id != actor.grant_id or current.scopes != actor.scopes or current.targets != actor.targets or current.actions != actor.actions or current.expires_at <= self.registry.now():
                     raise InventoryError('unauthorized_target', 'caller authorization changed before SSH submission')
             result = self.transport.send(registered, request)
             if result.get('schema_version') != 1 or result.get('operation') != operation or result.get('status') not in ('completed', 'failed'):

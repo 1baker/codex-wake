@@ -1,0 +1,259 @@
+{
+  "spec": "docs/dev/plans/0234-2026-11-14-unified-control-spec.md",
+  "design": "docs/dev/plans/0234-2026-11-14-unified-control-design.md",
+  "owner": "ecochran76 / root",
+  "branch": "feat/unified-control-0234",
+  "base": "1aa498674a4907f93b5216a4a98dd75a22c6ecec",
+  "packet_approval": "Operator yes on2026-11-14 accepts proposed seams,11tickets/dependencies and review base",
+  "review_runs": 1,
+  "remediation_passes": 1,
+  "tickets": {
+    "1": {
+      "title": "Canonical hierarchical contract and compatibility",
+      "blockers": [],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "root",
+      "owned_scope": "canonical registry, shared CLI/API/MCP hooks, contract generation",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/01.md",
+      "issue": 624,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/624",
+      "base": "1aa498674a4907f93b5216a4a98dd75a22c6ecec",
+      "validation": "Public canonical CLI discovery/help/owner dispatch and existing contract/wiring8PASS; RuffPASS; red2fail/1error retained",
+      "receipt": "~/.local/state/codex-wake/unified-0234/624-green-final.log"
+    },
+    "2": {
+      "title": "Bounded control structures and typed semantic functions",
+      "blockers": [],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "unified_programs_625",
+      "owned_scope": "flow/condition owners and focused existing program tests",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/02.md",
+      "issue": 625,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/625",
+      "base": "1aa498674a4907f93b5216a4a98dd75a22c6ecec",
+      "branch": "feat/unified-programs-625",
+      "worktree": "unified-programs-625",
+      "result_sha": "5ebeaea2f6fe1ece5e9c5e034722ffa30224ace7",
+      "integrated_sha": "ea54777f08a62d6d3efbca03548e9f4723274ffa",
+      "validation": "Worker49PASS12.172s; integrated program/flow/condition26PASS4.106s; exact redgreen receipts ticket625"
+    },
+    "3": {
+      "title": "Observe arbitrary existing turns with resumable results",
+      "blockers": [],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "unified_observation_626",
+      "owned_scope": "local native session observation/event owners and focused tests",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/03.md",
+      "issue": 626,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/626",
+      "base": "1aa498674a4907f93b5216a4a98dd75a22c6ecec",
+      "branch": "feat/unified-observation-626",
+      "worktree": "unified-observation-626",
+      "result_sha": "2b489b66c3675266cab74b80bf7b52591b4bebaf",
+      "integrated_sha": "bd5588066d63ecc96d6686f650637c9d14516821",
+      "validation": "Worker6+legacy14PASS; integrated observation/canonical/environment10PASS0.968s; native snapshot provenance and history gaps explicit"
+    },
+    "4": {
+      "title": "Navigate the Byobu environment and resource relationships",
+      "blockers": [
+        1
+      ],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "root",
+      "owned_scope": "environment resource owner and tab/session inventory adapters",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/04.md",
+      "issue": 627,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/627",
+      "validation": "Environment projection plus existing contract/bot-family/terminal16PASS3.657s; public saved-session and independent ancestry test red->green"
+    },
+    "5": {
+      "title": "Delegate connector access and route to the owning host",
+      "blockers": [
+        1,
+        4
+      ],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "unified_programs_625",
+      "owned_scope": "connector owner, existing permission and host adapters",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/05.md",
+      "issue": 631,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/631",
+      "branch": "feat/unified-connectors-631",
+      "worktree": "unified-programs-625 reused clean",
+      "base": "ea54777f08a62d6d3efbca03548e9f4723274ffa",
+      "result_sha": "4807ed5a24c55198809cf13dfdc221b926175488",
+      "integrated_sha": "42d371de",
+      "validation": "Worker62PASS31.598s+16affectedPASS; integrated protected connector/wake/terminal15PASS2.875s; actual remote immutable-flow receiver/private auth paths"
+    },
+    "6": {
+      "title": "Read terminal streams and explicitly write exact panes",
+      "blockers": [
+        1,
+        4
+      ],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "unified_observation_626",
+      "owned_scope": "terminal observation/input owners and existing tab transport",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/06.md",
+      "issue": 635,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/635",
+      "branch": "feat/unified-terminal-635",
+      "worktree": "unified-observation-626 reused clean",
+      "base": "bd5588066d63ecc96d6686f650637c9d14516821",
+      "result_sha": "e2e2d05e35c4b8e88cbdea74065c269033924005",
+      "integrated_sha": "20972d32fe4d2d348b245d2b911933717affec6d",
+      "validation": "Worker real private tmux literal LF/noimplicitEnter/key behavior fixed and13PASS; integrated terminal/environment/input7PASS0.975s; registry-family18PASS1.350s"
+    },
+    "7": {
+      "title": "Control prompts, slash interactions and presentation lifecycle",
+      "blockers": [
+        1,
+        3,
+        4
+      ],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "unified_observation_626",
+      "owned_scope": "local prompt/slash/lifecycle adapters and session mode routing",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/07.md",
+      "issue": 638,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/638",
+      "branch": "feat/unified-session-control-638",
+      "worktree": "unified-observation-626 reused clean",
+      "base": "20972d32fe4d2d348b245d2b911933717affec6d",
+      "result_sha": "de6f6a49cadc3dd5d398f0bae0bdf23d7f122b7e",
+      "integrated_sha": "ef5aa640",
+      "validation": "Worker input/presentation9PASS3.083s and slash5PASS41.983s; integrated input/presentation/contract/connectors17PASS4.506s; actual private tmux placement with injected native binding, explicit park_live/restore_live route"
+    },
+    "8": {
+      "title": "Unify account harness and conversation-history controls",
+      "blockers": [
+        1,
+        4
+      ],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "root",
+      "owned_scope": "account/harness/history canonical mappings and capability adapters",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/08.md",
+      "issue": 640,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/640",
+      "validation": "Canonical native history caller-attestation and account/harness owner aliases plus account-observation11PASS0.834s"
+    },
+    "9": {
+      "title": "Unify wakes and expose schedule operations to programs",
+      "blockers": [
+        1
+      ],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "root",
+      "owned_scope": "wake canonical owner and existing schedule adapter",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/09.md",
+      "issue": 641,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/641",
+      "validation": "Trusted delegated schedule retry/revocation12PASS5.154s; protected register/retry+revoke3PASS1.051s; canonical wake and generated metadata wired"
+    },
+    "10": {
+      "title": "Compose durable bulk and semantic management programs",
+      "blockers": [
+        2,
+        5,
+        7,
+        9
+      ],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "unified_programs_625",
+      "owned_scope": "bulk/program composition owner and operation reconciliation",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/10.md",
+      "issue": 642,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/642",
+      "branch": "feat/unified-bulk-642",
+      "worktree": "unified-programs-625 reused clean",
+      "base": "4c819ea68ece85c4040efa0d64c05969c6c9d2ad",
+      "result_sha": "e97dd8f6e370ee8fedc790cfc57531b102b5df3f",
+      "integrated_sha": "a9d7ec5f",
+      "validation": "Worker52PASS47.911s+26affectedPASS22.464s; integration bulk/program/transport13PASS13.519s; stable derived top/nested domain keys, actual wake registration and uncertain-original recovery"
+    },
+    "11": {
+      "title": "Deliver connector discovery documentation and acceptance",
+      "blockers": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "state": "validated",
+      "tracker_state": "CLOSED",
+      "worker": "root",
+      "owned_scope": "generated docs, connector journey, integration validation and closeout",
+      "packet": "docs/dev/plans/0234-unified-control-tickets/11.md",
+      "issue": 643,
+      "issue_url": "https://github.com/CochranResearchGroup/codex-wake/issues/643",
+      "validation": "471-case selected presubmit at dfcf +45-case causal auth gate at a7; exact wheel344member match; generated docs and public transport journey PASS",
+      "receipt": "docs/dev/evidence/plan0234/validation.md"
+    }
+  },
+  "concurrency": "maximum three substantive implementation lanes: primary plus two workers; remaining workers queued",
+  "live_effects": "none authorized by this packet",
+  "routing": "primary owns shared contract, authority, integration and final acceptance; workers inherit default model/effort; no calibration experiment",
+  "review_fixed_point": "1aa498674a4907f93b5216a4a98dd75a22c6ecec",
+  "parent_issue": 623,
+  "contract_notes": [
+    "Managed agents and invoking-session discovery retain distinct canonical paths.",
+    "Native self-limit aliases retain existing attested native owner.",
+    "Connector grant administration is protected-transport-only; CLI forwards authenticated requests."
+  ],
+  "validation": [
+    {
+      "tier": "presubmit",
+      "source": "dfcfb7c61e1c134fcd86bcc9b8ff342fef112033",
+      "selection": "75modules/471cases",
+      "result": "PASS471.078s; wall472.671s/600s",
+      "receipt": "~/.local/state/codex-wake/unified-0234/presubmit-result.json",
+      "limitation": "Before causally subsequent delegated-credential compatibility fix; not a full-suite or final-head blanket claim"
+    },
+    {
+      "tier": "compatibility remediation before final review",
+      "risk": "Old OAuth readers dropped new grant action attenuation",
+      "baseline": "1aa498674a4907f93b5216a4a98dd75a22c6ecec",
+      "red": "old-auth-contract-red.log: exact legacy code redemption incorrectly accepted; independent probe showed old access authentication ignored actions",
+      "green": "20auth/connector/bulk/transportsPASS21.966s; old reader refuses code/access/refresh; new reader retains attenuation and inherited revocation"
+    },
+    {
+      "tier": "focused post-review",
+      "source": "f38abc6dc4dd06be0b49192edca05e4fe66d8dd6",
+      "result": "33PASS38.160s; final wheel344member exact match",
+      "wheel_sha256": "4130b2bf2ed15135e519f34b76b68b56b4148083a2f1f98c3f6c101064902a43",
+      "receipt": "docs/dev/evidence/plan0234/validation.md"
+    }
+  ],
+  "reviewed_head": "bf4b5e00d1b925b3daf21e079a192a6295d00d15",
+  "review_report": "docs/dev/evidence/plan0234/review.md",
+  "qualified_source": "f38abc6dc4dd06be0b49192edca05e4fe66d8dd6",
+  "accepted_findings": {
+    "Standards": {
+      "count": 2,
+      "highest": "P1",
+      "unresolved": 0
+    },
+    "Spec": {
+      "count": 3,
+      "highest": "P1",
+      "unresolved": 0
+    }
+  }
+}

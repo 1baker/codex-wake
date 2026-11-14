@@ -178,6 +178,23 @@
     "acceptance.define",
     "acceptance.evaluate",
     "acceptance.inspect",
+    "accounts.configuration.default-root",
+    "accounts.configuration.explain",
+    "accounts.configuration.sync.apply",
+    "accounts.configuration.sync.preview",
+    "accounts.migration.apply",
+    "accounts.migration.preview",
+    "accounts.migration.rollback",
+    "accounts.profiles.create",
+    "accounts.profiles.init",
+    "accounts.profiles.list",
+    "accounts.profiles.login",
+    "accounts.profiles.readiness",
+    "accounts.profiles.resolve",
+    "accounts.profiles.status",
+    "accounts.stores.list",
+    "accounts.stores.register",
+    "accounts.stores.resolve",
     "after",
     "agents.configure",
     "agents.enroll",
@@ -206,6 +223,18 @@
     "cancel",
     "changed",
     "cleanup",
+    "connectors.grants.create",
+    "connectors.grants.list",
+    "connectors.grants.revoke",
+    "connectors.grants.show",
+    "connectors.hosts.list",
+    "connectors.hosts.map-principal",
+    "connectors.hosts.observe",
+    "connectors.hosts.register",
+    "connectors.hosts.resolve",
+    "connectors.hosts.revoke-principal",
+    "connectors.hosts.route",
+    "connectors.hosts.ssh-serve",
     "controller.auth-configure",
     "controller.authorize-client",
     "controller.list",
@@ -214,6 +243,207 @@
     "controller.revoke-grant",
     "controller.serve",
     "doctor",
+    "environment.agents.configure",
+    "environment.agents.enroll",
+    "environment.agents.focus",
+    "environment.agents.list",
+    "environment.agents.observe",
+    "environment.agents.overview",
+    "environment.agents.reconcile",
+    "environment.agents.reenable",
+    "environment.agents.resume",
+    "environment.agents.show",
+    "environment.agents.unenroll",
+    "environment.agents.wait",
+    "environment.capabilities",
+    "environment.conversations.connection",
+    "environment.conversations.history.import",
+    "environment.conversations.history.import-recent",
+    "environment.conversations.history.read",
+    "environment.conversations.history.recent",
+    "environment.conversations.history.resume",
+    "environment.conversations.history.search",
+    "environment.conversations.mcp",
+    "environment.conversations.powershell",
+    "environment.conversations.remote",
+    "environment.conversations.server.run",
+    "environment.conversations.server.start",
+    "environment.conversations.server.status",
+    "environment.conversations.server.stop",
+    "environment.discovery.close",
+    "environment.discovery.configuration",
+    "environment.discovery.current",
+    "environment.discovery.execution",
+    "environment.discovery.handoff",
+    "environment.discovery.list",
+    "environment.discovery.open",
+    "environment.discovery.refresh",
+    "environment.discovery.refresh-watch",
+    "environment.discovery.resolve",
+    "environment.discovery.show",
+    "environment.discovery.spawn",
+    "environment.discovery.target",
+    "environment.discovery.watch",
+    "environment.health.observe",
+    "environment.resources.list",
+    "environment.resources.resolve",
+    "environment.sessions.create",
+    "environment.sessions.delete",
+    "environment.sessions.ensure",
+    "environment.sessions.list",
+    "environment.sessions.open",
+    "environment.sessions.show",
+    "environment.sessions.update",
+    "environment.tabs.apply",
+    "environment.tabs.capture",
+    "environment.tabs.close",
+    "environment.tabs.create",
+    "environment.tabs.family-accept",
+    "environment.tabs.family-adopt",
+    "environment.tabs.family-bind",
+    "environment.tabs.family-focus",
+    "environment.tabs.family-list",
+    "environment.tabs.family-open",
+    "environment.tabs.family-register",
+    "environment.tabs.family-show",
+    "environment.tabs.family.accept",
+    "environment.tabs.family.adopt",
+    "environment.tabs.family.bind",
+    "environment.tabs.family.focus",
+    "environment.tabs.family.list",
+    "environment.tabs.family.open",
+    "environment.tabs.family.register",
+    "environment.tabs.family.show",
+    "environment.tabs.focus",
+    "environment.tabs.format-configure",
+    "environment.tabs.format-enable",
+    "environment.tabs.format-inspect",
+    "environment.tabs.format-pause",
+    "environment.tabs.format-reenable",
+    "environment.tabs.format-reset",
+    "environment.tabs.format-resume",
+    "environment.tabs.format-rollback",
+    "environment.tabs.format-status",
+    "environment.tabs.format.configure",
+    "environment.tabs.format.enable",
+    "environment.tabs.format.inspect",
+    "environment.tabs.format.pause",
+    "environment.tabs.format.reenable",
+    "environment.tabs.format.reset",
+    "environment.tabs.format.resume",
+    "environment.tabs.format.rollback",
+    "environment.tabs.format.status",
+    "environment.tabs.group-delete",
+    "environment.tabs.group-list",
+    "environment.tabs.group-save",
+    "environment.tabs.group-show",
+    "environment.tabs.input",
+    "environment.tabs.list",
+    "environment.tabs.monitor-refresh",
+    "environment.tabs.monitor-start",
+    "environment.tabs.monitor-status",
+    "environment.tabs.monitor-stop",
+    "environment.tabs.monitor.refresh",
+    "environment.tabs.monitor.start",
+    "environment.tabs.monitor.status",
+    "environment.tabs.monitor.stop",
+    "environment.tabs.move",
+    "environment.tabs.park",
+    "environment.tabs.policy-configure",
+    "environment.tabs.policy-disable",
+    "environment.tabs.policy-enable",
+    "environment.tabs.policy-pause",
+    "environment.tabs.policy-status",
+    "environment.tabs.policy-tick",
+    "environment.tabs.policy.configure",
+    "environment.tabs.policy.disable",
+    "environment.tabs.policy.enable",
+    "environment.tabs.policy.pause",
+    "environment.tabs.policy.status",
+    "environment.tabs.policy.tick",
+    "environment.tabs.preview",
+    "environment.tabs.reattach-apply",
+    "environment.tabs.reattach-preview",
+    "environment.tabs.reattach-status",
+    "environment.tabs.recovery-apply",
+    "environment.tabs.recovery-capture",
+    "environment.tabs.recovery-preview",
+    "environment.tabs.recovery-status",
+    "environment.tabs.recovery.apply",
+    "environment.tabs.recovery.capture",
+    "environment.tabs.recovery.preview",
+    "environment.tabs.recovery.status",
+    "environment.tabs.relocate-apply",
+    "environment.tabs.relocate-preview",
+    "environment.tabs.relocate-status",
+    "environment.tabs.relocate-undo",
+    "environment.tabs.relocate.apply",
+    "environment.tabs.relocate.preview",
+    "environment.tabs.relocate.status",
+    "environment.tabs.relocate.undo",
+    "environment.tabs.rename",
+    "environment.tabs.restore",
+    "environment.tabs.result",
+    "environment.tabs.route-delete",
+    "environment.tabs.route-enable",
+    "environment.tabs.route-hold",
+    "environment.tabs.route-list",
+    "environment.tabs.route-pause",
+    "environment.tabs.route-pin",
+    "environment.tabs.route-resume",
+    "environment.tabs.route-save",
+    "environment.tabs.route-show",
+    "environment.tabs.route-status",
+    "environment.tabs.route-tick",
+    "environment.tabs.route-unpin",
+    "environment.tabs.route.delete",
+    "environment.tabs.route.enable",
+    "environment.tabs.route.hold",
+    "environment.tabs.route.list",
+    "environment.tabs.route.pause",
+    "environment.tabs.route.pin",
+    "environment.tabs.route.resume",
+    "environment.tabs.route.save",
+    "environment.tabs.route.show",
+    "environment.tabs.route.status",
+    "environment.tabs.route.tick",
+    "environment.tabs.route.unpin",
+    "environment.tabs.routing.delete",
+    "environment.tabs.routing.enable",
+    "environment.tabs.routing.hold",
+    "environment.tabs.routing.list",
+    "environment.tabs.routing.pause",
+    "environment.tabs.routing.pin",
+    "environment.tabs.routing.resume",
+    "environment.tabs.routing.save",
+    "environment.tabs.routing.show",
+    "environment.tabs.routing.status",
+    "environment.tabs.routing.tick",
+    "environment.tabs.routing.unpin",
+    "environment.tabs.session-create",
+    "environment.tabs.session-delete",
+    "environment.tabs.session-ensure",
+    "environment.tabs.session-list",
+    "environment.tabs.session-open",
+    "environment.tabs.session-show",
+    "environment.tabs.session-update",
+    "environment.tabs.sessions.create",
+    "environment.tabs.sessions.delete",
+    "environment.tabs.sessions.ensure",
+    "environment.tabs.sessions.list",
+    "environment.tabs.sessions.open",
+    "environment.tabs.sessions.show",
+    "environment.tabs.sessions.update",
+    "environment.tabs.show",
+    "environment.tabs.startup.disable",
+    "environment.tabs.startup.enable",
+    "environment.tabs.startup.status",
+    "environment.tabs.undo",
+    "environment.tabs.view-delete",
+    "environment.tabs.view-evaluate",
+    "environment.tabs.view-list",
+    "environment.tabs.view-save",
+    "environment.tabs.view-show",
     "file",
     "filesystem.changed",
     "filesystem.created",
@@ -287,6 +517,42 @@
     "grok.show",
     "grok.stdio-host",
     "grok.wait",
+    "harnesses.builds.build",
+    "harnesses.builds.cleanup",
+    "harnesses.builds.launch",
+    "harnesses.builds.list",
+    "harnesses.builds.prepare",
+    "harnesses.builds.qualify",
+    "harnesses.builds.resume",
+    "harnesses.builds.rollback",
+    "harnesses.builds.run",
+    "harnesses.builds.select",
+    "harnesses.builds.stage",
+    "harnesses.builds.status",
+    "harnesses.grok.cancel",
+    "harnesses.grok.capabilities",
+    "harnesses.grok.checkpoint",
+    "harnesses.grok.create",
+    "harnesses.grok.fork",
+    "harnesses.grok.health",
+    "harnesses.grok.load",
+    "harnesses.grok.prompt",
+    "harnesses.grok.wait",
+    "harnesses.recovery.apply",
+    "harnesses.recovery.check",
+    "harnesses.recovery.configure",
+    "harnesses.recovery.disable",
+    "harnesses.recovery.enable",
+    "harnesses.recovery.list",
+    "harnesses.recovery.reconcile",
+    "harnesses.recovery.show",
+    "harnesses.recovery.tick",
+    "harnesses.runtimes.list",
+    "harnesses.runtimes.restart",
+    "harnesses.runtimes.start",
+    "harnesses.runtimes.status",
+    "harnesses.runtimes.stop",
+    "harnesses.runtimes.update",
     "health.observe",
     "hook.check",
     "hook.install",
@@ -347,6 +613,9 @@
     "openclaw.after",
     "openclaw.at",
     "operations.cancel",
+    "operations.notices.list",
+    "operations.notices.publish",
+    "operations.notices.reconcile",
     "operations.rebind",
     "operations.result",
     "operations.send",
@@ -364,6 +633,44 @@
     "process-exit",
     "product-readiness",
     "profiles",
+    "programs.bulk.advance",
+    "programs.bulk.cancel",
+    "programs.bulk.reconcile",
+    "programs.bulk.result",
+    "programs.bulk.start",
+    "programs.bulk.status",
+    "programs.definitions.propose",
+    "programs.definitions.publish",
+    "programs.definitions.show",
+    "programs.flows.advance",
+    "programs.flows.cancel",
+    "programs.flows.definition",
+    "programs.flows.inspect",
+    "programs.flows.propose",
+    "programs.flows.publish",
+    "programs.flows.reconcile",
+    "programs.flows.start",
+    "programs.governor.activate",
+    "programs.governor.advisory",
+    "programs.governor.disable",
+    "programs.governor.extend",
+    "programs.governor.reset",
+    "programs.governor.resume",
+    "programs.governor.status",
+    "programs.limits.set",
+    "programs.limits.show",
+    "programs.runs.advance",
+    "programs.runs.cancel",
+    "programs.runs.reconcile",
+    "programs.runs.show",
+    "programs.runs.start",
+    "programs.sessions.cancel",
+    "programs.sessions.capabilities",
+    "programs.sessions.checkpoint",
+    "programs.sessions.create",
+    "programs.sessions.fork",
+    "programs.sessions.prompt",
+    "programs.sessions.wait",
     "recovery.apply",
     "recovery.check",
     "recovery.configure",
@@ -429,7 +736,17 @@
     "time.inspect",
     "wake-policy.configure",
     "wake-policy.owner-complete",
-    "wake-policy.show"
+    "wake-policy.show",
+    "wakes.intents.after",
+    "wakes.intents.at",
+    "wakes.intents.file",
+    "wakes.intents.migrate",
+    "wakes.intents.reconcile",
+    "wakes.schedules.cancel",
+    "wakes.schedules.list",
+    "wakes.schedules.register",
+    "wakes.schedules.revise",
+    "wakes.schedules.show"
   ],
   "adapter_exceptions": {
     "accounts.login": "Local native credential stdin/stdio only.",
@@ -1232,6 +1549,148 @@
         },
         "readonly": false
       },
+      "local.observe": {
+        "cli": [
+          "control",
+          "observe"
+        ],
+        "mcp_tool": "wake_local_observe",
+        "description": "Observe an exact already-existing turn without resuming or submitting work.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "turn_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "max_events": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
+            },
+            "max_bytes": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 2097152
+            }
+          },
+          "required": [
+            "selector",
+            "turn_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "local.observation.output": {
+        "cli": [
+          "control",
+          "observation",
+          "output"
+        ],
+        "mcp_tool": "wake_local_observation_output",
+        "description": "Read bounded snapshot-derived events and exact terminal results; native notification history may have gaps.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "observation_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "cursor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "observation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "local.observation.result": {
+        "cli": [
+          "control",
+          "observation",
+          "result"
+        ],
+        "mcp_tool": "wake_local_observation_result",
+        "description": "Reconcile the exact existing observed turn without replaying input.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "observation_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "cursor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "observation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "local.observation.cancel": {
+        "cli": [
+          "control",
+          "observation",
+          "cancel"
+        ],
+        "mcp_tool": "wake_local_observation_cancel",
+        "description": "Stop observing; never interrupts the observed turn.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "observation_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "observation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
       "local.governor.status": {
         "cli": [
           "governor",
@@ -1475,6 +1934,2365 @@
           "advisory"
         ],
         "mcp_tool": "wake_governor_advisory",
+        "description": "Explicitly select advisory operation under qualified operator authority.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "request_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "resume": {
+              "type": "boolean"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.snapshot": {
+        "cli": [
+          "environment",
+          "snapshot"
+        ],
+        "mcp_tool": "wake_environment_snapshot",
+        "description": "Navigate host-owned terminal placement and explicit independent identity links.",
+        "input_schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.children": {
+        "cli": [
+          "environment",
+          "children"
+        ],
+        "mcp_tool": "wake_environment_children",
+        "description": "Navigate host-owned terminal placement and explicit independent identity links.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "resource_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "resource_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "wakes.schedules.register": {
+        "cli": [
+          "control",
+          "wakes",
+          "schedules",
+          "register"
+        ],
+        "mcp_tool": "wake_wakes_schedules_register",
+        "description": "Control exact durable schedules without changing their timing or permission rules.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "request"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "wakes.schedules.list": {
+        "cli": [
+          "control",
+          "wakes",
+          "schedules",
+          "list"
+        ],
+        "mcp_tool": "wake_wakes_schedules_list",
+        "description": "Control exact durable schedules without changing their timing or permission rules.",
+        "input_schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "wakes.schedules.show": {
+        "cli": [
+          "control",
+          "wakes",
+          "schedules",
+          "show"
+        ],
+        "mcp_tool": "wake_wakes_schedules_show",
+        "description": "Control exact durable schedules without changing their timing or permission rules.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "schedule_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "schedule_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "wakes.schedules.revise": {
+        "cli": [
+          "control",
+          "wakes",
+          "schedules",
+          "revise"
+        ],
+        "mcp_tool": "wake_wakes_schedules_revise",
+        "description": "Control exact durable schedules without changing their timing or permission rules.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "type": "object"
+            },
+            "schedule_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_revision": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "request",
+            "schedule_id",
+            "expected_revision"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "wakes.schedules.cancel": {
+        "cli": [
+          "control",
+          "wakes",
+          "schedules",
+          "cancel"
+        ],
+        "mcp_tool": "wake_wakes_schedules_cancel",
+        "description": "Control exact durable schedules without changing their timing or permission rules.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "schedule_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_revision": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "schedule_id",
+            "expected_revision"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "wakes.intents.after": {
+        "cli": [
+          "control",
+          "wakes",
+          "intents",
+          "after"
+        ],
+        "mcp_tool": "wake_wakes_intents_after",
+        "description": "Retain one explicit-mode native intent; retained readiness is not execution.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "thread_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "prompt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "trigger": {
+              "type": "string",
+              "minLength": 1
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "session_mode": {
+              "enum": [
+                "session_only",
+                "reopen_live",
+                "background"
+              ]
+            },
+            "delivery_window_seconds": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "thread_id",
+            "prompt",
+            "trigger",
+            "idempotency_key",
+            "session_mode",
+            "delivery_window_seconds"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "wakes.intents.at": {
+        "cli": [
+          "control",
+          "wakes",
+          "intents",
+          "at"
+        ],
+        "mcp_tool": "wake_wakes_intents_at",
+        "description": "Retain one explicit-mode native intent; retained readiness is not execution.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "thread_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "prompt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "trigger": {
+              "type": "string",
+              "minLength": 1
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "session_mode": {
+              "enum": [
+                "session_only",
+                "reopen_live",
+                "background"
+              ]
+            },
+            "delivery_window_seconds": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "thread_id",
+            "prompt",
+            "trigger",
+            "idempotency_key",
+            "session_mode",
+            "delivery_window_seconds"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "wakes.intents.file": {
+        "cli": [
+          "control",
+          "wakes",
+          "intents",
+          "file"
+        ],
+        "mcp_tool": "wake_wakes_intents_file",
+        "description": "Retain one explicit-mode native intent; retained readiness is not execution.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "thread_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "prompt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "trigger": {
+              "type": "string",
+              "minLength": 1
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "session_mode": {
+              "enum": [
+                "session_only",
+                "reopen_live",
+                "background"
+              ]
+            },
+            "delivery_window_seconds": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "thread_id",
+            "prompt",
+            "trigger",
+            "idempotency_key",
+            "session_mode",
+            "delivery_window_seconds"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.panes.capture": {
+        "cli": [
+          "environment",
+          "panes",
+          "capture"
+        ],
+        "mcp_tool": "wake_environment_panes_capture",
+        "description": "Explicit terminal content/input with host/pane generations, privacy and separate permissions; rendered snapshots are not native byte streams and delivery is not semantic execution.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "workspace": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "pane": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "expected_pane": {
+              "type": "object"
+            },
+            "lines": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          "required": [
+            "workspace",
+            "pane",
+            "expected_target",
+            "expected_pane"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.panes.observe": {
+        "cli": [
+          "environment",
+          "panes",
+          "observe"
+        ],
+        "mcp_tool": "wake_environment_panes_observe",
+        "description": "Explicit terminal content/input with host/pane generations, privacy and separate permissions; rendered snapshots are not native byte streams and delivery is not semantic execution.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "workspace": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "pane": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "expected_pane": {
+              "type": "object"
+            },
+            "lines": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "max_events": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
+            },
+            "max_bytes": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 2097152
+            }
+          },
+          "required": [
+            "workspace",
+            "pane",
+            "expected_target",
+            "expected_pane"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.panes.output": {
+        "cli": [
+          "environment",
+          "panes",
+          "output"
+        ],
+        "mcp_tool": "wake_environment_panes_output",
+        "description": "Explicit terminal content/input with host/pane generations, privacy and separate permissions; rendered snapshots are not native byte streams and delivery is not semantic execution.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "observation_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "cursor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "observation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.panes.paste": {
+        "cli": [
+          "environment",
+          "panes",
+          "paste"
+        ],
+        "mcp_tool": "wake_environment_panes_paste",
+        "description": "Explicit terminal content/input with host/pane generations, privacy and separate permissions; rendered snapshots are not native byte streams and delivery is not semantic execution.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "workspace": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "pane": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "expected_pane": {
+              "type": "object"
+            },
+            "custody": {
+              "type": "object"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 16384
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "workspace",
+            "pane",
+            "expected_target",
+            "expected_pane",
+            "custody",
+            "text",
+            "idempotency_key"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.panes.keys": {
+        "cli": [
+          "environment",
+          "panes",
+          "keys"
+        ],
+        "mcp_tool": "wake_environment_panes_keys",
+        "description": "Explicit terminal content/input with host/pane generations, privacy and separate permissions; rendered snapshots are not native byte streams and delivery is not semantic execution.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "workspace": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "pane": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "expected_pane": {
+              "type": "object"
+            },
+            "custody": {
+              "type": "object"
+            },
+            "keys": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "BSpace",
+                  "BTab",
+                  "C-a",
+                  "C-b",
+                  "C-c",
+                  "C-d",
+                  "C-e",
+                  "C-f",
+                  "C-g",
+                  "C-h",
+                  "C-i",
+                  "C-j",
+                  "C-k",
+                  "C-l",
+                  "C-m",
+                  "C-n",
+                  "C-o",
+                  "C-p",
+                  "C-q",
+                  "C-r",
+                  "C-s",
+                  "C-t",
+                  "C-u",
+                  "C-v",
+                  "C-w",
+                  "C-x",
+                  "C-y",
+                  "C-z",
+                  "DC",
+                  "Down",
+                  "End",
+                  "Enter",
+                  "Escape",
+                  "F1",
+                  "F10",
+                  "F11",
+                  "F12",
+                  "F2",
+                  "F3",
+                  "F4",
+                  "F5",
+                  "F6",
+                  "F7",
+                  "F8",
+                  "F9",
+                  "Home",
+                  "Left",
+                  "PageDown",
+                  "PageUp",
+                  "Right",
+                  "Tab",
+                  "Up"
+                ]
+              }
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "required": [
+            "workspace",
+            "pane",
+            "expected_target",
+            "expected_pane",
+            "custody",
+            "keys",
+            "idempotency_key"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.input.submit": {
+        "cli": [
+          "environment",
+          "conversations",
+          "input",
+          "submit"
+        ],
+        "mcp_tool": "wake_environment_conversations_input_submit",
+        "description": "Submit one explicitly selected native busy-input policy; no fallback.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "prompt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "policy": {
+              "enum": [
+                "reject",
+                "queue",
+                "steer",
+                "interrupt_then_submit"
+              ]
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_target": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "selector",
+            "prompt",
+            "policy",
+            "idempotency_key"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.input.result": {
+        "cli": [
+          "environment",
+          "conversations",
+          "input",
+          "result"
+        ],
+        "mcp_tool": "wake_environment_conversations_input_result",
+        "description": "Observe original native input execution without replay.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "operation_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "operation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.presentation.background": {
+        "cli": [
+          "environment",
+          "conversations",
+          "presentation",
+          "background"
+        ],
+        "mcp_tool": "wake_environment_conversations_presentation_background",
+        "description": "Move only an exactly bound single-pane conversation attachment; parked live TUI is not headless execution.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1
+            },
+            "workspace": {
+              "type": "string",
+              "minLength": 1
+            },
+            "window": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_presentation": {
+              "type": "object"
+            },
+            "destination": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_destination": {
+              "type": "object"
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "route": {
+              "type": "string",
+              "enum": [
+                "park_live"
+              ]
+            },
+            "force": {
+              "type": "boolean"
+            },
+            "receipt_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "selector",
+            "expected_target",
+            "workspace",
+            "window",
+            "expected_presentation",
+            "destination",
+            "expected_destination",
+            "idempotency_key",
+            "route"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.presentation.foreground": {
+        "cli": [
+          "environment",
+          "conversations",
+          "presentation",
+          "foreground"
+        ],
+        "mcp_tool": "wake_environment_conversations_presentation_foreground",
+        "description": "Move only an exactly bound single-pane conversation attachment; parked live TUI is not headless execution.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1
+            },
+            "workspace": {
+              "type": "string",
+              "minLength": 1
+            },
+            "window": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_presentation": {
+              "type": "object"
+            },
+            "destination": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_destination": {
+              "type": "object"
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "route": {
+              "type": "string",
+              "enum": [
+                "restore_live"
+              ]
+            },
+            "force": {
+              "type": "boolean"
+            },
+            "receipt_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "selector",
+            "expected_target",
+            "workspace",
+            "window",
+            "expected_presentation",
+            "destination",
+            "expected_destination",
+            "idempotency_key",
+            "route",
+            "receipt_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "connectors.grants.create": {
+        "cli": [
+          "control",
+          "connectors",
+          "grants",
+          "create"
+        ],
+        "mcp_tool": "wake_connectors_grants_create",
+        "description": "Manage connector identity/grants under authenticated operator authority.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "enum": [
+                "full",
+                "subset"
+              ]
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "client_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "redirect_uri": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "code_challenge": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "scopes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "minItems": 1
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "minItems": 1
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "minItems": 1
+            },
+            "expires_in": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 86400
+            }
+          },
+          "required": [
+            "mode",
+            "idempotency_key",
+            "client_id",
+            "redirect_uri",
+            "code_challenge"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "connectors.grants.list": {
+        "cli": [
+          "control",
+          "connectors",
+          "grants",
+          "list"
+        ],
+        "mcp_tool": "wake_connectors_grants_list",
+        "description": "Manage connector identity/grants under authenticated operator authority.",
+        "input_schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "connectors.grants.show": {
+        "cli": [
+          "control",
+          "connectors",
+          "grants",
+          "show"
+        ],
+        "mcp_tool": "wake_connectors_grants_show",
+        "description": "Manage connector identity/grants under authenticated operator authority.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "grant_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "grant_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "connectors.grants.revoke": {
+        "cli": [
+          "control",
+          "connectors",
+          "grants",
+          "revoke"
+        ],
+        "mcp_tool": "wake_connectors_grants_revoke",
+        "description": "Manage connector identity/grants under authenticated operator authority.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "grant_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "grant_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.bulk.start": {
+        "cli": [
+          "control",
+          "programs",
+          "bulk",
+          "start"
+        ],
+        "mcp_tool": "wake_programs_bulk_start",
+        "description": "Run frozen members through the existing durable program executor.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "members": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$"
+                  },
+                  "target": {
+                    "type": "object"
+                  },
+                  "operation": {
+                    "type": "string"
+                  },
+                  "arguments": {
+                    "type": "object"
+                  },
+                  "completion": {
+                    "enum": [
+                      "admission",
+                      "terminal"
+                    ]
+                  },
+                  "wait_operation": {
+                    "enum": [
+                      "operations.wait",
+                      "sessions.wait",
+                      "environment.conversations.input.result"
+                    ]
+                  },
+                  "condition": {
+                    "type": [
+                      "boolean",
+                      "object"
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "target",
+                  "operation",
+                  "arguments",
+                  "completion"
+                ],
+                "additionalProperties": false
+              },
+              "minItems": 1,
+              "maxItems": 16
+            },
+            "policies": {
+              "type": "object",
+              "properties": {
+                "failure": {
+                  "enum": [
+                    "stop",
+                    "continue"
+                  ]
+                },
+                "join": {
+                  "enum": [
+                    "all_success",
+                    "all_complete"
+                  ]
+                },
+                "uncertain": {
+                  "const": "hold"
+                },
+                "retry": {
+                  "type": "object",
+                  "properties": {
+                    "max_attempts": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3
+                    },
+                    "when": {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "timeout",
+                          "unavailable",
+                          "source_unavailable",
+                          "native_unavailable"
+                        ]
+                      },
+                      "maxItems": 4
+                    }
+                  },
+                  "required": [
+                    "max_attempts",
+                    "when"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "failure",
+                "join",
+                "uncertain",
+                "retry"
+              ],
+              "additionalProperties": false
+            },
+            "inputs": {
+              "type": "object"
+            },
+            "limits": {
+              "type": "object"
+            },
+            "intent": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "binding": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "members",
+            "policies",
+            "inputs",
+            "limits",
+            "intent",
+            "binding"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.bulk.status": {
+        "cli": [
+          "control",
+          "programs",
+          "bulk",
+          "status"
+        ],
+        "mcp_tool": "wake_programs_bulk_status",
+        "description": "Run frozen members through the existing durable program executor.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "run_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "run_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "programs.bulk.result": {
+        "cli": [
+          "control",
+          "programs",
+          "bulk",
+          "result"
+        ],
+        "mcp_tool": "wake_programs_bulk_result",
+        "description": "Run frozen members through the existing durable program executor.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "run_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "run_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "programs.bulk.advance": {
+        "cli": [
+          "control",
+          "programs",
+          "bulk",
+          "advance"
+        ],
+        "mcp_tool": "wake_programs_bulk_advance",
+        "description": "Run frozen members through the existing durable program executor.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "run_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "run_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.bulk.reconcile": {
+        "cli": [
+          "control",
+          "programs",
+          "bulk",
+          "reconcile"
+        ],
+        "mcp_tool": "wake_programs_bulk_reconcile",
+        "description": "Run frozen members through the existing durable program executor.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "run_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "run_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.bulk.cancel": {
+        "cli": [
+          "control",
+          "programs",
+          "bulk",
+          "cancel"
+        ],
+        "mcp_tool": "wake_programs_bulk_cancel",
+        "description": "Run frozen members through the existing durable program executor.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "run_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "run_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.create": {
+        "cli": [
+          "environment",
+          "conversations",
+          "create"
+        ],
+        "mcp_tool": "wake_environment_conversations_create",
+        "description": "Create an owned headless Grok ACP session with harness=grok; Codex creation is unsupported.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "harness": {
+              "type": "string",
+              "enum": [
+                "codex",
+                "grok"
+              ]
+            },
+            "profile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "idempotency_key": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.load": {
+        "cli": [
+          "environment",
+          "conversations",
+          "load"
+        ],
+        "mcp_tool": "wake_environment_conversations_load",
+        "description": "Load an explicitly selected owned Grok conversation through its fresh ACP profile; Codex load is unsupported.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "harness": {
+              "type": "string",
+              "enum": [
+                "codex",
+                "grok"
+              ]
+            },
+            "profile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selector": {
+              "type": "string"
+            },
+            "idempotency_key": {
+              "type": "string"
+            },
+            "expected_target": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "selector"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.prompt": {
+        "cli": [
+          "environment",
+          "conversations",
+          "prompt"
+        ],
+        "mcp_tool": "wake_environment_conversations_prompt",
+        "description": "Same-user durable session operation; output observes the original turn without replay.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "stream",
+                "transcript",
+                "final",
+                "silent"
+              ]
+            },
+            "timeout": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 30
+            },
+            "cursor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "harness": {
+              "type": "string",
+              "enum": [
+                "codex",
+                "grok"
+              ]
+            },
+            "profile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "selector": {
+              "type": "string"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "idempotency_key": {
+              "type": "string"
+            },
+            "expected_target": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "selector",
+            "prompt"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.output": {
+        "cli": [
+          "environment",
+          "conversations",
+          "output"
+        ],
+        "mcp_tool": "wake_environment_conversations_output",
+        "description": "Same-user durable session operation; output observes the original turn without replay.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "stream",
+                "transcript",
+                "final",
+                "silent"
+              ]
+            },
+            "timeout": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 30
+            },
+            "cursor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "operation_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "operation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.result": {
+        "cli": [
+          "environment",
+          "conversations",
+          "result"
+        ],
+        "mcp_tool": "wake_environment_conversations_result",
+        "description": "Same-user durable session operation; output observes the original turn without replay.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "type": "string"
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "stream",
+                "transcript",
+                "final",
+                "silent"
+              ]
+            },
+            "timeout": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 30
+            },
+            "cursor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "operation_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "operation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.cancel": {
+        "cli": [
+          "environment",
+          "conversations",
+          "cancel"
+        ],
+        "mcp_tool": "wake_environment_conversations_cancel",
+        "description": "Same-user durable session operation; output observes the original turn without replay.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "operation_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "operation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.list": {
+        "cli": [
+          "environment",
+          "conversations",
+          "list"
+        ],
+        "mcp_tool": "wake_environment_conversations_list",
+        "description": "Discover running owned conversations and presentation bindings.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "harness": {
+              "type": "string",
+              "enum": [
+                "codex",
+                "grok"
+              ]
+            },
+            "profile": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.resolve": {
+        "cli": [
+          "environment",
+          "conversations",
+          "resolve"
+        ],
+        "mcp_tool": "wake_environment_conversations_resolve",
+        "description": "Resolve one owned conversation and pin its generation.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "harness": {
+              "type": "string",
+              "enum": [
+                "codex",
+                "grok"
+              ]
+            },
+            "profile": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "selector"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.health": {
+        "cli": [
+          "environment",
+          "conversations",
+          "health"
+        ],
+        "mcp_tool": "wake_environment_conversations_health",
+        "description": "Fresh exact controlling-TUI loop health, never inferred from process liveness.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "endpoint": {
+              "type": "string"
+            },
+            "timeout": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 5
+            },
+            "harness": {
+              "type": "string",
+              "enum": [
+                "codex",
+                "grok"
+              ]
+            },
+            "profile": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "selector"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.slash.list": {
+        "cli": [
+          "environment",
+          "conversations",
+          "slash",
+          "list"
+        ],
+        "mcp_tool": "wake_environment_conversations_slash_list",
+        "description": "Discover qualified same-user native slash mappings and interaction support.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "harness": {
+              "type": "string",
+              "enum": [
+                "codex",
+                "grok"
+              ]
+            },
+            "profile": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "selector"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.slash.run": {
+        "cli": [
+          "environment",
+          "conversations",
+          "slash",
+          "run"
+        ],
+        "mcp_tool": "wake_environment_conversations_slash_run",
+        "description": "Execute a supported native slash action with durable tracking; never submits command text as a prompt.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "harness": {
+              "type": "string",
+              "enum": [
+                "codex",
+                "grok"
+              ]
+            },
+            "profile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1
+            },
+            "arguments": {
+              "type": "string"
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "stream",
+                "transcript",
+                "final",
+                "silent"
+              ]
+            }
+          },
+          "required": [
+            "selector",
+            "command",
+            "idempotency_key"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.slash.result": {
+        "cli": [
+          "environment",
+          "conversations",
+          "slash",
+          "result"
+        ],
+        "mcp_tool": "wake_environment_conversations_slash_result",
+        "description": "Inspect, explicitly answer, or cancel an exact controller-owned native slash interaction.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "operation_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "stream",
+                "transcript",
+                "final",
+                "silent"
+              ]
+            },
+            "cursor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "operation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.slash.respond": {
+        "cli": [
+          "environment",
+          "conversations",
+          "slash",
+          "respond"
+        ],
+        "mcp_tool": "wake_environment_conversations_slash_respond",
+        "description": "Inspect, explicitly answer, or cancel an exact controller-owned native slash interaction.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "interaction_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "stream",
+                "transcript",
+                "final",
+                "silent"
+              ]
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "interaction_id",
+            "value",
+            "idempotency_key"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.slash.cancel": {
+        "cli": [
+          "environment",
+          "conversations",
+          "slash",
+          "cancel"
+        ],
+        "mcp_tool": "wake_environment_conversations_slash_cancel",
+        "description": "Inspect, explicitly answer, or cancel an exact controller-owned native slash interaction.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "interaction_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mode": {
+              "type": "string",
+              "enum": [
+                "stream",
+                "transcript",
+                "final",
+                "silent"
+              ]
+            }
+          },
+          "required": [
+            "interaction_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.limits.show": {
+        "cli": [
+          "control",
+          "programs",
+          "limits",
+          "show"
+        ],
+        "mcp_tool": "wake_programs_limits_show",
+        "description": "Inspect or tighten voluntary own-session limits with automatic enforcement readiness.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "programs.limits.set": {
+        "cli": [
+          "control",
+          "programs",
+          "limits",
+          "set"
+        ],
+        "mcp_tool": "wake_programs_limits_set",
+        "description": "Inspect or tighten voluntary own-session limits with automatic enforcement readiness.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "token_limit": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "time_limit_seconds": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "token_limit",
+            "time_limit_seconds"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "environment.conversations.observe": {
+        "cli": [
+          "environment",
+          "conversations",
+          "observe"
+        ],
+        "mcp_tool": "wake_environment_conversations_observe",
+        "description": "Observe an exact already-existing turn without resuming or submitting work.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "turn_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "idempotency_key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "max_events": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2048
+            },
+            "max_bytes": {
+              "type": "integer",
+              "minimum": 1024,
+              "maximum": 2097152
+            }
+          },
+          "required": [
+            "selector",
+            "turn_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.observation.output": {
+        "cli": [
+          "environment",
+          "conversations",
+          "observation",
+          "output"
+        ],
+        "mcp_tool": "wake_environment_conversations_observation_output",
+        "description": "Read bounded snapshot-derived events and exact terminal results; native notification history may have gaps.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "observation_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "cursor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "observation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.observation.result": {
+        "cli": [
+          "environment",
+          "conversations",
+          "observation",
+          "result"
+        ],
+        "mcp_tool": "wake_environment_conversations_observation_result",
+        "description": "Reconcile the exact existing observed turn without replaying input.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "observation_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "cursor": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "observation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "environment.conversations.observation.cancel": {
+        "cli": [
+          "environment",
+          "conversations",
+          "observation",
+          "cancel"
+        ],
+        "mcp_tool": "wake_environment_conversations_observation_cancel",
+        "description": "Stop observing; never interrupts the observed turn.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "observation_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "observation_id"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.governor.status": {
+        "cli": [
+          "control",
+          "programs",
+          "governor",
+          "status"
+        ],
+        "mcp_tool": "wake_programs_governor_status",
+        "description": "Show task limits, consumption and actual enforcement readiness without activating work.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": true
+      },
+      "programs.governor.activate": {
+        "cli": [
+          "control",
+          "programs",
+          "governor",
+          "activate"
+        ],
+        "mcp_tool": "wake_programs_governor_activate",
+        "description": "Activate or tighten own-task time and token limits without per-session provisioning.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "request_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "token_limit": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "time_limit_seconds": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "token_limit",
+            "time_limit_seconds"
+          ],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.governor.extend": {
+        "cli": [
+          "control",
+          "programs",
+          "governor",
+          "extend"
+        ],
+        "mcp_tool": "wake_programs_governor_extend",
+        "description": "Increase an existing allowance under qualified operator authority; retain usage.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "request_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "add_tokens": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "add_seconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "resume": {
+              "type": "boolean"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.governor.reset": {
+        "cli": [
+          "control",
+          "programs",
+          "governor",
+          "reset"
+        ],
+        "mcp_tool": "wake_programs_governor_reset",
+        "description": "Start a new authorized budget window, preserving lifetime accounting and stop history.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "request_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "token_limit": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "time_limit_seconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "resume": {
+              "type": "boolean"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.governor.disable": {
+        "cli": [
+          "control",
+          "programs",
+          "governor",
+          "disable"
+        ],
+        "mcp_tool": "wake_programs_governor_disable",
+        "description": "Disable this governor under qualified operator authority; resume only with --resume.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "request_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "resume": {
+              "type": "boolean"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.governor.resume": {
+        "cli": [
+          "control",
+          "programs",
+          "governor",
+          "resume"
+        ],
+        "mcp_tool": "wake_programs_governor_resume",
+        "description": "Resume the exact affected task only when its allowance and enforcement are qualified.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "selector": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "endpoint": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "request_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "expected_revision": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "readonly": false
+      },
+      "programs.governor.advisory": {
+        "cli": [
+          "control",
+          "programs",
+          "governor",
+          "advisory"
+        ],
+        "mcp_tool": "wake_programs_governor_advisory",
         "description": "Explicitly select advisory operation under qualified operator authority.",
         "input_schema": {
           "type": "object",

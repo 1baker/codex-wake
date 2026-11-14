@@ -45,6 +45,11 @@ from .governor_commands import VERBS as GOVERNOR_VERBS
 MCP_TOOLS.update({'governor.' + verb: 'wake_governor_' + verb for verb in GOVERNOR_VERBS})
 OPERATIONS = OPERATIONS | frozenset(MCP_TOOLS)
 
+# Generated pure metadata keeps portable clients independent of host owners.
+from .unified_public import PUBLIC_MCP_TOOLS
+OPERATIONS = OPERATIONS | frozenset(PUBLIC_MCP_TOOLS)
+MCP_TOOLS.update({key:value for key,value in PUBLIC_MCP_TOOLS.items() if key not in MCP_TOOLS})
+
 class ClientError(ValueError):
     def __init__(self,code,message):super().__init__(message);self.code=code
 
