@@ -37,6 +37,8 @@ class ConnectorVerifier:
         if any(not any(all(target.get(key)==value for key,value in allowed.items())
                        for allowed in self.config['targets']) for target in actor.targets):
             raise AuthError()
+        from .external_consent_delegation import check_grant
+        check_grant(self.authority,self.config,actor.grant_id)
         return actor
 
     async def verify_token(self, token):
@@ -191,6 +193,8 @@ def validate_config(config):
     if not isinstance(targets,list) or not 1 <= len(targets) <= 64 or any(not isinstance(t,dict) or t.get('host') != config['host'] or t.get('environment') != config['environment'] for t in targets):
         raise ValueError('explicit host-owned target policy required')
     intersect_targets(targets,targets)
+    from .external_consent_delegation import validate_delegations
+    validate_delegations(config)
     redirects = config['redirect_uris']
     if not isinstance(redirects,list) or not 1 <= len(redirects) <= 10:
         raise ValueError('exact client redirect allowlist required')

@@ -1750,3 +1750,9 @@ Plan: [External OAuth connector](docs/dev/plans/0235-2026-11-14-external-oauth-c
 Current State: Source/installed package qualified and deployed after explicit operator
 approval. Public metadata200, MCP401, owner isolation403. Human consent/client linking
 remain separate. [Deployment evidence](docs/dev/evidence/plan0235/deployment.md).
+
+## P236 | Delegated connector consent
+
+Status: OPEN. Work item: #650. Owner: root / ecochran76.
+Plan: [Delegated consent](docs/dev/plans/0236-2026-11-14-delegated-connector-consent.md).
+Explicit, scoped operator-authorized agent setup with separate actor attribution.

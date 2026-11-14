@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: connector-delegation-0236
+    owner: root / ecochran76
+    objective: Explicit scoped agent consent for operator-authorized connector setup
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/650]
+    plan: docs/dev/plans/0236-2026-11-14-delegated-connector-consent.md
+    branch: fix/connector-consent-delegation
+    target: origin/main
+    plan_state: OPEN
+    custody_state: ACTIVE
+    dependencies: []
+    overlaps: [P235]
+    updated_at: 2026-11-14
+    disposition: Qualify exact package then deploy connector only; explicit mode remains required
+
   - id: external-oauth-0235
     owner: root / ecochran76
     objective: External OAuth MCP connector with explicit owner or subset consent

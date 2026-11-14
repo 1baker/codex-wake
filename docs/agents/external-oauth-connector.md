@@ -97,3 +97,31 @@ that a ChatGPT/Codex account has installed or authenticated the connector.
 
 References: [MCP authorization](https://modelcontextprotocol.io/specification/latest/basic/authorization),
 [OpenAI authentication](https://developers.openai.com/plugins/build/auth).
+
+## Explicit delegated setup
+
+The operator-private policy may include `consent_delegations`, empty by default.
+Each entry requires `id`, exact Authelia `principal`, exact `client_ids`, nonempty
+`scopes`, host-owned `targets`, explicit allowed `modes` (`operator`/`subset`),
+finite Unix `expires_at`, and an operator authorization `reason`. No wildcard
+client or owner identity alias is accepted. The authenticated delegate consents
+on behalf of the configured owner only within these ceilings. Consent still
+requires an explicit mode and selected rights; setup authority selects no mode.
+The page identifies both actual consenter and owner.
+
+Delegations are private deployment authority, never a request field. Preserve
+operator authorization provenance outside Git. Reload by restarting only the
+connector service. GET/POST bind the same identity and unchanged policy; expiry,
+identity switches, changed policy, wrong clients and privilege expansion fail.
+Issued grants retain actual consenter/delegation/mode in `connector_consent_audit`.
+Credentials expire no later than delegation expiry. Token issuance and every MCP
+authentication recheck current delegation, including original consent ancestry;
+removing or narrowing a delegation fences existing credentials and descendants.
+Existing owner sign-in and external IdP rules remain unchanged. Old in-flight
+consent forms require a fresh GET after this upgrade.
+
+Before downgrading to a connector version without consent-delegation checks,
+revoke every grant listed in `connector_consent_audit` through the existing
+authority revocation path, including pending code grants. Confirm revocation
+receipts before starting that older runtime. Older releases do not enforce this
+new private policy; rollback is not a policy-withdrawal mechanism.
