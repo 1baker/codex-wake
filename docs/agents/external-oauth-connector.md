@@ -119,3 +119,9 @@ authentication recheck current delegation, including original consent ancestry;
 removing or narrowing a delegation fences existing credentials and descendants.
 Existing owner sign-in and external IdP rules remain unchanged. Old in-flight
 consent forms require a fresh GET after this upgrade.
+
+Before downgrading to a connector version without consent-delegation checks,
+revoke every grant listed in `connector_consent_audit` through the existing
+authority revocation path, including pending code grants. Confirm revocation
+receipts before starting that older runtime. Older releases do not enforce this
+new private policy; rollback is not a policy-withdrawal mechanism.
