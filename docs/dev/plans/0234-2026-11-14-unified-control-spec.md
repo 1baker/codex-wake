@@ -12,7 +12,9 @@ All eleven child tickets are validated and CLOSED. Canonical CLI/API/MCP control
 connector attenuation, observation/input/presentation and bounded programs are
 source-delivered. One two-axis review and one bounded TDD pass resolved all accepted
 findings; evidence: docs/dev/evidence/plan0234/{validation,review}.md.
-Parent623 remains open for integration. No provider effects, merge or deployment.
+PR644 merged8e5f6f7c and dev21 deployed under subsequent operator authorization;
+see docs/dev/evidence/plan0234/deployment.md. Parent623 remains open as directed.
+No new production schedules/grants or provider turns.
 
 ## Problem Statement
 

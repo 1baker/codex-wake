@@ -255,5 +255,12 @@
       "highest": "P1",
       "unresolved": 0
     }
+  },
+  "deployment": {
+    "source": "8e5f6f7cd0245d53b30f2d27d50b0c46f6a79d95",
+    "version": "0.22.0.dev21",
+    "pr": 644,
+    "evidence": "docs/dev/evidence/plan0234/deployment.md",
+    "authorization": "operator review merge deploy on2026-11-14"
   }
 }

@@ -10,11 +10,11 @@ lanes:
     worker_branches: [feat/unified-programs-625, feat/unified-observation-626]
     target: origin/main
     plan_state: CLOSED
-    custody_state: INTEGRATION_READY
+    custody_state: INTEGRATED
     dependencies: []
     overlaps: [P233, P231, persistent-wakes-610]
     updated_at: 2026-11-14
-    disposition: All11children closed; one review/one TDD pass resolved findings; shared feature ref retained, worker checkouts removed; no merge/deploy authority
+    disposition: All11children closed; one review/one TDD pass resolved findings; PR644 merged8e5f6f7c; dev21 deployed under operator authorization; task checkout retires after evidence custody
 
   - id: persistent-wakes-610
     owner: root / ecochran76

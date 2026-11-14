@@ -9836,3 +9836,17 @@ Worker checkouts removed after exact remote custody. Integration checkout retire
 on final remote readback; topic/worker refs retained. No merge, deployment or live
 provider effects. Memory disposition forbidden: developer permits memory updates
 only on explicit user request; none was made.
+
+## Turn | 2026-11-14 | Unified control merged and deployed
+
+Operator review/merge/deploy authorized. PR644 merged8e5f6f7c; prior one broad
+review/one TDD pass retained after published head/base readback. Exact merged wheel
+qualified under UID1017 (41tests,1skip,22.950s);344Python members and31dependencies
+match. dev21 installed;9launchers, tab monitor, supervisor and local HTTP controller
+refreshed. Fresh actual stdio MCP lists511tools; old connections await normal
+reconnect. Exact interrupted-poll lifecycle hold inspected/reconciled without replay;
+two older holds preserved.24native processes matched at cutover; later one exited,
+with no native control issued. [Deployment evidence](docs/dev/evidence/plan0234/deployment.md).
+No new production schedule/grant/provider turn, native upgrade or shared MCP reload.
+Task checkout retires after remote custody; unrelated dirty root preserved.
+Memory forbidden by explicit-request-only developer boundary.
