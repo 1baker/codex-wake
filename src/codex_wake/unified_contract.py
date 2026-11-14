@@ -138,6 +138,10 @@ def apply_cli(parser):
             parent=action.choices.get(part) or action.add_parser(part)
         action=_subs(parent) or parent.add_subparsers(dest='_unified_action',required=True)
         if path[-1] not in action.choices:action.add_parser(path[-1],parents=[source],add_help=False)
+    connectors=_parser(parser,('connectors',))
+    serve=_subs(connectors).add_parser('serve',help='serve the external OAuth MCP connector from private host policy')
+    serve.add_argument('--config',type=__import__('pathlib').Path,required=True)
+    serve.set_defaults(_external_connector=True)
     environment=_parser(parser,('environment',));action=_subs(environment)
     for verb in ('snapshot','children'):
         item=action.add_parser(verb)

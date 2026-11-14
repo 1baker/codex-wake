@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: external-oauth-0235
+    owner: root / ecochran76
+    objective: External OAuth MCP connector with explicit owner or subset consent
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/646]
+    plan: docs/dev/plans/0235-2026-11-14-external-oauth-connector.md
+    branch: feat/external-oauth-0235
+    target: origin/main
+    plan_state: OPEN
+    custody_state: ACTIVE
+    dependencies: []
+    overlaps: [P234]
+    updated_at: 2026-11-14
+    disposition: One primary lane; preserve stdio and webhook, no implicit client authority
+
   - id: unified-control-0234
     owner: root / ecochran76
     objective: Unified hierarchical connector control over Byobu and durable programs

@@ -71,10 +71,21 @@ def command(args):
         print(json.dumps({'code': code, 'expires_in': 120})); return 0
     if args.controller_command == 'revoke-grant':
         print(json.dumps(auth.revoke_grant(args.grant_id), sort_keys=True)); return 0
+    service = operations_from_root(args.wake_root)
+    server = ControllerHTTPServer(('127.0.0.1', args.port), auth, service,
+        consent_secret=(root / 'consent.secret').read_text(), owner=config['owner'])
+    try: server.serve_forever()
+    except KeyboardInterrupt: pass
+    finally: server.server_close()
+    return 0
+
+
+def operations_from_root(root):
+    """Use the same host owners for legacy HTTP and external OAuth MCP."""
     host, environment = socket.gethostname(), os.environ.get('WSL_DISTRO_NAME') or os.name
-    account_config = Path(args.wake_root) / 'controller-accounts.toml'
+    account_config = Path(root) / 'controller-accounts.toml'
     from .host_commands import owner as host_owner
-    options = {'hosts': host_owner(args.wake_root)}
+    options = {'hosts': host_owner(root)}
     if account_config.is_file():
         # The account owner is delivered by ticket395; no caller-selected path.
         from .controller_accounts import ControllerAccounts
@@ -83,16 +94,10 @@ def command(args):
         import tomllib
         if 'builds' in tomllib.loads(account_config.read_text()):
             from .build_commands import owner_from_root
-            options['builds'] = owner_from_root(args.wake_root)
+            options['builds'] = owner_from_root(root)
     if account_config.is_file() and 'migration' in tomllib.loads(account_config.read_text()):
         from .migration_commands import owner_from_root as migration_owner
-        options['migration'] = migration_owner(args.wake_root)
+        options['migration'] = migration_owner(root)
     from .controller_tabs import controller_tabs_from_root
-    options['tabs'] = controller_tabs_from_root(args.wake_root)
-    service = ControllerOperations(ManagedInventory(Path(args.wake_root)), host=host, environment=environment, **options)
-    server = ControllerHTTPServer(('127.0.0.1', args.port), auth, service,
-        consent_secret=(root / 'consent.secret').read_text(), owner=config['owner'])
-    try: server.serve_forever()
-    except KeyboardInterrupt: pass
-    finally: server.server_close()
-    return 0
+    options['tabs'] = controller_tabs_from_root(root)
+    return ControllerOperations(ManagedInventory(Path(root)), host=host, environment=environment, **options)

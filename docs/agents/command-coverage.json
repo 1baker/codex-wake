@@ -235,6 +235,7 @@
     "connectors.hosts.revoke-principal",
     "connectors.hosts.route",
     "connectors.hosts.ssh-serve",
+    "connectors.serve",
     "controller.auth-configure",
     "controller.authorize-client",
     "controller.list",

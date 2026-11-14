@@ -2833,6 +2833,17 @@ def run(argv: list[str] | None = None, *, permission_principal=None) -> int:
         print(json.dumps(metadata(), sort_keys=True))
         return 0
     args = parser.parse_args(argv)
+    if getattr(args, '_external_connector', False):
+        if args.wake_root is not None:
+            raise WakeError('The external connector uses the Wake root in its private config; remove --wake-root.')
+        try:
+            from .external_connector import serve
+        except ImportError:
+            raise WakeError('Install the codex-wake MCP extra to serve the connector.') from None
+        try:
+            return serve(args.config)
+        except (ValueError, OSError, KeyError) as error:
+            raise WakeError('External connector configuration is invalid: '+str(error)) from None
     if (args.command in ('accounts', 'stores', 'configuration', 'history', 'builds', 'daemons', 'migration', 'tabs', 'environment')
             and not (args.command == 'configuration' and args.account_verb == 'default-root')):
         from .shortcut_store import default_root

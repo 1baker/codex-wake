@@ -9850,3 +9850,15 @@ with no native control issued. [Deployment evidence](docs/dev/evidence/plan0234/
 No new production schedule/grant/provider turn, native upgrade or shared MCP reload.
 Task checkout retires after remote custody; unrelated dirty root preserved.
 Memory forbidden by explicit-request-only developer boundary.
+
+## Turn | 2026-11-14 | External OAuth connector implementation
+
+Operator requested external OAuth MCP using existing Previews/LitScout examples.
+Issue646 / Plan0235 owns the lane. Reuse OAuthAuthority and ProtectedOperations;
+o ambient stdio forwarding, new executor or credential cryptography. Official MCP2.2
+serves stateless HTTP with current bearer context and canonical scoped tools.
+Cooper Authelia owner rechecks, one-use browser flow/cookie/origin and explicit
+operator/subset/scopes/actions protect consent. Existing webhook8820 stays intact;
+proposed exact OAuth/MCP backend37186. Installed dev21 stdio511tools and authorized
+read PASS. Source focused33PASS29.809s; later UI/IdP acceptance retained separately.
+Human client-installation scope/owner consent remains separate from server readiness.
