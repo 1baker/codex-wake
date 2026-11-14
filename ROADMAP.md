@@ -1745,8 +1745,8 @@ Operator subsequently authorized review/merge/deploy. [Deployment evidence](docs
 
 ## P235 | External OAuth connector
 
-Status: OPEN. Work item: #646. Owner: root / ecochran76.
+Status: DONE. Work item: #646. Owner: root / ecochran76.
 Plan: [External OAuth connector](docs/dev/plans/0235-2026-11-14-external-oauth-connector.md).
-Current State: Existing grant authority/SDK and Previews/LitScout examples qualified;
-implement browser owner consent and external Streamable HTTP without ambient-authority
-stdio forwarding. Keep existing webhook route and client identity intact.
+Current State: Source/installed package qualified and deployed after explicit operator
+approval. Public metadata200, MCP401, owner isolation403. Human consent/client linking
+remain separate. [Deployment evidence](docs/dev/evidence/plan0235/deployment.md).

@@ -1,25 +1,22 @@
 # External OAuth connector
 
-State: OPEN
+State: DONE
 Owner: ecochran76 / root
 Work item: #646
 Branch: feat/external-oauth-0235
 
 ## Current State
 
-Server PR647 and ingress PR13 are open and mergeable. Source33tests PASS30.319s;
-installed immutable wheel c03fbfb2 under UID1017 passes7tests7.661s and all348owned
-package members match source/wheel/install. Ingress9renderer tests and inventory
-validation PASS. Final backend8822 confirmed available; webhook8820 unchanged.
-Readiness/runtime/ingress candidates retained in user-scoped external-oauth-0235 state.
-
-Required next action: await explicit operator approval to merge/deploy and add the
-exact codex-wake host rule through the supported Cooper Authelia helper. Dry-run
-confirms the rule is absent; applying it recreates the shared realm and signs out
-existing Cooper browser sessions. Do not adopt live routes or auth changes without
-that approval. Current public metadata404; no publication or production grant.
-Client installation scope/owner OAuth consent remains separate and unselected.
-Existing services, root dirty work, stdio and client configuration are unchanged.
+Operator approved merge/deploy and the shared Cooper Authelia restart on
+2026-11-14. Server PR647 merged at b9f8d96e; ingress PR13 merged at a9e1ae2e.
+The qualified dev22 wheel is installed in a separate immutable connector prefix;
+new user service is active on loopback8822. Public OAuth metadata returns200,
+anonymous MCP GET/POST/DELETE401 with resource discovery, consent redirects303 to
+Cooper sign-in, unlisted callback/wrong-resource400, authenticated nonowner403.
+No production grant was created. Owner consent and client installation remain
+explicit follow-up choices, outside this server delivery. Existing webhook8820,
+native/core sessions and unrelated ingress entries are preserved.
+See [deployment evidence](../evidence/plan0235/deployment.md).
 
 ## Scope and architecture
 

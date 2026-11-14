@@ -9871,3 +9871,11 @@ Authelia restart approval. No live routing/auth/account change performed.
 Final availability probe found8821 already occupied; final pinned backend8822 is
 available. No existing listener was changed. Exact route/runtime candidates updated;
 source package bytes and installed qualification remain unchanged.
+
+## 2026-11-14 | P235 approved deployment
+
+Operator approved shared-auth impact; merged PR647/ingressPR13 and deployed separate
+dev22 connector on8822. Exact ingress/routes and Cooper rule adopted; public
+metadata200, MCP401, nonowner403. No owner grant or client linking performed.
+[Deployment receipt](docs/dev/evidence/plan0235/deployment.md). Task checkout retires
+after documentation integration; unrelated root changes remain preserved.
