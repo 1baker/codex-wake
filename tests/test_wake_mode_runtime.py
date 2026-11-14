@@ -200,3 +200,95 @@ class HistoricalAdmissionBudget(unittest.TestCase):
                 pending=next(x for x in all_records(root) if x.record['status']=='firing')
                 self.assertEqual(dispatch_firing_record(root,pending,runtime_adapter=boundary).status,'submitted')
                 self.assertEqual(boundary.reconcile.call_count,2)
+
+class HistoricalHarness(unittest.TestCase):
+    def test_removed_historical_cli_uses_current_read_transport_without_rebinding(self):
+        import json
+        import sys
+        from codex_wake.wake_mode_runtime import _pending_peer
+        from codex_wake.runtime_delivery import RuntimeRecipient
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / 'pending').mkdir()
+            old = dict(TARGET, endpoint='unix://', codex_cmd=str(root / 'removed-codex'))
+            peer = dict(id='old', target=old, prompt='original check', native_delivery=dict(state='accepted', submission_id='submission1', prompt_sha256='digest'))
+            path = root / 'pending' / 'old.json'
+            path.write_text(json.dumps(peer))
+            original = path.read_bytes()
+            current_cli = root / 'current-codex'
+            current_cli.write_text('#!/bin/sh\nexit 1\n')
+            current_cli.chmod(0o700)
+            current = dict(id='current', target=dict(old, codex_cmd=str(current_cli)))
+            adapter = Mock()
+            adapter.resolve.side_effect = lambda t: RuntimeRecipient('codex', THREAD, t)
+            def reconcile(recipient, prompt):
+                if recipient.binding['codex_cmd'] != str(current_cli):
+                    raise FileNotFoundError('removed historical executable')
+                return RuntimeReconciliation(evidence=dict(source='native_turn', execution='turn_completed', turn_id='turn1', user_message_id='message1', client_message_id='client1'))
+            adapter.reconcile.side_effect = reconcile
+            self.assertEqual(_pending_peer(root, current, adapter), (False, False))
+            self.assertEqual(path.read_bytes(), original)
+            adapter.submit.assert_not_called()
+
+    def test_registration_does_not_claim_armed_when_harness_is_unavailable(self):
+        import contextlib
+        import io
+        import json
+        from argparse import Namespace
+        from codex_wake.native_intents import _receipt
+        from codex_wake.records import WakeError
+        record = dict(id='wake', status='pending', schema_version=8,
+            predicate=dict(type='file_exists'), target=dict(TARGET),
+            scheduling_intent=dict(canonical_root='/fixture', schedule=dict(kind='file'),
+                ttl_seconds=3600, utc_anchor=dict(lower=2000000000, upper=2000000000)),
+            time_recovery=dict(state='due'))
+        reader = type('Reader', (), dict(schema_versions=[8]))()
+        health = dict(mode='loop', reader_capabilities=['wake_session_modes_v1'])
+        output = io.StringIO()
+        with patch('codex_wake.signal_records.probe_managed_reader_capability', return_value=reader), patch('codex_wake.monitor.read_monitor_health', return_value=health), patch('codex_wake.native_protocol.native_request', side_effect=WakeError('unavailable')), contextlib.redirect_stdout(output):
+            _receipt(Namespace(as_json=True), record, Path('/fixture/wake.json'), False)
+        result = json.loads(output.getvalue())
+        self.assertFalse(result['armed'])
+        self.assertEqual(result['harness']['state'], 'unavailable')
+
+class HarnessReadinessBoundaries(unittest.TestCase):
+    def test_preflight_only_reads_exact_thread_and_retains_peer_hold(self):
+        from codex_wake.wake_mode_runtime import registration_harness_readiness
+        target = dict(TARGET)
+        current = dict(id='new', target=target)
+        peer = dict(id='old', target=target, native_delivery=dict(state='uncertain'))
+        request = Mock(return_value=dict(thread=dict(id=THREAD, status=dict(type='active'))))
+        with tempfile.TemporaryDirectory() as d, patch('codex_wake.native_protocol.native_request', request), patch('codex_wake.wake_mode_runtime._peer_records', return_value=iter([peer])), patch('codex_wake.wake_mode_runtime._terminal_receipt', return_value=None) as receipt:
+            result = registration_harness_readiness(Path(d), current)
+        self.assertEqual(result, dict(state='held', reason='peer_history_reconciliation_required'))
+        self.assertEqual(request.call_args.args[2:4], ('thread/read', dict(threadId=THREAD, includeTurns=False)))
+        self.assertEqual(len(receipt.call_args.args), 2)  # no evidence publication
+
+    def test_preflight_ready_requires_exact_identity_but_does_not_require_idle(self):
+        from codex_wake.wake_mode_runtime import registration_harness_readiness
+        with tempfile.TemporaryDirectory() as d, patch('codex_wake.native_protocol.native_request') as request:
+            request.return_value = dict(thread=dict(id=THREAD, status=dict(type='active')))
+            self.assertEqual(registration_harness_readiness(Path(d), dict(id='new', target=TARGET))['state'], 'ready')
+            request.return_value = dict(thread=dict(id='different', status=dict(type='idle')))
+            self.assertEqual(registration_harness_readiness(Path(d), dict(id='new', target=TARGET))['state'], 'unavailable')
+
+    def test_existing_historical_cli_is_not_replaced_and_unsafe_replacement_is_refused(self):
+        from codex_wake.wake_mode_runtime import _peer_read_target
+        from codex_wake.runtime_delivery import RuntimeTargetError
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / 'cli'
+            p.write_text('#!/bin/sh\nexit 1\n')
+            p.chmod(0o700)
+            original = dict(TARGET, codex_cmd=str(p))
+            self.assertIs(_peer_read_target(original, dict(TARGET, codex_cmd='/not-selected')), original)
+            p.chmod(0o777)
+            with self.assertRaises(RuntimeTargetError):
+                _peer_read_target(dict(TARGET, codex_cmd=str(Path(d) / 'removed')), dict(TARGET, codex_cmd=str(p)))
+
+    def test_failed_peer_readback_is_unavailable_not_in_progress(self):
+        from codex_wake.wake_mode_runtime import _pending_peer
+        from codex_wake.runtime_delivery import RuntimeTargetError
+        peer = dict(id='old', target=TARGET, prompt='check', native_delivery=dict(state='accepted'))
+        with tempfile.TemporaryDirectory() as d, patch('codex_wake.wake_mode_runtime._peer_records', return_value=iter([peer])), patch('codex_wake.wake_mode_runtime._terminal_receipt', return_value=None), patch('codex_wake.wake_mode_runtime._peer_read_target', side_effect=OSError('unavailable')):
+            with self.assertRaisesRegex(RuntimeTargetError, '^peer_reconciliation_unavailable$'):
+                _pending_peer(Path(d), dict(id='new', target=TARGET), Mock())

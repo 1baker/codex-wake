@@ -738,3 +738,13 @@ Enrollment preserves cumulative fresh usage, original deadline, and shared stop
 state. It cannot mint or renew allowance. See
 [existing goal limits](existing-goal-limits.md) for host installation,
 legacy compatibility and the private local transport boundary.
+
+## Registration readiness readback
+
+For mode-aware native wakes inspect `harness` as well as `monitor.ready` and
+`armed`. `held_harness` means the intent was retained but its exact-recipient
+read or historical peer receipts are not yet qualified. Keep the same ID; do not
+claim delivery readiness or create a duplicate. Preflight is read-only and
+point-in-time, not a credential grant, future idle promise or delivery receipt.
+Historical removed launchers may use the current intent's qualified CLI only for
+exact readback; original submission identity and no-replay rules remain intact.

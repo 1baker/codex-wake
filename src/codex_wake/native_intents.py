@@ -138,14 +138,21 @@ def _receipt(args, record, path, deduplicated):
         value["session_mode"] = record["target"]["session_mode"]
     owner_held = record.get('policy_outcome', {}).get('state') in ('held', 'retired')
     unsupported = projection['basis'] == 'outside_supported_calendar'
-    armed = bool(monitored and not unanchored and not owner_held and not unsupported
+    harness = None
+    if monitored and record.get('target', {}).get('session_mode'):
+        from .wake_mode_runtime import registration_harness_readiness
+        harness = registration_harness_readiness(root, record)
+        value['harness'] = harness
+    harness_held = harness is not None and harness['state'] != 'ready'
+    armed = bool(monitored and not harness_held and not unanchored and not owner_held and not unsupported
                  and record['time_recovery'].get('state') not in ('pending_time', 'missed_deadline')
                  and record['status'] in ('pending', 'firing'))
     value.update(projection, armed=armed,
-        scheduling_status=('held_owner_policy' if owner_held else 'unsupported_calendar' if unsupported else 'armed' if armed else 'retained_unmonitored' if not monitored
+        scheduling_status=('held_harness' if harness_held else 'held_owner_policy' if owner_held else 'unsupported_calendar' if unsupported else 'armed' if armed else 'retained_unmonitored' if not monitored
             else 'retained_pending_time' if record['status'] == 'pending' else record['status']),
         monitor=dict(ready=monitored, wake_root=str(root), required_schema=record['schema_version']),
-        next_action=('Choose a representable due time and delivery expiry within ISO calendar years1–9999.' if unsupported else
+        next_action=('Inspect harness readiness and original peer receipts; retain this wake and recheck after recovery.' if harness_held else
+            'Choose a representable due time and delivery expiry within ISO calendar years1–9999.' if unsupported else
             'Inspect owner completion policy; this intent remains held or retired.' if owner_held else
             'Monitor owns this intent; inspect delivery separately.' if armed else
             'Enroll a compatible monitor for this exact wake root; then reconcile this retained ID, do not create a duplicate.'

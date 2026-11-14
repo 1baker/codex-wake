@@ -216,6 +216,53 @@ def _peer_records(root, deadline):
                 yield value
 
 
+def _peer_read_target(original, current):
+    """Use current read transport only for a removed historical CLI, not input."""
+    import os
+    import stat
+    try:
+        Path(original['codex_cmd']).stat()
+        return original
+    except FileNotFoundError:
+        pass
+    replacement = Path(current['codex_cmd'])
+    info = replacement.stat()
+    if (not replacement.is_absolute() or not stat.S_ISREG(info.st_mode)
+            or info.st_uid not in (0, os.geteuid()) or info.st_mode & 0o022
+            or not os.access(replacement, os.X_OK)):
+        raise RuntimeTargetError('unavailable', 'peer_read_transport_unqualified')
+    # Endpoint and exact conversation were compared by the caller. No saved
+    # target, submission, policy, prompt or terminal binding is rewritten.
+    return dict(original, codex_cmd=str(replacement))
+
+
+def registration_harness_readiness(root, record):
+    """Read only: never resume/load a conversation or submit a native turn."""
+    import time
+    from .native_protocol import native_request
+    target = record['target']
+    try:
+        response = native_request(target['endpoint'], target['codex_cmd'],
+            'thread/read', dict(threadId=target['thread_id'], includeTurns=False), 5)
+        thread = response.get('thread', {})
+        if thread.get('id') != target['thread_id']:
+            return dict(state='unavailable', reason='recipient_identity_unverified')
+        if thread.get('status', {}).get('type') not in ('idle', 'active', 'notLoaded'):
+            return dict(state='unavailable', reason='recipient_state_unverified')
+        for peer in _peer_records(root, time.monotonic() + 5):
+            other = peer.get('target', {})
+            if (peer.get('id') != record['id'] and other.get('transport') == 'native'
+                    and other.get('thread_id') == target['thread_id']
+                    and other.get('endpoint') == target['endpoint']
+                    and peer.get('native_delivery', {}).get('state') in ('accepted', 'uncertain')
+                    and _terminal_receipt(root, peer) is None):
+                return dict(state='held', reason='peer_history_reconciliation_required')
+        return dict(state='ready', reason='exact_native_read_verified',
+                    recipient_state=thread['status']['type'])
+    except Exception:
+        return dict(state='unavailable', reason='native_harness_read_unavailable')
+
+
 def _pending_peer(root, record, adapter):
     import time
     from .native_delivery import native_prompt
@@ -238,7 +285,7 @@ def _pending_peer(root, record, adapter):
                 if remote_reads >= 1 or time.monotonic() >= deadline:
                     return True, background_owned
                 remote_reads += 1
-                recipient = adapter.resolve(other)
+                recipient = adapter.resolve(_peer_read_target(other, target))
                 evidence = adapter.reconcile(recipient, native_prompt(root, peer)).evidence
                 if recipient.runtime != 'codex' or recipient.session_id != target['thread_id'] or not _terminal_evidence(evidence):
                     return True, background_owned
@@ -246,7 +293,7 @@ def _pending_peer(root, record, adapter):
             background_owned = (background_owned or delivery.get('route') == 'background'
                 or other.get('session_mode') == 'background' and bool(delivery.get('turn_id')))
     except Exception:
-        return True, background_owned
+        raise RuntimeTargetError('unavailable', 'peer_reconciliation_unavailable') from None
     return False, background_owned
 
 
@@ -269,7 +316,12 @@ def guard_mode_dispatch(function):
             if reason:
                 replace_record(root, found, checked)
                 return DispatchResult('skipped' if checked['status'] == 'cancelled' else 'requeued', reason)
-            pending, background_owned = _pending_peer(root, record, base) if record.get('native_delivery', {}).get('state') != 'uncertain' else (False, False)
+            try:
+                pending, background_owned = _pending_peer(root, record, base) if record.get('native_delivery', {}).get('state') != 'uncertain' else (False, False)
+            except RuntimeTargetError:
+                held = dict(record, status='pending', policy_outcome=dict(state='held', reason='peer_reconciliation_unavailable'))
+                replace_record(root, found, held)
+                return DispatchResult('requeued', 'peer_reconciliation_unavailable')
             if pending:
                 held = dict(record, status='pending', policy_outcome=dict(state='held', reason='conversation_check_in_progress'))
                 replace_record(root, found, held)
