@@ -9862,3 +9862,8 @@ operator/subset/scopes/actions protect consent. Existing webhook8820 stays intac
 proposed exact OAuth/MCP backend37186. Installed dev21 stdio511tools and authorized
 read PASS. Source focused33PASS29.809s; later UI/IdP acceptance retained separately.
 Human client-installation scope/owner consent remains separate from server readiness.
+
+Plan0235 runtime proposal now pins8821, outside the warned ephemeral range; webhook
+8820 unchanged. Installed candidate UID1017 seven tests PASS7.661s. Source33PASS
+30.319s; public source PR647 and exact ingress packet remain gated on shared Cooper
+Authelia restart approval. No live routing/auth/account change performed.
