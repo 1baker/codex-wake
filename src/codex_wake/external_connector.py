@@ -27,14 +27,21 @@ from .external_connector_consent import BrowserConsent
 
 
 class ConnectorVerifier:
-    def __init__(self, authority, owner):
-        self.authority, self.owner = authority, owner
+    def __init__(self, authority, config):
+        self.authority, self.config = authority, config
+
+    def actor(self, token):
+        actor = self.authority.authenticate(token)
+        if actor.subject != self.config['owner'] or not actor.scopes <= set(self.config['scopes']):
+            raise AuthError()
+        if any(not any(all(target.get(key)==value for key,value in allowed.items())
+                       for allowed in self.config['targets']) for target in actor.targets):
+            raise AuthError()
+        return actor
 
     async def verify_token(self, token):
         try:
-            actor = self.authority.authenticate(token)
-            if actor.subject != self.owner:
-                return None
+            actor = self.actor(token)
             return AccessToken(token=token, client_id=actor.client_id, subject=actor.subject,
                                scopes=sorted(actor.scopes), expires_at=int(actor.expires_at),
                                resource=actor.resource)
@@ -67,14 +74,14 @@ def create_app(config, root, *, identify=None, operations=None):
     from .unified_connectors import check_action, check_legacy_content, delegated_content_scope
     from .mcp_server import SPECS
     protected = ProtectedOperations(authority, operations)
+    verifier = ConnectorVerifier(authority, config)
     consent = BrowserConsent(authority, config, identify)
     entries = {tool_name(canonical(operation)): (operation, schema) for operation, schema in TOOLS.values()}
 
     def current_actor():
         token = get_access_token()
         if token is None: raise AuthError()
-        actor = authority.authenticate(token.token)
-        if actor.subject != config['owner']: raise AuthError()
+        actor = verifier.actor(token.token)
         return token.token, actor
 
     async def list_tools(context, params):
@@ -131,7 +138,7 @@ def create_app(config, root, *, identify=None, operations=None):
         resource_metadata_url=AnyHttpUrl(issuer + '/.well-known/oauth-protected-resource/mcp'))
     mcp = AuthContextMiddleware(mcp)
     mcp = AuthenticationMiddleware(mcp, backend=BearerAuthBackend(
-        ConnectorVerifier(authority, config['owner']), resource_server_url=AnyHttpUrl(issuer + '/mcp')))
+        verifier, resource_server_url=AnyHttpUrl(issuer + '/mcp')))
     def guarded(handler):
         async def endpoint(request):
             try:

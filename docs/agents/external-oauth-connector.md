@@ -32,7 +32,9 @@ That callback was observed in the existing Previews deployment. Copy the exact
 callback actually shown for the intended new client; never add wildcards. A local
 Codex client is a separate installation, with its own exact callback and credentials.
 `scopes` and `targets` bound what browser consent may grant; they grant nothing on
-startup. Configure only the operator's intended maximum. All eleven existing
+startup. Configure only the operator's intended maximum. A token broader than the
+current host scope/target ceiling is refused after policy reload; existing effect
+records are retained, and explicit revocation remains a separate operation. All eleven existing
 controller scopes are supported; content observation and terminal input stay
 separate. The UI requires an explicit operator/subset selection. Restricted mode
 requires named canonical actions; grants expire at the displayed deadline.

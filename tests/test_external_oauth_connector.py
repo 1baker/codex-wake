@@ -187,4 +187,9 @@ class ExternalConnectorTests(unittest.TestCase):
                 self.assertEqual(set(token.json()['scope'].split()),{'observe','content.observe'})
                 wrong_resource=await client.post('/token',data=dict(grant_type='refresh_token',client_id=params['client_id'],refresh_token=token.json()['refresh_token'],resource='https://other.example/mcp'))
                 self.assertEqual(wrong_resource.status_code,400)
+                narrowed=create_app(dict(self.config(),scopes=['observe']),Path(root),identify=lambda request:'operator',operations=self.operations(Path(root)))
+                async with narrowed.router.lifespan_context(narrowed):
+                    async with httpx.AsyncClient(transport=httpx.ASGITransport(narrowed),base_url='https://wake.example') as other:
+                        response=await other.post('/mcp',headers={'Authorization':'Bearer '+token.json()['access_token'],'Accept':'application/json, text/event-stream'},json=dict(jsonrpc='2.0',id=1,method='initialize',params=dict(protocolVersion='2025-03-26',capabilities={},clientInfo={'name':'test','version':'1'})))
+                        self.assertEqual(response.status_code,401)
         with tempfile.TemporaryDirectory() as root:asyncio.run(scenario(root))
