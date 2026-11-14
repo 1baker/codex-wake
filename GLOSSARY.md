@@ -510,3 +510,13 @@ without enrollment, actor reauthorization, client launch or notification replay.
 A mailbox whose persisted time policy requires the configured StableTime service's
 finite authenticated UTC evidence, without guest-clock or plain-NTP fallback.
 Existing mailbox instances observe activation at their next transaction.
+
+**Harness readiness**:
+A read-only observation of the selected native runtime and exact recipient at
+registration. It is separate from durable retention and monitor health, and is
+rechecked at dispatch. Unreconciled prior submissions hold admission.
+
+**Historical read transport**:
+The current intent's qualified CLI used only to observe an exact old native
+submission when its saved executable is gone. It never replaces the original
+binding, grants authority, or authorizes submission replay.

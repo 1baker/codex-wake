@@ -1218,3 +1218,20 @@ The source now supports [managed conversation inventory](docs/managed-inventory.
 [explicit wake lifetime/startup policy](docs/wake-policy.md). CLI and MCP use the
 same state and authority boundaries. These source additions do not install or
 activate new host permissions, lifecycle adapters or production monitors.
+
+### Native harness readiness and historical receipts
+
+Mode-aware native registration reports `harness` separately from `monitor`.
+`armed` requires a successful exact-recipient read and no unreconciled peer
+history. `held_harness` retains the original intent: inspect its reason rather
+than create a replacement. Preflight never resumes/loads a thread or starts a
+turn; current activity can change before delivery and is rechecked there.
+
+When a prior accepted submission's CLI executable has been removed, native peer
+reconciliation may use the current intent's qualified CLI for read-only access
+to the same endpoint and conversation. Exact prompt/terminal evidence is still
+required and its receipt remains bound to the original target/submission. One
+remote historical read is allowed per admission poll. Missing/ambiguous evidence
+stays held; read failures report `peer_reconciliation_unavailable`, distinct
+from an actual unfinished check. No old work is resubmitted or marked complete
+from age, current idleness, or a different CLI's existence.
