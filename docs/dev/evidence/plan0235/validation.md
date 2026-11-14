@@ -43,3 +43,10 @@ with uv configuration disabled, without changing product code or tests.
 Ingress renderer nine cases PASS; inventory validates. Proposed backend port
 revised from37186 to pinned8822 after the validator identified the ephemeral-range
 risk. No Python/package change; current candidate artifact remains identical.
+
+All348owned package members (346Python plus2data files) match source/wheel/UID1017
+installation exactly; installed connectors serve --help PASS. Final backend8822
+availability checked;8821 was occupied and never adopted. Actual live-renderer
+baseline equals current live inventory, and all unrelated rendered entries remain
+identical in the candidate. Shared-auth helper dry-run confirms a new rule would be
+added. Current public metadata404; public publication has not happened.

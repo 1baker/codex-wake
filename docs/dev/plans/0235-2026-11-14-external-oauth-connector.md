@@ -7,15 +7,19 @@ Branch: feat/external-oauth-0235
 
 ## Current State
 
-External OAuth exposure and connector-install skills loaded. Current deployed dev21
-already owns scoped grants, target/action fencing and canonical operations. Previews
-uses explicit owner browser consent; LitScout uses SDK token verification. Existing
-codex-wake HTTPS host publishes only POST /github/webhook to8820: preserve it.
-SDK transport, canonical filtered catalog and explicit owner/subset browser consent
-implemented. Public HTTP/SDK tests pass; current stdio initialize/list/read remains
-qualified. Existing Previews callback recovered from current private configuration.
-Installation client scope is pending an operator response; no account change or
-broad permission selection inferred. Packaging and exact ingress publication follow.
+Server PR647 and ingress PR13 are open and mergeable. Source33tests PASS30.319s;
+installed immutable wheel c03fbfb2 under UID1017 passes7tests7.661s and all348owned
+package members match source/wheel/install. Ingress9renderer tests and inventory
+validation PASS. Final backend8822 confirmed available; webhook8820 unchanged.
+Readiness/runtime/ingress candidates retained in user-scoped external-oauth-0235 state.
+
+Required next action: await explicit operator approval to merge/deploy and add the
+exact codex-wake host rule through the supported Cooper Authelia helper. Dry-run
+confirms the rule is absent; applying it recreates the shared realm and signs out
+existing Cooper browser sessions. Do not adopt live routes or auth changes without
+that approval. Current public metadata404; no publication or production grant.
+Client installation scope/owner OAuth consent remains separate and unselected.
+Existing services, root dirty work, stdio and client configuration are unchanged.
 
 ## Scope and architecture
 
