@@ -9887,3 +9887,9 @@ owner-only check. Named, exact-client, expiring private delegations preserve
 separate IdP identity and grant subject, scope/target/mode ceilings and actual
 consenter audit. Regression initially403 instead of200; source repair green.
 Existing browser connection retained; no implicit mode or grant creation.
+
+P236 deployed: PR651/fa9ae165, dev23-a22e27d connector service confirmed active.
+Preserved historical649 shutdown settings and all historical module payloads.
+Live Cooper agent now reaches ChatGPT consent, both authority modes unchecked.
+No production grant selected or minted. Bug650 closes; client linking awaits
+explicit mode per operator spec. Root/browser/core state preserved.
