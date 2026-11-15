@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import subprocess
 import sys
 import tempfile
 import threading
@@ -55,8 +56,15 @@ class ResumeProtocolTests(unittest.TestCase):
         self.profiles=self.base/'profiles.json'
         self.save_profiles()
         self.inv=ManagedInventory(self.root,now=lambda:NOW)
-        baseline=self.sample(True)
-        self.agent=self.inv.enroll(baseline)['agent']
+        # Recovery must replace an ended generation, never the live test caller.
+        prior = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])
+        try:
+            self.binding_file.write_text(json.dumps(dict(process_identity(prior.pid), pid=prior.pid)))
+            baseline=self.sample(True)
+            self.agent=self.inv.enroll(baseline)['agent']
+        finally:
+            prior.terminate(); prior.wait(timeout=5)
+            self.binding_file.write_text(json.dumps(self.identity))
         self.config['recovery_callers']={'local-operator':[self.agent['managed_agent_id']]};self.save_profiles()
         PermissionStore(self.root).configure({'version':1,'global':{'actions':{'resume.recover':'allow'}}},Principal('op','operator'),expected_revision=0)
         self.arguments=dict(managed_agent_id=self.agent['managed_agent_id'],profile='saved',intent='protocol',

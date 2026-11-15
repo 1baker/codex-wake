@@ -42,16 +42,19 @@ def explicit_terminal_absent(socket_path: str | None) -> bool:
 
 
 def tmux_inventory(socket_path: str | None, timeout: float, *, shell_metadata: bool = False) -> list[dict[str, Any]]:
-    if explicit_terminal_absent(socket_path):
-        return []
     deadline = time.monotonic() + timeout
     command = ['tmux'] + (['-S', socket_path] if socket_path else [])
     fields = ['session_id', 'session_name', 'window_id', 'window_index', 'window_name',
               'pane_id', 'pane_index', 'pane_title', 'pane_current_path', 'pane_tty']
     if shell_metadata:
         fields += ['pane_current_command', 'pane_pid']
-    result = subprocess.run(command + ['list-panes', '-a', '-F', '\t'.join('#{' + x + '}' for x in fields)],
-                            capture_output=True, text=True, timeout=timeout, check=True)
+    try:
+        result = subprocess.run(command + ['list-panes', '-a', '-F', '\t'.join('#{' + x + '}' for x in fields)],
+                                capture_output=True, text=True, timeout=timeout, check=True)
+    except subprocess.CalledProcessError as error:
+        if error.returncode == 1 and explicit_terminal_absent(socket_path):
+            return []
+        raise
     rows = []
     parsed = [line.split('\t') for line in result.stdout.splitlines()]
     if any(len(values) != len(fields) for values in parsed):

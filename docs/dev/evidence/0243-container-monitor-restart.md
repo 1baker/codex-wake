@@ -120,3 +120,11 @@ and proves the prior confirmed process generation ended before the launch fence.
 An unreadable yet existing process remains held. Missing pathname is only a
 bounded address census, never process-death proof. Exactdev37 supersedes the
 immutable dev36 candidate; no uncertain intent is cleared or retried.
+
+The first broader candidate runs each had one isolated-profile spawn failure:
+preemptive socket absence bypassed the existing successful terminal census seam.
+The final census first attempts the real list-panes operation, and qualifies
+explicit private-address absence only after exit1. Successful observations are
+retained. No fixture expansion was needed. Prior-generation protocol tests now
+enroll an actual child generation and end/reap it before recovery, rather than
+expecting recovery to replace the still-live test caller. Failures are retained.
