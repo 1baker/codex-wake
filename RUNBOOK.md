@@ -9957,3 +9957,23 @@ production config/policy hashes preserved. Focused pinnedlint/compile/help/polic
 diff checks PASS. No new fixture tests, core-suite rerun, paid CI or package
 installation. Evidence0244; native busy-turn queue/calendar/reboot/soak excluded.
 Memory disposition forbidden; no memorywrite requested.
+
+
+## 2026-11-15 | P245 actual native busy-turn overlap (#688)
+
+Existing dev37; no package/shared service change. Actual native inProgress turn
+and scoped live command PID/argv/generation held through later due slots, with
+exactly one native input while busy. Skip accepted from original run02 via
+read-only final-answer reconciliation; latest/queue passed run03, completed
+input totals1/2/3 with exact wake/submission/turn identities and original anchors.
+Empty setup timeout and two runner assumptions retained; no unknown submission
+replay. Ongoing command evidence differs from persisted completed tool records;
+commentary differs from final-answer phase. Required focused checks PASS; no
+fixture framework, broad suite/UID reinstall or paidCI. Owned monitors/servers/
+TUI/7command generations gone, policies defaultdeny/schedules canceled, no
+pending/firing. Native/browser/testdaemon and production config/policy preserved.
+Default operator panes43→41, two other-project panes disappeared with cause
+unestablished; all task terminal mutations private, native commands only owned
+wait.py. No blanket global-preservation claim or unrelated restoration action.
+Evidence0245. Review Standards0, Spec2/P2 corrected; attribution needs evidence.
+Memory disposition forbidden.
