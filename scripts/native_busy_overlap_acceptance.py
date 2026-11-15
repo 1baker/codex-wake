@@ -181,6 +181,9 @@ def main():
             assert clock()['utc']['upper'] < start+20, 'command did not start before later occurrences'
             entry['gate'] = gate
             observed = set()
+            expected_busy = {'skip':['submitted','skipped','skipped','skipped'],
+                             'latest':['submitted','coalesced','coalesced','queued'],
+                             'queue':['submitted','skipped','queued','queued']}
             until = time.monotonic()+110
             while True:
                 assert time.monotonic() < until, 'busy classification deadline'
@@ -198,13 +201,10 @@ def main():
                         entry['busy_observations'].append(dict(index=occurrence['index'], turn_id=turn['id'],
                             user_message_id=user['id'], native_status=turn['status'], command_pid=gate['pid'],
                             clock=clock(), state=occurrence['state'], tool_item_ids=[i['id'] for i in tools]))
-                if len(value['occurrences']) == 4 and value['occurrences'][0]['state'] == 'submitted': break
+                if [i['state'] for i in value['occurrences']] == expected_busy[policy]: break
                 time.sleep(.5)
             assert observed == {1,2,3}
             anchors(value, start, 20, 4)
-            expected_busy = {'skip':['submitted','skipped','skipped','skipped'],
-                             'latest':['submitted','coalesced','coalesced','queued'],
-                             'queue':['submitted','skipped','queued','queued']}
             assert [i['state'] for i in value['occurrences']] == expected_busy[policy]
             save(policy+'-busy.json', value); save(policy+'-native-busy.json', data)
             (case/'release').touch(exist_ok=False)
