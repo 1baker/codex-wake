@@ -140,6 +140,40 @@ class NativeLargeResponseTests(unittest.TestCase):
             adapter.reconcile(adapter.resolve(dict(transport='native',thread_id='owned',
                 endpoint='unix:///owned',codex_cmd='/bin/true')),'retained prompt')
 
+    def test_exact_prompt_with_malformed_native_identity_is_not_evidence(self):
+        from codex_wake.codex_runtime import CodexRuntimeAdapter
+        from codex_wake.records import WakeError
+        for message_id, client_id in ((None,None),('',None),(42,None),('message',''),('message',42)):
+            with self.subTest(message_id=message_id,client_id=client_id):
+                def request(endpoint,codex,method,params,timeout):
+                    if method=='thread/queue/list':return {'data':[],'nextCursor':None}
+                    if method=='thread/read':return {'thread':{'id':'owned'}}
+                    self.assertEqual(method,'thread/turns/list','no input calls')
+                    return {'data':[{'id':'turn','status':'completed','itemsView':'full','items':[
+                        {'type':'userMessage','id':message_id,'clientId':client_id,
+                         'content':[{'type':'text','text':'retained prompt'}]}]}],'nextCursor':None}
+                def forbidden(*args,**kwargs):raise AssertionError('reconciliation cannot write')
+                adapter=CodexRuntimeAdapter(read_thread=forbidden,request=request,run=forbidden,project_failure=forbidden)
+                with self.assertRaises(WakeError):
+                    adapter.reconcile(adapter.resolve(dict(transport='native',thread_id='owned',
+                        endpoint='unix:///owned',codex_cmd='/bin/true')),'retained prompt')
+
+    def test_absent_native_client_id_retains_exact_message_id_fallback(self):
+        from codex_wake.codex_runtime import CodexRuntimeAdapter
+        def request(endpoint,codex,method,params,timeout):
+            if method=='thread/queue/list':return {'data':[],'nextCursor':None}
+            if method=='thread/read':return {'thread':{'id':'owned'}}
+            self.assertEqual(method,'thread/turns/list','no input calls')
+            return {'data':[{'id':'turn','status':'completed','itemsView':'full','items':[
+                {'type':'userMessage','id':'original-message','content':[{'type':'text','text':'retained prompt'}]}]}],
+                'nextCursor':None}
+        def forbidden(*args,**kwargs):raise AssertionError('reconciliation cannot write')
+        adapter=CodexRuntimeAdapter(read_thread=forbidden,request=request,run=forbidden,project_failure=forbidden)
+        value=adapter.reconcile(adapter.resolve(dict(transport='native',thread_id='owned',
+            endpoint='unix:///owned',codex_cmd='/bin/true')),'retained prompt')
+        self.assertEqual(value.evidence['client_message_id'],'original-message')
+        self.assertEqual(value.evidence['user_message_id'],'original-message')
+
     def test_method_not_found_is_distinct_from_other_native_rejections(self):
         from codex_wake.native_protocol import native_request, NativeCapabilityUnavailable
         from codex_wake.records import WakeError

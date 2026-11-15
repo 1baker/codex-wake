@@ -44,3 +44,15 @@ No fixture framework, provider prompt or runtime write was added for this repair
 Private commands/results/native schema and synthetic readback receipts live
 under user-state history674. Final source/UID qualification and actual installed
 adoption evidence will be appended after their gates. Hosted paid CI excluded.
+
+## Independent review and bounded remediation
+
+Review at6c1805b7 againsteb14ec93: Standards no consequential findings; Spec one
+accepted P2. Exact-prompt user messages could retain absent/non-string identities.
+The existing classifier predated this patch, but exact message/client identity
+is required by this packet. A public reconcile regression failed on five malformed
+identity cases, then passed after validation. Missing clientId still uses the
+valid native message ID; invalid explicitly supplied client IDs are not promoted
+into a fallback. Matching queue identities must also be valid nonempty strings.
+Eight protocol/reconciliation tests PASS after this bounded remediation; no second
+review loop or new native writes. Final combined/package gates remain separate.

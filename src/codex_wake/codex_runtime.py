@@ -183,7 +183,10 @@ class CodexRuntimeAdapter:
             page = request("thread/queue/list", dict(threadId=recipient.session_id, limit=100, cursor=cursor))
             for queued in page["data"]:
                 if exact(queued["input"]):
-                    identity = queued["clientUserMessageId"]
+                    identity = queued.get("clientUserMessageId")
+                    if (not isinstance(identity, str) or not identity
+                            or not isinstance(queued.get('id'), str) or not queued['id']):
+                        raise WakeError("native queue identity unavailable")
                     if identity in evidence and evidence[identity].get("queue_id") != queued["id"]:
                         return RuntimeReconciliation(None, "multiple_native_submissions")
                     evidence[identity] = dict(
@@ -250,7 +253,12 @@ class CodexRuntimeAdapter:
         for turn in turns():
             for item in turn["items"]:
                 if item.get("type") == "userMessage" and exact(item.get("content")):
-                    identity = item.get("clientId") or item["id"]
+                    identity = item.get("clientId")
+                    if identity is None:
+                        identity = item.get("id")
+                    if (not isinstance(item.get('id'), str) or not item['id']
+                            or not isinstance(identity, str) or not identity):
+                        raise WakeError("native message identity unavailable")
                     previous = evidence.get(identity, {})
                     if previous.get("source") == "native_turn" and (
                             previous["turn_id"] != turn["id"] or previous["user_message_id"] != item["id"]):
