@@ -37,7 +37,9 @@ def main():
     parser.add_argument('--target', type=Path, required=True)
     parser.add_argument('--artifacts', type=Path, required=True)
     parser.add_argument('--expected-prefix', type=Path, required=True)
+    parser.add_argument('--policies', nargs='+', choices=('skip','latest','queue'), default=['skip','latest','queue'])
     args = parser.parse_args()
+    assert len(args.policies) == len(set(args.policies)), 'duplicate policy selection'
     os.umask(0o077)
     import codex_wake
     from codex_wake.native_protocol import native_request
@@ -147,7 +149,7 @@ def main():
         gate_py = Path(target['cwd'])/'wait.py'
         gate_py.write_text(GATE_PROGRAM)
         baseline = 1
-        for policy in ('skip', 'latest', 'queue'):
+        for policy in args.policies:
             case = Path(target['cwd'])/policy; case.mkdir(mode=0o700); gates.append(case)
             nonce = 'cw688-'+policy+'-'+str(time.monotonic_ns())
             owner = store(policy)
@@ -227,7 +229,7 @@ def main():
                 matches = [(t, m) for t, m in added if wake['id'] in json.dumps(m['content'])
                            and wake['native_delivery']['submission_id'] in json.dumps(m['content'])]
                 assert len(matches) == 1 and matches[0][0]['status'] == 'completed'
-                assert [i['text'] for i in matches[0][0]['items'] if i['type'] == 'agentMessage'] == [marker]
+                assert [i['text'] for i in matches[0][0]['items'] if i['type'] == 'agentMessage' and i.get('phase') == 'final_answer'] == [marker]
                 assert any(i['type'] == 'commandExecution' and str(gate_py) in i.get('command', '') and nonce in i.get('command', '') for i in matches[0][0]['items']), 'completed native command record missing'
                 entry['completed_turns'].append(matches[0][0]['id'])
             ended = process_identity(gate['pid'])
