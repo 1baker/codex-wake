@@ -1771,3 +1771,7 @@ PR658/659 integrated; dev27 deployed; real ChatGPT greeting queued to exact nati
 
 Status: DONE. Local ticket CW-0240. Plan: [Native input reconciliation](docs/dev/plans/0240-2026-11-14-native-input-result-reconciliation.md).
 PR661 deployed as dev28; original ChatGPT round-trip result now reports completed with exact answer.
+
+## P241 | External connector acceptance
+
+Status: COMPLETE. All nine childtickets #664–#672 closed from actual deployed acceptance. One final Standards/Spec review and one bounded TDD remediation pass completed; no blocking findings remain. Plan [0241](docs/dev/plans/0241-2026-11-14-connector-acceptance.md), review evidence [0241](docs/dev/evidence/0241-final-review.md). Product repairs merged/deployeddev34; PR676 publishes acceptance artifacts; parent663 unchanged.

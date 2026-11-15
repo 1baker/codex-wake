@@ -9913,3 +9913,16 @@ Pinned native lookup bypasses unrelated account discovery only after complete ta
 ## 2026-11-14 | P240 stale native input cancellation
 
 Captured replay reproduces cached cancelled result despite exact native turn reporting completed. Terminal early return prevented fresh observation. PR661/bfb0a1d0 allows read-only completion correction only with original turn/client/input match and records prior cancellation in a correction event. Version dev28 qualified under UID1017: 14 focused checks, 339 payload members matched. Real ChatGPT reread reports completed / owner_observed / exact reply for original operation, no new prompt. Initial interrupted snapshot origin remains unestablished. Only connector restarted. Memory disposition forbidden: no explicit memory write requested.
+
+## 2026-11-14 | P241 connector acceptance checkpoint
+
+Published spec663 and nineapproved vertical tickets. Root owned664; one-ticket workers handledothers under threelane cap and serializedlive resources. Eightclosed from actualOAuth/MCP/native evidence. Sourcecensus repair PR673 and complete-native-observation budget PR675 qualifiedunderUID1017 and deployeddev30; same native daemon2082 preserved. Localconsolidated64checksPASS36.168s. No paidCI.
+
+668 remains open: visible restore requires hostbindings and commonpermissionpolicy adoption, which is root-wide and outside approved permissionboundary. Restrictive proposal retained; no policy activated. Operatorquestionpending. Finalreview0/TDDremediation0 pendingorderedclosuregate. Task-ownedmonitor reached its declaredruntime limit; processabsent, no pending/firing wakes. Accepted submittedrecords preserved without syntheticack. Temporarytestgrants revoked and ownedTUI/process cleanup verified. Parent663 unchanged. Memorydisposition forbidden: no explicitmemorywriterequest.
+
+
+## 2026-11-14 | P241 complete acceptance and final review
+
+Operator approved host-wide common-policy adoption. Root used supported migration/CAS owners, preserved named defaults/history and withdrew the exact temporary recoveryallow atrev5. PR677–680 repair trusted-controller admission, saved recipient observation, clock-domain alignment and bounded original-intent readiness reconciliation; exactdev34 source/package qualified underUID1017 before working installation. Native2082 preserved. Actualdue visibly restored sameownedconversation/harness/cwd, one correlatednativeinput/completedreply; probe importfailure preserved and recoveredread-only proof supplied withoutreplay. Earlier held/uncertainjournals remainunchanged; allownedruntime cleaned, acceptedsubmittedrecords retained/noack.
+
+Allninechildren664–672 closed; parent663 unchanged. Exactlyone Standards/Spec review plusone boundedTDDremediation completed. ReceiptCLIred/green protectspriorfailurefiles; live scoped-read checks and fresh existingChatGPTreadback fill accepted evidencegaps. Local selectedpresubmit107PASS43.533s; pinnedruff/policywiring/compileall/diffPASS. No hostedpaidCI/comprehensiveclaim. Productdeployeddev34; PR676 publishesreview-readyacceptanceartifacts. Nonblockingtransportduplicationmaintenance remainsoutsideboundedtask. Memorydispositionforbidden; no explicit memorywrite requested.

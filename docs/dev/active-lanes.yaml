@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: connector-acceptance-0241
+    owner: root / ecochran76
+    objective: Qualify external connector session control and close tickets
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/664, https://github.com/CochranResearchGroup/codex-wake/issues/665, https://github.com/CochranResearchGroup/codex-wake/issues/666, https://github.com/CochranResearchGroup/codex-wake/issues/667, https://github.com/CochranResearchGroup/codex-wake/issues/668, https://github.com/CochranResearchGroup/codex-wake/issues/669, https://github.com/CochranResearchGroup/codex-wake/issues/670, https://github.com/CochranResearchGroup/codex-wake/issues/671, https://github.com/CochranResearchGroup/codex-wake/issues/672]
+    plan: docs/dev/plans/0241-2026-11-14-connector-acceptance.md
+    branch: feat/connector-acceptance
+    target: origin/main
+    plan_state: COMPLETE
+    custody_state: PUBLISHED_REVIEW
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-14
+    disposition: All nine closed; review1 and remediation1 complete; PR676 published review; owned checkout closes after exact remote custody
+
   - id: native-input-reconciliation-0240
     owner: root / ecochran76
     objective: Reconcile stale cancelled input with exact native completion

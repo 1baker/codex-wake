@@ -1,0 +1,378 @@
+{
+  "schema_version": 1,
+  "plan": "0241",
+  "spec_issue": "https://github.com/CochranResearchGroup/codex-wake/issues/663",
+  "spec": "docs/dev/plans/0241-connector-acceptance-spec.md",
+  "integration_branch": "feat/connector-acceptance",
+  "base": "882aae8007e71cc2641c66a742e340e6cf007310",
+  "tip": "cb9d1eaf1b94fb3cd02f2bacb962727ac8f3ace7",
+  "review_fixed_point": "882aae8007e71cc2641c66a742e340e6cf007310",
+  "review_runs": 1,
+  "remediation_passes": 1,
+  "wip_limit": 3,
+  "owner": "ecochran76",
+  "tickets": [
+    {
+      "issue": 664,
+      "title": "Prove duplicate input protection",
+      "blockers": [],
+      "state": "validated",
+      "worker": "root",
+      "owned_paths": [
+        "scripts/connector_duplicate_acceptance.py"
+      ],
+      "validation": [
+        {
+          "command": "installed dev28 Python scripts/connector_duplicate_acceptance.py",
+          "outcome": "PASS",
+          "native_inputs": 1,
+          "same_operation": true,
+          "conflict": "idempotency_conflict",
+          "result": "completed",
+          "cleanup": "archived thread; revoked own grant"
+        }
+      ],
+      "tracker_state": "CLOSED"
+    },
+    {
+      "issue": 665,
+      "title": "Qualify all four busy-input policies",
+      "blockers": [],
+      "state": "validated",
+      "worker": "connector_busy_policies",
+      "owned_paths": [
+        "scripts/connector_busy_policies.py",
+        "tests/test_connector_busy_policies.py",
+        "docs/dev/verification/connector_busy_policies.md"
+      ],
+      "validation": [
+        {
+          "outcome": "PASS",
+          "boundary": "deployed OAuth/MCP",
+          "policies": [
+            "reject",
+            "queue",
+            "steer",
+            "interrupt_then_submit"
+          ],
+          "correlated_answers": true,
+          "stale_turn": "focused public-submit seam regression",
+          "cleanup": "own thread archived/grant revoked/zero owned sleep shells"
+        }
+      ],
+      "tracker_state": "CLOSED",
+      "worker_branch": "test/connector-busy-policies",
+      "result_sha": "d9b36fcce5522fcb3fa50e740c49180971d1bb05",
+      "integration_commit": "b8965671"
+    },
+    {
+      "issue": 666,
+      "title": "Prove conversation continuity after tab closure",
+      "blockers": [],
+      "state": "validated",
+      "worker": "connector_background_continuity",
+      "owned_paths": [
+        "scripts/connector_background_continuity_acceptance.py",
+        "docs/dev/evidence/connector-background-continuity/README.md"
+      ],
+      "validation": [
+        {
+          "outcome": "PASS",
+          "boundary": "deployed OAuth/MCP after realTUIclosure",
+          "same_conversation": true,
+          "visible_tab_recreated": false,
+          "answer": "BACKGROUND_CONTINUITY_CONFIRMED",
+          "saved_history": true,
+          "native_loaded_distinct": true,
+          "cleanup": "own threadarchived/grantrevoked/socketgone/processgone"
+        }
+      ],
+      "tracker_state": "CLOSED",
+      "result_sha": "1de611fa91a6a17114b2d0ea82920f45c5b880a7",
+      "integration_commit": "f0c3e165"
+    },
+    {
+      "issue": 667,
+      "title": "Verify this-session-only wake lifetime",
+      "blockers": [],
+      "state": "validated",
+      "worker": "connector_session_only_wake",
+      "owned_paths": [],
+      "validation": [
+        {
+          "outcome": "PASS",
+          "installed": "0.22.0.dev30",
+          "boundary": "deployed OAuth/MCP +realownedTTYclient",
+          "armed": true,
+          "missingmode": "explicit_schedule_fields_required",
+          "detachment": "realownPTYclient1\u21920; scheduleenabled",
+          "closure": "cancelled:session_closed",
+          "past_due_inputs": 0,
+          "occurrences": [],
+          "cleanup": "schedulecancelled/grantrevoked/threadarchived/ownTUIandPTYclientabsent"
+        }
+      ],
+      "tracker_state": "CLOSED",
+      "result_sha": "8b510c4949d3c991515da489adae66c949a77a67",
+      "blocker": null,
+      "live_state": "sole_live_slot_retest_after_qualified_repair"
+    },
+    {
+      "issue": 668,
+      "title": "Verify re-open-session-live wake restoration",
+      "blockers": [],
+      "state": "validated",
+      "worker": "visible_restore_completion",
+      "owned_paths": [],
+      "validation": [
+        {
+          "outcome": "PASS recovered read-only from immutable actual run",
+          "installed": "0.22.0.dev34",
+          "boundary": "deployed HTTPS OAuth/MCP + real native TUI/new_tab due wake",
+          "same_conversation": true,
+          "same_harness_cwd": true,
+          "native_inputs_after_closure": 1,
+          "completed_reply": "CW668_VISIBLE_RESTORATION",
+          "probe_failure": "local import error after actual completed turn; original receipt preserved, separate read-only qualification; no replay",
+          "cleanup": "own schedule/tab/process/thread/grant/profile/binding cleaned; agents suppressed; monitor stopped; common policy adopted, temporary recovery authority withdrawn rev5"
+        }
+      ],
+      "tracker_state": "CLOSED",
+      "blocker": "Host restore bindings and global common permission policy absent; operator scope decision pending. No policy activated.",
+      "result_sha": "169fcb31e9189bbcf70f99ac1472309d8534befe",
+      "integration_commit": "fead4f42"
+    },
+    {
+      "issue": 669,
+      "title": "Verify background wake routing with and without a live tab",
+      "blockers": [],
+      "state": "validated",
+      "worker": "connector_background_wakes",
+      "owned_paths": [],
+      "validation": [
+        {
+          "outcome": "PASS",
+          "installed": "0.22.0.dev30",
+          "boundary": "actualarmed duewakes publicOAuth/MCP",
+          "same_conversation": true,
+          "live": "existing_tab,1input,correlatedfinal",
+          "closed": "background,1input,correlatedfinal,0attachments",
+          "total_inputs": 2,
+          "cleanup": "bothschedulescancelled/threadarchived/TUIgone/grantrevoked401/noticesclosedwithaudit"
+        }
+      ],
+      "tracker_state": "CLOSED",
+      "live_state": "sole_live_slot_monitor_ready",
+      "result_sha": "6d5e65c37bfc2e53bfedfba77c37c5530f14f57f"
+    },
+    {
+      "issue": 670,
+      "title": "Demonstrate structured slash discovery and result retrieval",
+      "blockers": [],
+      "state": "validated",
+      "worker": "connector_slash_roundtrip",
+      "owned_paths": [
+        "scripts/connector_slash_roundtrip_acceptance.py",
+        "docs/dev/verification/0241/670-slash-roundtrip.md"
+      ],
+      "validation": [
+        {
+          "state": "worker_live_pass_pending_integration",
+          "boundary": "deployed OAuth/MCP",
+          "slash": "/status",
+          "model_submission": false,
+          "unsupported": "/model refused",
+          "cleanup": "grant revoked/401; thread archived"
+        }
+      ],
+      "tracker_state": "CLOSED",
+      "result_sha": "ead71ac9e164917aa7901661cb00b71597143897"
+    },
+    {
+      "issue": 671,
+      "title": "Verify read-only and target-restricted connector grants",
+      "blockers": [],
+      "state": "validated",
+      "worker": "connector_permissions",
+      "owned_paths": [
+        "scripts/connector_permissions_acceptance.py",
+        "docs/dev/evidence/connector-permissions/README.md"
+      ],
+      "validation": [
+        {
+          "outcome": "PASS",
+          "boundary": "deployed OAuth/MCP",
+          "scoped_read": true,
+          "denied_writes": true,
+          "grant_cleanup": "3 revoked/401",
+          "target_cleanup": "archived",
+          "stale_diagnostic": "daemon_unavailable; intended generation guard regressions2PASS"
+        }
+      ],
+      "tracker_state": "CLOSED",
+      "worker_branch": "feat/connector-permissions",
+      "result_sha": "44ffd501b9db13a25f20df30facba5ce036c299c",
+      "integration_commits": [
+        "57546817",
+        "a67f445d"
+      ]
+    },
+    {
+      "issue": 672,
+      "title": "Verify original operation continuity across connector restart",
+      "blockers": [],
+      "state": "validated",
+      "worker": "connector_restart_continuity",
+      "owned_paths": [],
+      "validation": [
+        {
+          "outcome": "PASS",
+          "installed": "0.22.0.dev30",
+          "boundary": "actualinflight nativeop +connectorrestart +freshpublicMCP",
+          "same_grant": true,
+          "same_intent": true,
+          "same_operation": true,
+          "native_input_count": 1,
+          "native_preserved": "PID2082/startticks2000/endpoint/executable",
+          "unrelated_loaded_preserved": 62,
+          "reply": "RESTART_CONTINUITY_CONFIRMED",
+          "cleanup": "threadarchived/grantrevoked401/ownshells0",
+          "first_run": "INCOMPLETE startup502; knowncleanup/revocationverified separately"
+        }
+      ],
+      "tracker_state": "CLOSED",
+      "live_state": "preparation_only",
+      "result_sha": "d8c3a647e572296fa5d71451316e12e66990f125"
+    }
+  ],
+  "worker_worktree_cleanup": {
+    "connector_permissions": "removed by worker after exact remote custody",
+    "connector_busy_policies": "removed by coordinator after clean status and exact remote SHA d9b36fcc"
+  },
+  "live_resource_schedule": {
+    "serial": true,
+    "current_worker": null,
+    "next_worker": null,
+    "reason": "Repeated native setup/readiness failures under parallel probes; one exact owned target per bounded run"
+  },
+  "owned_monitor": {
+    "unit": "cw241-acceptance-monitor-dev34-trace.service",
+    "pid": 3211775,
+    "prefix": "0.22.0.dev34-c3cf1d1",
+    "health": "loop and managed reader verified",
+    "max_seconds": 1200,
+    "cleanup_pending": false,
+    "diagnostic": "Original observe/_codex calls logged/returned unchanged, no injected evidence",
+    "process_absent": true,
+    "termination": "Root stopped after zero pending/firing census; accepted native records preserved"
+  },
+  "shared_repairs": [
+    {
+      "branch": "fix/tmux-inventory-process-scan",
+      "source": "c792e01b",
+      "pr": 673,
+      "state": "deployed",
+      "version": "0.22.0.dev29",
+      "wheel_sha256": "ab599569ede436531160a54b4a806a49ae5aefae4f5b3e4339870f979b8aab56",
+      "checks": "22 UID1017 + handoff regression1;339payloadmembers; real45panes3sFAIL\u2192.11sPASS",
+      "scope": "batch process census; no cache/deadline/ambiguity relaxation"
+    },
+    {
+      "pr": 675,
+      "source": "2906926c",
+      "state": "deployed",
+      "version": "0.22.0.dev30",
+      "wheel_sha256": "c7d7279a6a57c0f66045eba8833adabb10eba35c1f3d50680dc6a792d5b420a3",
+      "checks": "36source+36UID1017 PASS;339payloads equal mergedmain/install",
+      "cause": "Captured real native loadedmetadata TimeoutError5.395s with fasttmux; shared15s fullobservation budget, no partial/ambiguous acceptance"
+    },
+    {
+      "pr": 677,
+      "source": "9d842651",
+      "merged_main": "9b73e307",
+      "state": "deployed",
+      "version": "0.22.0.dev31",
+      "checks": "23 source+23 UID1017 PASS;349 package members exact parity",
+      "cause": "Trusted OAuth controller erroneously rejected before explicit route permission evaluation; session exact-self retained"
+    },
+    {
+      "pr": 678,
+      "source": "eae247d6",
+      "merged_main": "ad01c651",
+      "state": "deployed",
+      "version": "0.22.0.dev32",
+      "checks": "36 source+36 UID1017 PASS;349package members parity",
+      "cause": "Saved exact recipient excluded by loaded-only selector after last frontend disconnects; complete absence now observable, ambiguity refused"
+    },
+    {
+      "pr": 679,
+      "source": "85d03617",
+      "merged_main": "4e414089",
+      "state": "deployed",
+      "version": "0.22.0.dev33",
+      "checks": "37 source+37 UID1017 PASS;349package members parity",
+      "cause": "Guest-clock samples validated against trusted authority; now uses authoritative owner clock uniformly"
+    },
+    {
+      "pr": 680,
+      "source": "17a80476",
+      "merged_main": "c36e29e3",
+      "state": "deployed",
+      "version": "0.22.0.dev34",
+      "checks": "38source+38UID1017PASS;349package members parity",
+      "cause": "tmux creation acknowledged before frontend attachment; bounded original-intent reconciliation, no relaunch/deadline extension"
+    }
+  ],
+  "state": "complete",
+  "remaining_gate": null,
+  "review_gate": "Completed once, then bounded TDD remediation once; no blockers remain",
+  "local_presubmit": {
+    "command": "PYTHONPATH=src:tests installed-dev34-Python -m unittest -q [18 named modules in private final-presubmit log]",
+    "tier": "selected presubmit",
+    "tests": 107,
+    "seconds": 43.533,
+    "outcome": "PASS",
+    "environment": "Linux Python3.12 shared kernel; hosted3.11 matrix and comprehensive suite notrun; no paidCI",
+    "other_checks": "pinnedruff0.14.2 F821/F822/F823, compileall, policywiring, diffcheck PASS"
+  },
+  "worker_configuration": {
+    "requested_model": "inherited default",
+    "effective_model": "not reported by collaboration runtime",
+    "nested_delegation": false,
+    "one_ticket_per_worker": true
+  },
+  "scope_extension": "Operator approved host-wide common-policy adoption; supported revision1 activated, existing named defaults preserved, exact disposable recovery grant only.",
+  "installed": {
+    "version": "0.22.0.dev34",
+    "wheel_sha256": "c3cf1d17d0fd4c95557f3fba9efc5c52e19ff5cb61df47ad9e0fbc0fa2288458",
+    "merged_source": "c36e29e38642ce438dc630839ead5e0343df0219"
+  },
+  "common_policy": {
+    "revision": 5,
+    "adopted": true,
+    "temporary_recovery_permission": "withdrawn; resolves approval_required",
+    "history_preserved": true
+  },
+  "review_frozen_tip": "fe449f35c1b812a0d674c7ed3a13dc832a0434e6",
+  "review_report": "docs/dev/evidence/0241-final-review.md",
+  "final_review": {
+    "standards": {
+      "resolved_blocking": 1,
+      "nonblocking_backlog": 1
+    },
+    "spec": {
+      "resolved_blocking": 2
+    },
+    "broad_review_runs": 1,
+    "bounded_remediation_passes": 1,
+    "receipt_regression": "red unsupported per-run receipt contract -> green existingpathrefused prior bytespreserved beforeliveconfig",
+    "live_read_isolation": "PASS followup4grantsrevoked queue0 config/operatorgrantsunchanged",
+    "existing_chatgpt_readback": "PASS freshUItoolactivity and actualcompleted/owner_observed/round-trip confirmed; rawRPCnotexposed"
+  },
+  "publication": {
+    "pr": 676,
+    "state": "review ready",
+    "native_product": "deployeddev34 exactmergedmainc36e29e3",
+    "acceptance_artifacts": "published integration branch; no provider rerun for documentation"
+  }
+}
