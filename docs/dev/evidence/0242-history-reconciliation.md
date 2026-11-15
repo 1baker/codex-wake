@@ -87,3 +87,24 @@ Positive long-history adoption remains the post-deployment read-only gate.
 Corrected full installed-package UID1017 run:119tests PASS82.075s, using
 `PYTHONPATH=/tmp/cw674-qual:/tmp/cw674-qual/tests` and the installed venv Python.
 All10 selected modules match the final source run. Initial failed receipts retained.
+
+## Merged and installed adoption
+
+PR682 merged as8009ce7cd7d4cc14f6e4ec7d13cb4a34ecb44775. The exact qualified
+wheel's349 package files match merged main and the installed working prefix
+`~/.local/share/codex-wake/releases/0.22.0.dev35-c92742e`. Both systemd unit pins
+now select this prefix; only the connector restarted, PID1921906, active, with
+KillMode=process and SendSIGKILL=no retained. Public protected-resource metadata
+HTTP200 and anonymous MCP HTTP401. Native2082/startticks2000, browser379435 and
+unrelated UID1017 daemon3287769 were preserved.
+
+Actual installed read-only reconciliation of the original synthetic round-trip
+in the current long native conversation: PASS3.027s,5 full pages, exact original
+client/message/turn identity, execution turn_completed,20bytes/1 agentMessage
+output-summary coverage,0 native input calls. Metadata read excluded turns;
+no whole-history fallback. Private installed receipt retains methods/timing and
+identities, never raw conversation bodies. This establishes the repaired read
+path, not replay of the incident or downstream acceptance of its output.
+
+#674 criteria satisfied; the original incident journal remains unmodified.
+Container-loss/monitor-restart acceptance is #681, not a history-fix claim.

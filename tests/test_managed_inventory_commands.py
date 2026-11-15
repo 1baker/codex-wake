@@ -74,6 +74,18 @@ class ManagedInventoryCommandTests(unittest.TestCase):
                 attachments=[dict(client_pid=123,client_start_time_ticks=42)])]
             with self.assertRaises(Exception):observer({'conversation_id':THREAD})
 
+    def test_saved_recovery_holds_loaded_native_recipient_without_visible_attachment(self):
+        from codex_wake.agent_resume import SavedRuntime
+        from codex_wake.managed_inventory import InventoryError
+        snapshot = {'complete': True, 'sources': {'app_server': {'availability': 'available'},
+                    'tmux': {'availability': 'available'}}, 'sessions': [dict(
+                    thread_id=THREAD, cwd='/fixture/repo', attachments=[])]}
+        with patch('codex_wake.shared_app_server.SharedAppServerReader', Reader), patch(
+                'codex_wake.sessions.observe', return_value=snapshot):
+            with self.assertRaises(InventoryError):
+                SavedRuntime().binding({'conversation_id': THREAD}, dict(
+                    app_server='unix:///fixture/server', timeout=1))
+
     def test_cli_and_direct_mcp_handler_share_policy_and_suppression(self):
         parser = argparse.ArgumentParser()
         register_parser(parser.add_subparsers(dest='command', required=True))

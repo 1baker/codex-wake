@@ -22,12 +22,12 @@ lanes:
     plan: docs/dev/plans/0242-2026-11-15-history-reconciliation.md
     branch: fix/native-history-pages-674
     target: origin/main
-    plan_state: ACTIVE
+    plan_state: COMPLETE
     custody_state: ACTIVE_WORKTREE
     dependencies: []
     overlaps: []
     updated_at: 2026-11-15
-    disposition: Fresh isolated lane after merged PR676; close checkout after remote custody and delivery
+    disposition: PR682 merged and dev35 deployed; issue674 closed; checkout retained only to publish follow-on acceptance evidence then removed
 
   - id: connector-acceptance-0241
     owner: root / ecochran76

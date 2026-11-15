@@ -45,21 +45,32 @@ class SavedRuntime:
         if self.binding_source is not None:
             return self.binding_source(record, profile)
         from .managed_inventory_commands import RuntimeObserver
-        return RuntimeObserver(endpoint=profile['app_server'], socket_path=profile.get('tmux_socket'),
-                               timeout=profile['timeout'], now=self.now)({'conversation_id': record['conversation_id']})
+        sample = RuntimeObserver(endpoint=profile['app_server'], socket_path=profile.get('tmux_socket'),
+                                 timeout=profile['timeout'], now=self.now)({'conversation_id': record['conversation_id']})
+        if not sample.attachments and sample.capabilities.get('saved_resume') != 'supported':
+            raise InventoryError('identity_unavailable', 'saved recovery requires native notLoaded evidence')
+        return sample
 
     def launch(self, record, profile, guard, name):
         from .app_server import resolve_codex_cmd
         from .session_lifecycle import tmux_command
+        from .sessions import explicit_terminal_absent
         terminal = self.terminal or tmux_command
         runtime = SimpleNamespace(**({'tmux_socket': None} | profile), effect_guard=guard)
-        terminal(runtime, 'has-session', '-t', profile['tmux_session'])
+        absent = explicit_terminal_absent(profile.get('tmux_socket'))
+        if not absent:
+            terminal(runtime, 'has-session', '-t', profile['tmux_session'])
         codex = resolve_codex_cmd(profile['codex_path'], required=True)
         argv = ['env', '-u', 'CODEX_THREAD_ID', '-u', 'TMUX_PANE']
         if profile.get('codex_home'):
             argv.append('CODEX_HOME=' + profile['codex_home'])
         argv += [codex, 'resume', '--no-alt-screen', '-C', record['root'],
                  record['conversation_id'], '--remote', profile['app_server']]
+        if absent:
+            # One atomic create with the saved recipient as its only window;
+            # a competing creator fails rather than attaching or duplicating.
+            return terminal(runtime, 'new-session', '-d', '-P', '-F', '#{window_id}\t#{pane_id}',
+                            '-s', profile['tmux_session'], '-n', name, '-c', record['root'], shlex.join(argv))
         return terminal(runtime, 'new-window', '-d', '-P', '-F', '#{window_id}\t#{pane_id}',
                         '-t', profile['tmux_session'] + ':', '-n', name, '-c', record['root'], shlex.join(argv))
 
@@ -178,6 +189,14 @@ class AgentResume:
                 if receipt['status'] in ('starting','uncertain','resumed') or receipt['effects_attempted']:
                     receipt.update(status='uncertain',reason='resume_binding_not_confirmed')
                     _save(path,receipt);return self._public(receipt)
+                from .process import process_identity, process_exists
+                prior = receipt['prior_process']
+                generation = process_identity(prior['pid'])
+                if generation is None and process_exists(prior['pid']):
+                    raise ResumeError('resume_prior_process_unqualified')
+                if (generation is not None and generation.get('boot_id') == prior['boot_id']
+                        and generation.get('start_time_ticks') == prior['start_ticks']):
+                    raise ResumeError('resume_prior_process_still_live')
                 guard()
                 receipt.update(status='starting',reason='resume_binding_not_confirmed',effects_attempted=1)
                 _save(path,receipt)
