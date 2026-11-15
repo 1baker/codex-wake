@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import time
@@ -49,6 +50,11 @@ def main():
     native = Path(owned['executable']).resolve(strict=True)
     session = owned['tmux_session']
     assert socket.is_absolute() and socket.name != 'default' and session.startswith('cw681-')
+    target_directory = args.target.absolute().parent
+    assert target_directory == target_directory.resolve(strict=True), 'Private target directory must not traverse symlinks'
+    target_info = target_directory.stat()
+    assert target_info.st_uid==os.geteuid() and not target_info.st_mode & 0o077, 'Private owned target directory required'
+    assert socket.parent==target_directory, 'Socket must be inside dedicated private target directory'
     base = args.artifacts.absolute()
     base.mkdir(mode=0o700, parents=True, exist_ok=False)
     root = base/'wake'; root.mkdir(mode=0o700)
@@ -84,6 +90,19 @@ def main():
             raise RuntimeError('Command failed: '+str(argv[0:3]))
         return result
 
+    def kill_owned_server():
+        # Revalidate physical custody immediately before every destructive command.
+        assert socket.parent==target_directory and target_directory.resolve(strict=True)==target_directory
+        info=target_directory.stat()
+        assert info.st_uid==os.geteuid() and not info.st_mode & 0o077
+        try: info=socket.lstat()
+        except FileNotFoundError: return
+        assert not socket.is_symlink() and stat.S_ISSOCK(info.st_mode) and info.st_uid==os.geteuid()
+        assert socket.resolve(strict=True)==socket
+        sessions=run(['tmux', '-S', socket, 'list-sessions', '-F', '#{session_name}']).stdout.splitlines()
+        assert sessions==[session], 'Private server contains undeclared sessions'
+        run(['tmux', '-S', socket, 'kill-server'])
+
     def cli(*argv):
         return json.loads(run([prefix/'bin/codex-wake', '--wake-root', root, *argv]).stdout)
 
@@ -117,7 +136,8 @@ def main():
             for turn in page['data']:
                 assert turn['id'] not in ids and turn.get('itemsView')=='full', 'Incomplete or duplicate native turn'
                 ids.add(turn['id']); turns.append(turn)
-            cursor=page.get('nextCursor')
+            assert 'nextCursor' in page, 'Missing native pagination completeness marker'
+            cursor=page['nextCursor']
             if cursor is None:
                 return dict(metadata, turns=turns)
             assert isinstance(cursor, str) and cursor and cursor not in cursors
@@ -127,7 +147,7 @@ def main():
     def start_monitor():
         prior = (read_monitor_health(root) or {}).get('reader_generation')
         run(['systemd-run', '--user', '--unit='+unit, '--property=RuntimeMaxSec=1200',
-             '--property=Restart=no', '--property=UMask=0077', '--working-directory='+str(cwd),
+             '--property=Restart=no', '--property=KillMode=process', '--property=UMask=0077', '--working-directory='+str(cwd),
              '--setenv=TMUX='+env['TMUX'], '--setenv=PATH='+env['PATH'],
              prefix/'bin/codex-waked', '--wake-root', root, '--interval', '1'])
         def fresh_monitor():
@@ -160,7 +180,7 @@ def main():
         profiles = base/'profiles.json'
         save('profiles.json', dict(version=1, profiles={'cw681':dict(cwd=str(cwd), app_server=endpoint,
             codex_path=str(native), tmux_session=session, tmux_socket=str(socket), timeout=30)},
-            callers={operator.subject:['cw681']}))
+            callers={operator.subject:['cw681']}, recovery_callers={operator.subject:[enrolled]}))
         (root/'wake-live-restore.json').write_text(json.dumps(dict(version=1, bindings={thread:dict(
             profiles=str(profiles), managed_agent_id=enrolled, profile='cw681')})))
         (root/'controller-tabs.json').write_text(json.dumps(dict(schema_version=1, workspaces={
@@ -186,15 +206,20 @@ def main():
             original = dict(target=registered['target'], request=registered['request'], next_due_at=registered['next_due_at'])
             baseline = history(); count = len(inputs(baseline))
             if number==1:
-                run(['tmux', '-S', socket, 'kill-server'])
+                kill_owned_server()
                 wait_for(lambda: not socket.exists() and process_identity(old['client_pid']) is None, 'whole owned container and TUI gone')
                 entry['whole_loss']=dict(socket_absent=not socket.exists(), old_generation_absent=process_identity(old['client_pid']) is None)
             else:
+                recipient_generation=process_identity(old['client_pid'])
+                assert recipient_generation, 'Restored TUI must be live before monitor-only restart'
+                entry['recipient_before_monitor_restart']=recipient_generation
                 entry['monitor_before']=read_monitor_health(root)
                 run(['systemctl', '--user', 'stop', unit])
                 run(['systemctl', '--user', 'reset-failed', unit], check=False)
                 entry['monitor_after']=start_monitor()
                 assert entry['monitor_before']['reader_generation'] != entry['monitor_after']['reader_generation']
+                entry['recipient_after_monitor_restart']=process_identity(old['client_pid'])
+                assert entry['recipient_after_monitor_restart']==recipient_generation, 'Monitor-only restart killed recipient'
             assert snapshot()['utc']['upper']<due, 'Disruption must finish before due'
             saved = schedules.read(registered['id'])
             assert all(saved[key]==value for key, value in original.items()), 'Original intent changed'
@@ -210,8 +235,10 @@ def main():
                 if not occurrence.get('wake_id'):
                     return None
                 wake=find_record(root, occurrence['wake_id']).record; entry['wake']=wake
-                if wake.get('native_delivery', {}).get('state')=='uncertain':
-                    raise RuntimeError('Uncertain delivery; no replay')
+                # Uncertain while firing is the normal durable before-I/O fence.
+                # Observe this same intent only; neither this probe nor cleanup retries it.
+                if wake.get('status') in ('failed', 'expired', 'cancelled', 'archived'):
+                    raise RuntimeError('Terminal wake outcome; preserve original journals')
                 data=history()
                 fresh=inputs(data)[count:]
                 assert len(fresh)<=1, 'Duplicate native input'
@@ -221,7 +248,9 @@ def main():
                 assert wake['id'] in text and wake['native_delivery']['submission_id'] in text
                 answers=[i for i in fresh[0][0]['items'] if i.get('type')=='agentMessage']
                 assert len(answers)==1 and answers[0]['text'].strip()==marker
-                assert wake['attempts']==1 and wake['native_delivery']['state']=='accepted'
+                assert wake['attempts']==1
+                if wake.get('native_delivery', {}).get('state')!='accepted':
+                    return None
                 save('native-after-'+str(number)+'.json', data)
                 return dict(turn_id=fresh[0][0]['id'], user_message_id=fresh[0][1]['id'], reply=marker)
             entry['result']=wait_for(completed, scenario, 300)
@@ -242,8 +271,12 @@ def main():
         for identifier in pending:
             try: schedules.cancel(identifier, schedules.read(identifier)['revision'], principal=operator)
             except Exception as error: cleanup.append(dict(schedule=identifier, error=str(error)))
-        run(['systemctl', '--user', 'stop', unit], check=False)
-        run(['tmux', '-S', socket, 'kill-server'], check=False)
+        try:
+            stopped=run(['systemctl', '--user', 'stop', unit], check=False)
+            if stopped.returncode: cleanup.append(dict(monitor_stop='unconfirmed', code=stopped.returncode))
+        except Exception as error: cleanup.append(dict(monitor_stop='unknown', error=str(error)))
+        try: kill_owned_server()
+        except Exception as error: cleanup.append(dict(socket_cleanup='unknown', error=str(error)))
         if enrolled:
             try: receipt['unenrollment']=cli('agents', 'unenroll', '--operator', '--managed-agent-id', enrolled, '--json')
             except Exception as error: cleanup.append(dict(enrollment= str(error)))

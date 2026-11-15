@@ -11,7 +11,8 @@ actual native public protocol history pages; it does not exercise the external
 OAuth connector. Its input manifest must identify one newly prepared disposable
 saved native conversation with one actual setup input, `ticket: 681`,
 `disposable: true`, an absolute private `tmux_socket`, `tmux_session` beginning
-`cw681-`, exact native `executable`, native `endpoint`, and trusted owned `cwd`.
+`cw681-`, a dedicated private manifest directory containing the physical owned
+socket (no symlink traversal), exact native `executable`, native `endpoint`, and trusted owned `cwd`.
 No production root, permission policy, profile, or grant is changed.
 
 Each of two independent finite requests uses `reopen_live`, a 30-second interval
@@ -24,7 +25,7 @@ pending across stop/restart of only the owned monitor. The exact original target
 request, due time and absolute expiry must persist.
 
 The monitor is an owned transient user-systemd unit with `RuntimeMaxSec=1200`,
-interval one second, an explicit private socket environment and isolated wake
+`KillMode=process`, interval one second, an explicit private socket environment and isolated wake
 root. Readiness records both the actual health generation/live process and public
 `monitor check`; a stale previous generation cannot satisfy restart readiness.
 No existing native daemon, default tmux server or other monitor is restarted.
@@ -34,10 +35,17 @@ request, exact wake/submission identity, a completed native turn and the expecte
 actual answer body from bounded full `thread/turns/list` pages. Restoration must
 retain the exact saved UUID, cwd, native executable and private socket/session.
 Missing, duplicate, incomplete, uncertain or unsupported evidence fails closed;
-there is no effect retry. All launch/delivery journals and exclusive fresh private
+an in-flight uncertain durable fence is observed under its original intent until
+acceptance, a terminal outcome or the deadline. There is no effect retry. All launch/delivery journals and exclusive fresh private
 receipts remain intact. Cleanup cancels owned schedules, stops the owned unit,
 removes only the declared private server, suppresses the owned enrollment,
 archives the explicitly disposable thread and denies the isolated authority.
+Private resume profiles explicitly authorize recovery of only the owned managed
+agent. Before each server removal, the script revalidates socket/directory UID,
+private permissions, physical socket type and the single declared session.
+The second scenario verifies that stopping its monitor preserves the already
+restored TUI process generation. Cleanup subprocess failures are recorded as
+unknown outcomes and do not prevent the exclusive final receipt being written.
 
 Preparation validation on source base `eb14ec93c82cc7fce5eadaf5d060757f83f134f7`:
 
