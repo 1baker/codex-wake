@@ -1,8 +1,8 @@
 # 0243 — Whole-container and monitor-restart acceptance (#681)
 
-State ACTIVE repair after run02; #674 qualified and deployed.
-Run01 test assumption fixed; run02 exposed missing-container observation and
-launch gaps. Exactdev37 qualification/deployment precedes a fresh run03.
+State COMPLETE. Run03 accepts whole-container loss; run04 independently accepts
+owned-monitor restart. Product repair PR683 merged/deployeddev37; evidence0243
+retains failures, qualification, independent acceptance and cleanup.
 Owner ecochran76/root; one worker owns ticket681. Branch test/wake-container-restart-681.
 Parent610 unchanged. Prior P241668 retained a keeper and did not establish this scope.
 

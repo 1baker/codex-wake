@@ -1,8 +1,8 @@
 # Container loss and monitor restart: #681
 
-Status: preparation complete; live acceptance has not run. Plan 0243 and the
-coordinator own sequencing and installed-package readiness. This does not close
-#681 or qualify missed-event recovery.
+Status: COMPLETE. Run03 independently accepts complete-container loss; run04
+accepts owned-monitor restart. Exact dev37 is merged and deployed. Earlier failed
+receipts remain retained. This does not qualify missed-event recovery.
 
 The opt-in script `scripts/wake_container_restart_acceptance.py` runs with an
 exact immutable installed package's Python. It uses installed
@@ -185,3 +185,35 @@ for its changed live health generation, preserving KillMode=process. A scenario
 selector permits only the remaining monitor axis on a fresh recipient; it avoids
 repeating an accepted independent axis. Focused lint/compile/installedhelp/diff
 checks PASS. No product package change or new fixture framework is involved.
+
+## Run04 — monitor-restart axis accepted and final preservation
+
+Actual dev37 monitor-only scenario PASSED on a fresh saved recipient. While the
+finite request was pending, systemctl restart changed monitorPID2181423 / health
+generation8886424 toPID2182040 / generation8886736. The existing TUI generation
+was identical before/after. Original request, exact target, due16:41:23.283807Z
+and absolute expiry16:44:23.283807Z were unchanged. Exactly one additional native
+user input correlated the original wake/submission; completed turn
+01a1e015-c862-7303-8275-4b4edae26a55 returned exactly CW681_2_COMPLETED.
+Attempts1, native queueaccepted, no synthetic acknowledgment, no replay.
+
+Cleanup PASS0errors: owned monitor inactive/PID0, private server/socket absent,
+schedules canceled, enrollment suppressed, disposable thread archived and isolated
+authority returned to defaultdeny. The accepted submitted records and all original
+journals remain retained. Run03's accepted independent whole-loss result stands;
+its test-runner second-axis failure is not relabeled as a full-run pass.
+
+Final independent census matches original native2082/start2000, browser379435,
+unrelatedUID1017daemon3287769, all44operatorpanes and hashes of production
+connector configuration and common permission policy. No native restart/upgrade,
+host reboot, production policy edit or original-chat input occurred. Temporary
+UID qualificationtrees and finished worker checkout removed after exactremote
+custody. Failed01's dead socket inode is retained as a nonlive forensic artifact,
+not deleted on invented historical server custody. Private run01–04 receipts and
+synthetic native history remain under user state, outsideGit.
+
+#681 acceptance criteria satisfied by the two independent actual installed axes.
+Repeated cadence, missed/overlap combinations, host reboot and long-duration soak
+remain outside this acceptance. Source155/UID155 checks and targeted review
+remain the product gate; final script lint/compile/help/policy/diff checks pass.
+Memory disposition forbidden: no explicit memory write request.
