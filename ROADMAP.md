@@ -1779,11 +1779,12 @@ Status: COMPLETE. All nine childtickets #664–#672 closed from actual deployed 
 
 ## P242 | Bounded native history reconciliation
 
-Status ACTIVE. Issue #674; plan [0242](docs/dev/plans/0242-2026-11-15-history-reconciliation.md).
+Status COMPLETE. Issue #674 closed; plan [0242](docs/dev/plans/0242-2026-11-15-history-reconciliation.md).
 Replace whole-history reconciliation with bounded full-item turn pages, retaining
 exact identities, complete pagination, shared observation deadline and no replay.
-Display summaries are not treated as full evidence. Qualification and deployment
-remain separate; prior acceptance PR676 merged eb14ec93.
+Display summaries are not treated as full evidence. PR682 merged8009ce7c; exact
+dev35 deployed. Source and installed UID119checks pass; installed long-history
+readback5pages3.027s with0inputs. See evidence0242.
 
 ## P243 | Whole-container loss and monitor restart
 
