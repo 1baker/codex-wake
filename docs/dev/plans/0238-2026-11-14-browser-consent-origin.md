@@ -24,3 +24,8 @@ Content-Type and could not find its button; corrected response media type and
 retained that setup failure. HTTP regression red no-referrer != same-origin;
 source10connector/delegation tests PASS11.067s, policy wiring/whitespace PASS.
 No origin allowlist expansion or null-Origin exception.
+
+Exactdev24wheel SHA25623111e24e5206cd3b288f65d62b03b769565173d9df3578427d975e54ccdfb9b
+installed under Linux UID1017:10tests PASS7.810s;339package members match source,
+wheel and installed package. Shared kernel; no full-suite/Python3.11 matrix or
+hosted paid CI. No source change after qualification.
