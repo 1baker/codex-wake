@@ -77,7 +77,9 @@ def main():
         assert r['deleted'] is True
         assert not any(i['id']==item['id'] for i in queued())
     def busy():
-        h=history();u=inputs(h);assert len(u)==2 and u[-1][0]['status']=='inProgress'
+        h=history();u=inputs(h)
+        if len(u)<2:return None
+        assert len(u)==2 and u[-1][0]['status']=='inProgress'
         files=list(case.glob('run-*.json'))
         if not files:return None
         assert len(files)==1;gate=json.loads(files[0].read_text());identity=process_identity(gate['pid'])
