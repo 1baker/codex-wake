@@ -8,12 +8,12 @@ lanes:
     plan: docs/dev/plans/0247-2026-11-15-native-queue-boundary.md
     branch: test/native-queue-694
     target: origin/main
-    plan_state: ACTIVE
-    custody_state: ACTIVE_WORKTREE
+    plan_state: COMPLETE
+    custody_state: INTEGRATED
     dependencies: []
     overlaps: []
     updated_at: 2026-11-15
-    disposition: Direct native qualification only; no expiry field or busy-policy promotion; retire after remote custody
+    disposition: Cancellation/control qualified; expiry implementation remains open in #695; no runtime change
 
   - id: calendar-dst-691
     owner: root / ecochran76

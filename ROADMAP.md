@@ -1822,6 +1822,6 @@ No live DST/provider/clock-auth claim.
 
 ## P247 | Direct native busy queue boundary
 
-Status ACTIVE. Issue #694; plan [0247](docs/dev/plans/0247-2026-11-15-native-queue-boundary.md).
-Prove cancellation and control dequeue under actual busy execution; retain expiry
-as unqualified when native dequeue enforcement is absent. No native upgrade.
+Status COMPLETE (qualification). Issue #694; plan [0247](docs/dev/plans/0247-2026-11-15-native-queue-boundary.md).
+Cancellation and control dequeue passed under actual busy execution. Native expiry
+remains unqualified; enforcement tracked in #695. Evidence0247. No native upgrade.

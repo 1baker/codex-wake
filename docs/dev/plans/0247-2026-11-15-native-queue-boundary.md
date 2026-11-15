@@ -1,6 +1,6 @@
 # 0247 — Direct native busy queue cancellation and expiry boundary (#694)
 
-State ACTIVE. Owner root/ecochran76; WIP1. Branch test/native-queue-694.
+State COMPLETE. Owner root/ecochran76; WIP1. Branch test/native-queue-694.
 Base b2b0dd98. One owned checkout protects dirty primary; retire after exact remote
 custody. Installed Wakedev37/native0.169 unchanged. Working daemon2082 retained.
 
@@ -30,3 +30,6 @@ follow-up linked where required, owned resources/checkout cleaned after exact
 remote custody. No paid CI. Product repairs require red/green and exact package
 qualification underUID1017 before working installation; native upgrade is outside
 this packet. Memory writes forbidden without explicit ask.
+
+Result: cancellation/control passed; expiry unqualified, implementation #695 open.
+Evidence: docs/dev/evidence/0247-native-queue-boundary.md. No runtime change.

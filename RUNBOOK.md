@@ -9995,3 +9995,16 @@ no broad suite/UID reinstall/paidCI. Guide clarifies clock versus interval and
 absolute start bounds; prior operator pane-closure confirmation propagated to0245.
 Evidence0246; liveDST/authenticatedclock/provider coverage remains separate.
 Memory disposition forbidden.
+
+
+## 2026-11-15 | P247 native busy queue boundary (#694)
+
+Installeddev37/native0.169 unchanged. Real bounded busy command, three accepted
+queue entries, two exact deletions before idle, one naturally dequeued completed
+control. No canceled input delivered. Native schema has no expiry field; host-only
+deadline observation does not qualify native expiry. Enforcement #695 remains
+open; bounded Wake busy admission retains pre-I/O refusal. Unbounded operator
+SessionInputs.queue is separate. Run01 timing failure preserved, minimal runner
+correction and fresh run02 passed. Focused lint/syntax/help/policy/diff PASS.
+Both owned terminals and scratch directories retired; independent process/config/
+native-hash audit PASS. Evidence0247. No deployment. Memory disposition forbidden.
