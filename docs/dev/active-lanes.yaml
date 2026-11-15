@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: calendar-dst-691
+    owner: root / ecochran76
+    objective: Qualify installed clock cadence timezone and DST replay across restarts
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/691]
+    plan: docs/dev/plans/0246-2026-11-15-calendar-dst-acceptance.md
+    branch: test/calendar-dst-691
+    target: origin/main
+    plan_state: ACTIVE
+    custody_state: ACTIVE_WORKTREE
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-15
+    disposition: Isolated installed replay without dispatch or host-clock changes; retire checkout after exact remote custody
+
   - id: native-busy-overlap-688
     owner: root / ecochran76
     objective: Qualify scheduler overlap while actual native turn is in progress

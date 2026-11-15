@@ -1810,5 +1810,10 @@ Status FUNCTIONAL ACCEPTANCE COMPLETE. Issue #688; plan [0245](docs/dev/plans/02
 Prove skip/latest/bounded queue while a real native turn runs a bounded owned
 command, then exact retained deliveries after release. No direct native busy
 queue, calendar, reboot or soak qualification. Actual counts1/2/3 verified;
-owned cleanup passed. Global default-pane delta remains unattributed; no full
-operator-snapshot preservation claim. Evidence0245.
+owned cleanup passed. Operator subsequently confirmed those pane closures; original census retained. Evidence0245.
+
+## P246 | Calendar, timezone and DST replay
+
+Status ACTIVE. Issue #691; plan [0246](docs/dev/plans/0246-2026-11-15-calendar-dst-acceptance.md).
+Installed deterministic replay for local clock versus interval semantics, explicit
+gap/fold policies and restart persistence. No live DST/provider/clock-auth claim.

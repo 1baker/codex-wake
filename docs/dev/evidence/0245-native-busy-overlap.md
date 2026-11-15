@@ -115,3 +115,11 @@ Python3.11/3.12 matrix. Tier: focused plus opt-in actual installed acceptance.
 No calendar/DST, reboot, soak or external OAuth acceptance claim.
 
 Memory disposition: forbidden — no explicit memory write request.
+
+## Subsequent operator attribution
+
+The operator subsequently stated “i close them”, confirming that they closed the
+two pre-existing agent-browser panes discussed above. Recorded on [issue688](https://github.com/CochranResearchGroup/codex-wake/issues/688#issuecomment-6901092538).
+The unattributed-closure limitation is resolved by this operator statement; the
+original census/receipts remain unchanged. This is operator-confirmed attribution,
+not a reconstructed technical audit trail.
