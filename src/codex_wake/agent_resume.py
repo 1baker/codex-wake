@@ -26,7 +26,9 @@ def fingerprint(value):
 
 class SavedRuntime:
     """Existing owned Unix protocol plus exact terminal/process observation."""
-    def __init__(self, *, binding_source=None, terminal=None):
+    def __init__(self, *, binding_source=None, terminal=None, now=None):
+        from .lifecycle_budget import trusted_upper
+        self.now = now or trusted_upper
         self.binding_source = binding_source
         self.terminal = terminal
 
@@ -44,7 +46,7 @@ class SavedRuntime:
             return self.binding_source(record, profile)
         from .managed_inventory_commands import RuntimeObserver
         return RuntimeObserver(endpoint=profile['app_server'], socket_path=profile.get('tmux_socket'),
-                               timeout=profile['timeout'])({'conversation_id': record['conversation_id']})
+                               timeout=profile['timeout'], now=self.now)({'conversation_id': record['conversation_id']})
 
     def launch(self, record, profile, guard, name):
         from .app_server import resolve_codex_cmd
@@ -68,7 +70,8 @@ class AgentResume:
         self.inventory = ManagedInventory(root, now=now or trusted_upper)
         self.root, self.config = self.inventory.root, config
         self.config_loader = config_loader
-        self.now, self.runtime = now or trusted_upper, runtime or SavedRuntime()
+        self.now = now or trusted_upper
+        self.runtime = runtime or SavedRuntime(now=self.now)
         self.directory = self.root / 'agent-resume'
         self.directory.mkdir(mode=0o700, exist_ok=True)
         _private(self.directory, True)

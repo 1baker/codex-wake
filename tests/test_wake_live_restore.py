@@ -44,7 +44,10 @@ class LiveWakeRestoreTests(unittest.TestCase):
     def test_missing_pinned_byobu_server_is_recreated_before_exact_resume(self):
         self.exercise_restore(missing_server=True)
 
-    def exercise_restore(self, missing_server=False):
+    def test_restore_observation_uses_authoritative_clock_when_guest_clock_is_ahead(self):
+        self.exercise_restore(clock=lambda:time.time()-60)
+
+    def exercise_restore(self, missing_server=False, clock=time.time):
         from codex_wake.a2a_identity import RuntimeIdentity
         from codex_wake.managed_inventory import ManagedInventory, Observation
         from codex_wake.process import process_identity
@@ -57,8 +60,8 @@ class LiveWakeRestoreTests(unittest.TestCase):
             namespace = RuntimeIdentity.from_metadata(thread, metadata).namespace
             identity = process_identity(os.getpid())
             process = dict(pid=os.getpid(), start_ticks=identity['start_time_ticks'], boot_id=identity['boot_id'])
-            inv = ManagedInventory(root)
-            agent = inv.enroll(Observation('codex', namespace, THREAD, str(cwd), 'ready', time.time(),
+            inv = ManagedInventory(root, now=clock)
+            agent = inv.enroll(Observation('codex', namespace, THREAD, str(cwd), 'ready', clock(),
                 'native_metadata', process, [dict(pane_id='%7')], {'inspect':'supported'}))['agent']
             PermissionStore(root).configure({'version':1}, Principal('operator','operator'), expected_revision=0)
             profiles = base / 'profiles.json'
@@ -107,16 +110,16 @@ class LiveWakeRestoreTests(unittest.TestCase):
                 reader.return_value.__enter__.return_value.server_metadata = metadata
                 thread['status'] = {'type':'active'}
                 with self.assertRaises(RuntimeTargetError) as busy:
-                    LiveWakeRestorer(root, now=time.time).prepare(target)
+                    LiveWakeRestorer(root, now=clock).prepare(target)
                 self.assertEqual(busy.exception.state, 'busy')
                 self.assertEqual(commands, [])
                 thread['status'] = {'type':'unknown'}
                 with self.assertRaisesRegex(RuntimeTargetError, 'live_restore_runtime_state_unverified'):
-                    LiveWakeRestorer(root, now=time.time).prepare(target)
+                    LiveWakeRestorer(root, now=clock).prepare(target)
                 self.assertEqual(commands, [])
                 thread['status'] = {'type':'idle'}
-                prepared = LiveWakeRestorer(root, now=time.time).prepare(target)
-                self.assertEqual(LiveWakeRestorer(root, now=time.time).prepare(target)['thread_id'], THREAD)
+                prepared = LiveWakeRestorer(root, now=clock).prepare(target)
+                self.assertEqual(LiveWakeRestorer(root, now=clock).prepare(target)['thread_id'], THREAD)
             launches = [cmd for cmd in commands if 'new-window' in cmd]
             self.assertEqual(len(launches), 1)
             self.assertIn(THREAD, launches[0][-1])

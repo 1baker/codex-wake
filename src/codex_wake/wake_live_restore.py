@@ -107,7 +107,7 @@ class LiveWakeRestorer:
                 raise WakeError('live_restore_binding_changed')
             return current
 
-        owner = AgentResume(self.root, config, runtime=_RestoreRuntime(self.root),
+        owner = AgentResume(self.root, config, runtime=_RestoreRuntime(self.root, now=self.now),
                             config_loader=current_config, **kwargs)
         result = owner.resume(dict(managed_agent_id=binding['managed_agent_id'], profile=binding['profile'],
             intent='wake-live:' + occurrence, expires_at=expires), principal)
@@ -126,8 +126,8 @@ class _RestoreRuntime(SavedRuntime):
     AgentResume journals the launch before entering this method, so lost session
     creation responses retain the same crash fence as lost tab creation responses.
     """
-    def __init__(self, root):
-        super().__init__()
+    def __init__(self, root, *, now=None):
+        super().__init__(now=now)
         self.root = root
 
     def launch(self, record, profile, guard, name):
