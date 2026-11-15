@@ -1,6 +1,6 @@
 # 0242 — Bounded native history reconciliation (#674)
 
-State ACTIVE. Owner ecochran76/root. Branch fix/native-history-pages-674.
+State COMPLETE. Owner ecochran76/root. Branch fix/native-history-pages-674.
 Base main eb14ec93 (PR676 merged). Preserve dirty primary and unrelated checkouts.
 
 Outcome: reconcile exact historical native submissions through supported paged
@@ -28,5 +28,5 @@ Original native daemon and pending work remain preserved. Existing whole-contain
 recreation capability must be checked before choosing bounded scenarios.
 
 Definition of done: #674 observable criteria met, qualified deployed read path,
-closed tracker/evidence, owned checkout/resources cleaned; follow-on acceptance
+closed tracker/evidence, owned checkout/resources cleaned after follow-on evidence publication; follow-on acceptance
 gets its own attributable outcomes. Memory writes forbidden absent explicit ask.
