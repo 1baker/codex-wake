@@ -5,6 +5,7 @@ Ephemeral _wake_* context is supplied by dispatch from the admitted wake record,
 never by model registration arguments or a saved target field.
 """
 from pathlib import Path
+import time
 from uuid import UUID
 
 from .agent_resume import SavedRuntime
@@ -109,8 +110,18 @@ class LiveWakeRestorer:
 
         owner = AgentResume(self.root, config, runtime=_RestoreRuntime(self.root, now=self.now),
                             config_loader=current_config, **kwargs)
-        result = owner.resume(dict(managed_agent_id=binding['managed_agent_id'], profile=binding['profile'],
-            intent='wake-live:' + occurrence, expires_at=expires), principal)
+        arguments = dict(managed_agent_id=binding['managed_agent_id'], profile=binding['profile'],
+                         intent='wake-live:' + occurrence, expires_at=expires)
+        deadline = time.monotonic() + profile['timeout']
+        result = owner.resume(arguments, principal)
+        # tmux acknowledges window creation before its frontend connects. Reuse
+        # the same journaled intent: AgentResume reconciles its one launch and
+        # never repeats an ambiguous effect. Keep the original expiry unchanged.
+        while (result.get('status') in ('starting', 'uncertain')
+                and result.get('effects_attempted') == 1
+                and time.monotonic() < deadline and owner.now() < parse_timestamp(expires).timestamp()):
+            time.sleep(min(0.1, max(0, deadline - time.monotonic())))
+            result = owner.resume(arguments, principal)
         if result.get('status') != 'resumed':
             raise RuntimeTargetError('unavailable', result.get('reason') or 'live_restore_not_confirmed')
         if result.get('conversation_id') != target['thread_id']:

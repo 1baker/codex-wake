@@ -47,7 +47,10 @@ class LiveWakeRestoreTests(unittest.TestCase):
     def test_restore_observation_uses_authoritative_clock_when_guest_clock_is_ahead(self):
         self.exercise_restore(clock=lambda:time.time()-60)
 
-    def exercise_restore(self, missing_server=False, clock=time.time):
+    def test_visible_restore_reconciles_one_launch_until_native_attachment_is_ready(self):
+        self.exercise_restore(delayed_attachment=True)
+
+    def exercise_restore(self, missing_server=False, clock=time.time, delayed_attachment=False):
         from codex_wake.a2a_identity import RuntimeIdentity
         from codex_wake.managed_inventory import ManagedInventory, Observation
         from codex_wake.process import process_identity
@@ -87,15 +90,20 @@ class LiveWakeRestoreTests(unittest.TestCase):
             if missing_server:
                 target.update(tmux_socket=str(socket), session_origin=dict(pid=99999999, identity=dict(
                     boot_id='previous-boot', start_time_ticks=1)))
-            live = False; commands = []
+            live = False; commands = []; unready_samples = 1 if delayed_attachment else 0
             real_run = subprocess.run
             def observe(**kwargs):
+                nonlocal unready_samples
+                ready = live
+                if live and unready_samples:
+                    ready = False
+                    unready_samples -= 1
                 pane = dict(pane_id='%7', client_pid=os.getpid(), client_start_time_ticks=identity['start_time_ticks'])
                 absent = missing_server and not socket.exists()
                 return dict(complete=not absent, sources=dict(app_server=dict(availability='available'),
                     tmux=dict(availability='unavailable' if absent else 'available')),
                     sessions=[dict(thread_id=THREAD,cwd=str(cwd),runtime_state='not_loaded' if absent else 'idle',
-                        binding_status='metadata_matched',attachments=[pane] if live else [])])
+                        binding_status='metadata_matched',attachments=[pane] if ready else [])])
             def terminal(argv, **kwargs):
                 nonlocal live
                 commands.append(argv)
