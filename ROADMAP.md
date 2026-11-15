@@ -1814,6 +1814,8 @@ owned cleanup passed. Operator subsequently confirmed those pane closures; origi
 
 ## P246 | Calendar, timezone and DST replay
 
-Status ACTIVE. Issue #691; plan [0246](docs/dev/plans/0246-2026-11-15-calendar-dst-acceptance.md).
+Status COMPLETE. Issue #691 accepted; plan [0246](docs/dev/plans/0246-2026-11-15-calendar-dst-acceptance.md).
 Installed deterministic replay for local clock versus interval semantics, explicit
-gap/fold policies and restart persistence. No live DST/provider/clock-auth claim.
+gap/fold policies and restart persistence. All12valid/8rejection cases passed
+under installeddev37/tzdb2026e; no product deployment. Evidence0246.
+No live DST/provider/clock-auth claim.

@@ -8,12 +8,12 @@ lanes:
     plan: docs/dev/plans/0246-2026-11-15-calendar-dst-acceptance.md
     branch: test/calendar-dst-691
     target: origin/main
-    plan_state: ACTIVE
-    custody_state: ACTIVE_WORKTREE
+    plan_state: COMPLETE
+    custody_state: INTEGRATED
     dependencies: []
     overlaps: []
     updated_at: 2026-11-15
-    disposition: Isolated installed replay without dispatch or host-clock changes; retire checkout after exact remote custody
+    disposition: Installed calendar replay accepted; no product change or live DST claim; retire checkout after exact remote custody
 
   - id: native-busy-overlap-688
     owner: root / ecochran76
