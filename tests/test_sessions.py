@@ -161,7 +161,7 @@ class GroupedSessionAliasTests(unittest.TestCase):
         rows = merge_grouped_session_aliases([self.raw('$27', 'byobu-27'), self.raw('$1', 'byobu')])
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]['session_name'], 'byobu')            # the group's own session is primary
-        self.assertEqual(sorted(rows[0]['session_aliases']), [('$1', 'byobu'), ('$27', 'byobu-27')])
+        self.assertEqual(sorted(rows[0]['session_aliases']), [['$1', 'byobu'], ['$27', 'byobu-27']])
         threads = [dict(id='helper-thread', name='Session', cwd='/repo', status={'type': 'idle'})]
         s = build_snapshot(threads, rows, {k: dict(availability='available') for k in ['tmux', 'app_server']})
         self.assertEqual(len(s['sessions'][0]['attachments']), 1)
@@ -220,3 +220,19 @@ class LinkedWindowIndexTests(unittest.TestCase):
         threads = [dict(id='T', name='Session', cwd='/repo', status={'type': 'idle'})]
         rows = merge_grouped_session_aliases([a, b])
         self.assertEqual(len(rows), 2)
+
+
+class AliasJsonStabilityTests(unittest.TestCase):
+    """Review finding S214-ALIASES-JSON-STABILITY-02: saved attachments are JSON round-tripped and later compared to
+    fresh observations (lifecycle_correction); tuple aliases made a fresh attachment never equal its saved copy."""
+
+    def test_merged_attachment_survives_a_json_round_trip_unchanged(self):
+        import json
+        from codex_wake.sessions import merge_grouped_session_aliases
+        base = pane(index='64', identifier='%64', pid=2802727)
+        rows = merge_grouped_session_aliases([dict(base, session_id='$27', session_name='byobu-27', session_group='byobu'),
+                                              dict(base, session_id='$1', session_name='byobu', session_group='byobu')])
+        saved = json.loads(json.dumps(rows[0]))
+        self.assertEqual(saved, rows[0])
+        single = merge_grouped_session_aliases([dict(base, session_group='')])[0]
+        self.assertEqual(json.loads(json.dumps(single)), single)

@@ -70,7 +70,9 @@ def merge_grouped_session_aliases(rows: list[dict[str, Any]]) -> list[dict[str, 
         group = row.get('session_group') or ''
         # An ungrouped row keys on its own session too, so it never merges across sessions.
         key = (group or ('ungrouped', row['session_id']),) + tuple(row.get(field) for field in _PHYSICAL_PANE)
-        alias = (row['session_id'], row['session_name'])
+        # JSON-native list (not a tuple): saved attachments are JSON-loaded and compared to fresh ones
+        # (lifecycle_correction), so a tuple would never equal its saved copy (S214-ALIASES-JSON-STABILITY-02).
+        alias = [row['session_id'], row['session_name']]
         if key not in merged:
             merged[key] = dict(row, session_aliases=[alias])
             continue
@@ -83,7 +85,7 @@ def merge_grouped_session_aliases(rows: list[dict[str, Any]]) -> list[dict[str, 
 
 def in_session(pane: dict[str, Any], session: str) -> bool:
     """A pane belongs to a session if any of its grouped-session aliases is that session id or name."""
-    aliases = pane.get('session_aliases') or [(pane['session_id'], pane['session_name'])]
+    aliases = pane.get('session_aliases') or [[pane['session_id'], pane['session_name']]]
     return any(session in alias for alias in aliases)
 
 
