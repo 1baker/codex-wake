@@ -274,6 +274,8 @@ class AgentSpawnTests(unittest.TestCase):
                     result = {'data': [thread_id] if state['loaded'] else [], 'nextCursor': None}
                 elif method == 'thread/read':
                     result = {'thread': thread}
+                elif method == 'thread/turns/list':
+                    result = {'data':[dict(turn,itemsView='full') for turn in state['turns']], 'nextCursor':None}
                 elif method == 'thread/queue/add':
                     tasks.append(params)
                     result = {'queuedSubmission': dict(id='queue157', **params)}

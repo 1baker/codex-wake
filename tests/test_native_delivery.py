@@ -389,10 +389,11 @@ class NativeDeliveryTests(unittest.TestCase):
             def native(endpoint, codex, method, params, timeout):
                 if method == 'thread/queue/list':
                     return {'data':[], 'nextCursor':None}
-                return {'thread':{'id':record['target']['thread_id'],'turns':[
-                    {'id':'turn-exact','status':'completed','items':[{'type':'userMessage',
+                if method=='thread/read':return {'thread':{'id':record['target']['thread_id']}}
+                return {'data':[
+                    {'id':'turn-exact','status':'completed','itemsView':'full','items':[{'type':'userMessage',
                      'id':'message-exact','clientId':'client-exact',
-                     'content':[{'type':'text','text':prompt}]}]}]}}
+                     'content':[{'type':'text','text':prompt}]}]}],'nextCursor':None}
             with patch('codex_wake.native_delivery.native_request', side_effect=native), patch(
                     'codex_wake.native_delivery.subprocess.run') as effect:
                 self.assertEqual(run(['--wake-root',str(root),'native','reconcile',record['id']]),0)
@@ -433,10 +434,11 @@ class NativeDeliveryTests(unittest.TestCase):
             prompt=f"WAKE_TRIGGER_ID={record['id']}\nWAKE_TRIGGER_ROOT={root.resolve()}\nExecute the task"
             def native(endpoint,codex,method,params,timeout):
                 if method=='thread/queue/list':return {'data':[]}
-                return {'thread':{'id':record['target']['thread_id'],'turns':[
-                    {'id':'turn-'+suffix,'status':'completed','items':[{'type':'userMessage',
+                if method=='thread/read':return {'thread':{'id':record['target']['thread_id']}}
+                return {'data':[
+                    {'id':'turn-'+suffix,'status':'completed','itemsView':'full','items':[{'type':'userMessage',
                      'id':'message-'+suffix,'clientId':'same-client',
-                     'content':[{'type':'text','text':prompt}]}]} for suffix in ('one','two')]}}
+                     'content':[{'type':'text','text':prompt}]}]} for suffix in ('one','two')],'nextCursor':None}
             with patch('codex_wake.native_delivery.native_request',side_effect=native), patch(
                     'codex_wake.native_delivery.subprocess.run') as effect:
                 run(['--wake-root',str(root),'native','reconcile',record['id']])
