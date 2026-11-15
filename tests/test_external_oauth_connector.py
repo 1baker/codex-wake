@@ -51,6 +51,7 @@ class ExternalConnectorTests(unittest.TestCase):
                 landing=await client.get('/authorize',params=params)
                 self.assertEqual(landing.status_code,200)
                 self.assertIn('My connector',landing.text)
+                self.assertEqual(landing.headers['referrer-policy'],'same-origin')
                 flow=re.search(r'name="flow" value="([^"]+)"',landing.text)[1]
                 form=dict(flow=flow,decision='approve',mode='subset',scopes='observe',targets='0',actions='environment.snapshot')
                 approved=await client.post('/authorize',data=form,headers={'Origin':'https://wake.example'})

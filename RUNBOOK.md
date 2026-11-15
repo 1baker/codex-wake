@@ -9893,3 +9893,9 @@ Preserved historical649 shutdown settings and all historical module payloads.
 Live Cooper agent now reaches ChatGPT consent, both authority modes unchecked.
 No production grant selected or minted. Bug650 closes; client linking awaits
 explicit mode per operator spec. Root/browser/core state preserved.
+
+## 2026-11-14 | P238 real-browser consent Origin
+
+Operator selected act-as-me. Chrome rejected POST before grant creation because
+no-referrer suppresses Origin. Real Chrome fixture confirms null versus actual
+origin after same-origin policy; keep strict Origin checking unchanged.

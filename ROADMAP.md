@@ -1756,3 +1756,8 @@ remain separate. [Deployment evidence](docs/dev/evidence/plan0235/deployment.md)
 Status: DONE. Work item: #650. Owner: root / ecochran76.
 Plan: [Delegated consent](docs/dev/plans/0236-2026-11-14-delegated-connector-consent.md).
 Explicit, scoped operator-authorized agent setup with separate actor attribution.
+
+## P238 | Browser consent Origin
+
+Status: OPEN. Plan: [Browser consent Origin](docs/dev/plans/0238-2026-11-14-browser-consent-origin.md).
+Preserve first-party form Origin without sending cross-site referrers.

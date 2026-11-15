@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: connector-consent-origin-0238
+    owner: root / ecochran76
+    objective: Preserve browser consent Origin while keeping CSRF checks strict
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/654]
+    plan: docs/dev/plans/0238-2026-11-14-browser-consent-origin.md
+    branch: fix/connector-consent-origin
+    target: origin/main
+    plan_state: OPEN
+    custody_state: ACTIVE
+    dependencies: []
+    overlaps: [P236]
+    updated_at: 2026-11-14
+    disposition: Qualify exact wheel; connector-only restart; resume selected operator consent
+
   - id: connector-delegation-0236
     owner: root / ecochran76
     objective: Explicit scoped agent consent for operator-authorized connector setup
