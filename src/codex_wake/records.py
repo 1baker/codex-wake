@@ -227,22 +227,35 @@ def normalize_prompt(parts: list[str]) -> str:
     return prompt
 
 
-def codex_client_identity_for_tty(tty: str) -> tuple[int, int]:
-    matches: list[tuple[int, int]] = []
-    proc_root = Path("/proc")
-    for entry in proc_root.iterdir():
+def _codex_client_candidates_for_ttys(ttys):
+    matches = {tty: [] for tty in ttys}
+    if not matches:
+        return matches
+    for entry in Path("/proc").iterdir():
         if not entry.name.isdigit():
             continue
         try:
-            if os.readlink(entry / "fd" / "0") != tty:
+            tty = os.readlink(entry / "fd" / "0")
+            if tty not in matches:
                 continue
             command = (entry / "comm").read_text(encoding="utf-8").strip()
             if command != "codex":
                 continue
             stat = (entry / "stat").read_text(encoding="utf-8").split()
-            matches.append((int(entry.name), int(stat[21])))
+            matches[tty].append((int(entry.name), int(stat[21])))
         except (FileNotFoundError, OSError, IndexError, ValueError):
             continue
+    return matches
+
+
+def codex_client_identities_for_ttys(ttys):
+    """Observe unique native clients with one process census, without caching."""
+    return {tty: rows[0] for tty, rows in _codex_client_candidates_for_ttys(ttys).items()
+            if len(rows) == 1}
+
+
+def codex_client_identity_for_tty(tty: str) -> tuple[int, int]:
+    matches = _codex_client_candidates_for_ttys([tty])[tty]
     if len(matches) != 1:
         raise WakeError(f"expected one Codex client on {tty}, found {len(matches)}")
     return matches[0]

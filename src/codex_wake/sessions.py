@@ -9,7 +9,7 @@ import subprocess
 import time
 from typing import Any
 
-from .records import WakeError, _canonical_tmux_title, codex_client_identity_for_tty
+from .records import WakeError, _canonical_tmux_title, codex_client_identity_for_tty, codex_client_identities_for_ttys
 from .shared_app_server import SharedAppServerReader, SharedSourceError, locate_shared_endpoint
 
 
@@ -33,19 +33,17 @@ def tmux_inventory(socket_path: str | None, timeout: float, *, shell_metadata: b
     result = subprocess.run(command + ['list-panes', '-a', '-F', '\t'.join('#{' + x + '}' for x in fields)],
                             capture_output=True, text=True, timeout=timeout, check=True)
     rows = []
-    for line in result.stdout.splitlines():
+    parsed = [line.split('\t') for line in result.stdout.splitlines()]
+    if any(len(values) != len(fields) for values in parsed):
+        raise SharedSourceError('tmux metadata cannot be parsed unambiguously')
+    identities = codex_client_identities_for_ttys(values[fields.index('pane_tty')] for values in parsed)
+    for values in parsed:
         if time.monotonic() >= deadline:
             raise SharedSourceError('tmux observation timed out')
-        values = line.split('\t')
-        if len(values) != len(fields):
-            raise SharedSourceError('tmux metadata cannot be parsed unambiguously')
         row = dict(zip(fields, values))
         row['socket'] = socket_path
         row['pane_title'] = _canonical_tmux_title(row['pane_title'])
-        try:
-            identity = codex_client_identity_for_tty(row['pane_tty'])
-        except WakeError:
-            identity = None
+        identity = identities.get(row['pane_tty'])
         row['client_pid'] = identity[0] if identity else None
         row['client_start_time_ticks'] = identity[1] if identity else None
         row['evidence'] = 'process_generation' if identity else 'no_unique_codex_client'
