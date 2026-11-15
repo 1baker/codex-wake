@@ -147,3 +147,41 @@ A read-only candidate binding observation of the failed run02's exact saved
 recipient under the missing declared socket now establishes native identity and
 no attachment (not a ready session), with zero native input calls. Fresh actual
 installed acceptance remains the live gate after merge/deployment.
+
+## Qualified merged working installation
+
+PR683 mergedf9c953e4f1caca609c5e2d53f85092da5e99899c. Exactqualifieddev37
+349package files match merged main and working prefix
+`~/.local/share/codex-wake/releases/0.22.0.dev37-df30d4f`. Both connector unitpins
+select this prefix, activePID2121223, KillMode=process/SendSIGKILL=no retained.
+Immediate ingress probes during service startup returned502; subsequent readiness
+readback established protected-resource metadata200 and anonymousMCP401 with
+the same healthy connectorPID. Original native2082/startticks2000, browser379435,
+unrelated testnative3287769 and44defaultoperator panes match baseline.
+Run03 uses a fresh recipient/socket and original failed journals remain untouched.
+
+## Run03 — complete container-loss axis accepted
+
+Actual dev37 first scenario PASSED: exact original private server/TUI generations
+ended and socket absent before the finite wake due. Saved UUID
+01a1e00f-766c-7601-90ad-9ebce6739dc7 reopened under the same native executable,
+cwd and declared private socket/session. Original TUI2131446/start8851994 was
+replaced by unique metadata_matched TUI2154991/start8868461. One additional
+user input correlated exact wake/submission IDs; completed native turn
+01a1e012-53ca-75e2-9f7e-7396343ce2ce returned exactly CW681_1_COMPLETED.
+Wake attempts1/native queueaccepted; actual completion is independently observed
+in full native history, not a synthetic acknowledgment or rewritten queue receipt.
+
+Run03's second axis failed in the test runner before its due: recreating an
+already-loaded transient unit with systemd-run was refused. The restored TUI
+was preserved by monitorstop, but no successful new monitor generation was
+established. This does not invalidate the independent completed first axis.
+Cleanup had0errors, no private socket, archived recipient, suppressed enrollment
+and isolated authority denied. The second pending schedule was canceled with
+no second wake input. Failed receipt and all original journals remain retained.
+
+The runner now uses systemctl restart on the already-owned active unit and waits
+for its changed live health generation, preserving KillMode=process. A scenario
+selector permits only the remaining monitor axis on a fresh recipient; it avoids
+repeating an accepted independent axis. Focused lint/compile/installedhelp/diff
+checks PASS. No product package change or new fixture framework is involved.
