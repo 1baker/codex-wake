@@ -61,3 +61,27 @@ command and qualified prefix, source hashes, results, cleanup and any first
 failure will be appended after the coordinator's readiness signal.
 
 Memory disposition: `forbidden`; this task explicitly prohibits memory writes.
+
+## First live preparation failure
+
+Run01 used the deployed dev35 package and failed before due; no native wake
+input was delivered. Its exact private `kill-server` succeeded and the original
+TUI generation disappeared, but tmux retained the physical socket inode. The
+probe incorrectly required the inode to disappear automatically. Its first
+receipt remains unchanged at
+`~/.local/state/codex-wake/container-monitor-681-run01/receipt.json`; cancellation,
+enrollment suppression, isolated policy denial and native thread archival were
+recorded. Cleanup correctly refused the dead socket without sufficient prior
+server-generation custody. This is an acceptance-probe defect, not evidence of
+product restoration failure.
+
+The revised probe records the exact owned server PID/generation, TUI generation
+and socket device/inode/UID before kill. Once both original generations are gone,
+it accepts only an exact tmux cannot-connect diagnostic, revalidates the private
+directory and original physical owned socket inode, then unlinks that stale
+inode. The same captured custody handles cleanup following an interrupted
+post-kill observation. A different inode, unknown server, undeclared session,
+changed directory, arbitrary command failure or missing custody refuses removal.
+No old journal or recipient is reused. A fresh run02 recipient and separate
+coordinator launch remain required; this correction has syntax/help/whitespace
+validation only, with live requalification pending.
