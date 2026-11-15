@@ -156,6 +156,12 @@ has no attachment.
 Inspection evidence that a wake prompt was accepted in the bound recipient's
 interface. It does not establish a receiver acknowledgment or a work claim.
 
+**Native completion observation**:
+Evidence from the exact native turn and complete matching user/client items
+that execution reached a terminal state. Compact summaries can locate a turn,
+but cannot alone establish this evidence. Unrelated tool output need not be
+hydrated to reconcile the selected submission.
+
 **Receiver acknowledgment**:
 An attributable receipt from the exact recipient confirming a specified delivery
 outcome. Its meaning is limited to that outcome; it does not imply completed work.

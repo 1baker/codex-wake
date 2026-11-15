@@ -64,7 +64,7 @@ class NativeLargeResponseTests(unittest.TestCase):
                     return {'data':[{'id':'newer-turn','status':'completed','itemsView':'full','items':[]}],
                             'nextCursor':'older'}
                 self.assertEqual(params['cursor'],'older')
-                self.assertEqual(params['itemsView'],'full')
+                self.assertEqual(params['itemsView'],'summary')
                 return {'data':[{'id':'original-turn','status':'completed','itemsView':'full','items':[
                     {'type':'userMessage','id':'original-message','clientId':'original-client',
                      'content':[{'type':'text','text':prompt}]},
@@ -102,9 +102,15 @@ class NativeLargeResponseTests(unittest.TestCase):
                     return {'data':[item],'nextCursor':None}
                 def forbidden(*args,**kwargs):raise AssertionError('reconciliation cannot write')
                 adapter=CodexRuntimeAdapter(read_thread=forbidden,request=request,run=forbidden,project_failure=forbidden)
-                with self.assertRaises(WakeError):
-                    adapter.reconcile(adapter.resolve(dict(transport='native',thread_id='owned',
-                        endpoint='unix:///owned',codex_cmd='/bin/true')),'retained prompt')
+                recipient = adapter.resolve(dict(transport='native', thread_id='owned',
+                                                 endpoint='unix:///owned', codex_cmd='/bin/true'))
+                if problem == 'summary-only':
+                    # Unrelated summaries can be searched, but cannot establish
+                    # execution evidence without a matching complete item read.
+                    self.assertIsNone(adapter.reconcile(recipient, 'retained prompt').evidence)
+                else:
+                    with self.assertRaises(WakeError):
+                        adapter.reconcile(recipient, 'retained prompt')
 
     def test_a_late_native_response_does_not_extend_the_shared_deadline(self):
         from codex_wake.codex_runtime import CodexRuntimeAdapter

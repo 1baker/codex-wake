@@ -1,0 +1,19 @@
+{
+  "base": "91b80b09626cf256f71fdb9cb54dd21e2e57fa0a",
+  "reviewed_source": "dcb9f468d0401d49d181409935ada5dbbbc97e9a",
+  "mode": "primary_serial_two_axes",
+  "review_count": 1,
+  "standards": {
+    "sources": ["AGENTS.md", "GLOSSARY.md", "docs/dev/policies/0014-architecture-guardrails.md", "docs/dev/policies/0016-code-testing-discipline.md"],
+    "blocking": [],
+    "verdict": "Existing adapter, total budget and native evidence contract preserved; no new public workflow or persisted schema."
+  },
+  "spec": {
+    "sources": ["GitHub issue690", "docs/dev/plans/0247-2026-11-15-selective-native-reconciliation.md"],
+    "blocking": [],
+    "verdict": "Only exact candidate turns are hydrated; summary/full identity, turn ownership, unique items and bounded pagination are checked. Original native completion observed without input;144 focused checks passed."
+  },
+  "remaining_acceptance": ["exact installed package qualification", "working services and CLI parity", "fresh actual notification delivery"],
+  "followup_mode": "closed_world_deployment_verification",
+  "authorization": "Operator requested review merge deploy; no shared Codex daemon restart."
+}

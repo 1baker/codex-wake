@@ -1,5 +1,17 @@
 # Codex Wake Runbook
 
+## Turn | 2026-11-15 | Native reconciliation discovery / #690
+
+Root owns Plan0247/fix/native-reconcile-discovery from91b80b09. Original installed
+and current full-page source both timed out observing this completed retrieval
+wake, blocking subsequent wakes. New adapter searches summaries and hydrates
+only exact matching turns, preserving full-item identities and the10s budget.
+Original native read-only replay PASS1.09s. No input, production state changes,
+manual receipt, service restart or installation. Compatibility checks are
+file-backed; first failures retained. See evidence0247. The primary's dirty
+Grok/control work and all other owners are preserved; local lane.json owns
+checkout inventory/cleanup details. No duplicate notification is scheduled.
+
 ## Turn | 2026-11-13 | P231 packages deployed
 
 Operator explicitly authorized PR/review/merge/deploy after source closeout. Wake

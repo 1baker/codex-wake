@@ -203,6 +203,47 @@ class CodexRuntimeAdapter:
         if thread["id"] != recipient.session_id:
             raise WakeError("native evidence returned a different thread")
 
+        def hydrate(summary):
+            # Summary pages identify candidates; only complete native items can
+            # establish the receipt. Do not hydrate unrelated tool/image output.
+            expected = [(item.get('id'), item.get('clientId') or item.get('id'))
+                        for item in summary['items']
+                        if item.get('type') == 'userMessage' and exact(item.get('content'))]
+            items = []
+            cursor = None
+            cursors = set()
+            identifiers = set()
+            for _ in range(128):
+                params = dict(threadId=recipient.session_id, turnId=summary['id'],
+                              limit=100, sortDirection='asc',
+                              deferOutput=dict(commandExecution=True, mcpToolCall=True))
+                if cursor is not None:
+                    params['cursor'] = cursor
+                page = request('thread/items/list', params)
+                if (not isinstance(page, dict) or not isinstance(page.get('data'), list)
+                        or 'nextCursor' not in page):
+                    raise WakeError('native item page incomplete')
+                for entry in page['data']:
+                    item = entry.get('item') if isinstance(entry, dict) else None
+                    identifier = item.get('id') if isinstance(item, dict) else None
+                    if (not isinstance(entry, dict) or entry.get('turnId') != summary['id'] or not isinstance(identifier, str)
+                            or not identifier or identifier in identifiers):
+                        raise WakeError('native item identity ambiguous')
+                    identifiers.add(identifier)
+                    items.append(item)
+                cursor = page['nextCursor']
+                if cursor is None:
+                    actual = [(item.get('id'), item.get('clientId') or item.get('id'))
+                              for item in items
+                              if item.get('type') == 'userMessage' and exact(item.get('content'))]
+                    if actual != expected:
+                        raise WakeError('native summary and full message identity differ')
+                    return dict(summary, items=items, itemsView='full')
+                if not isinstance(cursor, str) or not cursor or cursor in cursors:
+                    raise WakeError('native item cursor ambiguous')
+                cursors.add(cursor)
+            raise WakeError('native item observation exceeded its page bound')
+
         def turns():
             cursor = None
             seen_cursors = set()
@@ -211,7 +252,7 @@ class CodexRuntimeAdapter:
             def checked(turn, *, legacy=False):
                 identifier = turn.get('id') if isinstance(turn, dict) else None
                 if (not isinstance(identifier, str) or not identifier or identifier in seen_turns
-                        or turn.get('itemsView', 'full' if legacy else None) != 'full'
+                        or turn.get('itemsView', 'full' if legacy else None) not in ('full', 'summary')
                         or turn.get('status') not in ('completed', 'failed', 'interrupted', 'inProgress')
                         or not isinstance(turn.get('items'), list)):
                     raise WakeError("native history identity or items ambiguous")
@@ -220,7 +261,7 @@ class CodexRuntimeAdapter:
 
             for index in range(128):
                 params = dict(threadId=recipient.session_id, limit=16,
-                              sortDirection="desc", itemsView="full")
+                              sortDirection="desc", itemsView="summary")
                 if cursor is not None:
                     params['cursor'] = cursor
                 try:
@@ -235,13 +276,22 @@ class CodexRuntimeAdapter:
                     if legacy.get('id') != recipient.session_id or not isinstance(legacy.get('turns'), list):
                         raise WakeError("native legacy history identity unavailable")
                     for turn in legacy['turns']:
-                        yield checked(turn, legacy=True)
+                        turn = checked(turn, legacy=True)
+                        if turn.get('itemsView', 'full') != 'full':
+                            raise WakeError('native legacy history items incomplete')
+                        yield turn
                     return
                 if (not isinstance(page, dict) or not isinstance(page.get('data'), list)
                         or 'nextCursor' not in page):
                     raise WakeError("native history page incomplete")
                 for turn in page['data']:
-                    yield checked(turn)
+                    turn = checked(turn)
+                    if turn['itemsView'] == 'summary':
+                        if not any(item.get('type') == 'userMessage' and exact(item.get('content'))
+                                   for item in turn['items'] if isinstance(item, dict)):
+                            continue
+                        turn = hydrate(turn)
+                    yield turn
                 cursor = page['nextCursor']
                 if cursor is None:
                     return

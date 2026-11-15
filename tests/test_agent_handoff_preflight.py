@@ -299,6 +299,11 @@ print('preflight:'+target+':'+nonce+':'+digest)
                     method=req['method'];params=req.get('params',{});methods.append(method)
                     tid=params.get('threadId',target)
                     if method=='initialize':value={'userAgent':'fixture'}
+                    elif method=='thread/turns/list':
+                        # This server models the older full-history protocol.
+                        ws.send(json.dumps(dict(id=req['id'], error=dict(
+                            code=-32601, message='method unavailable on older server'))))
+                        continue
                     elif method=='thread/loaded/list':value={'data':[tid for tid in threads
                         if not (unloaded_source and tid==source and respawns)],'nextCursor':None}
                     elif method=='thread/start':threads[target]={'name':'','turns':[]};value={'thread':{'id':target}}
