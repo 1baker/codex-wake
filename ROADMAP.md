@@ -1766,3 +1766,8 @@ Preserve first-party form Origin without sending cross-site referrers.
 
 Status: DONE. Local ticket: CW-0239. Plan: [Pinned native input](docs/dev/plans/0239-2026-11-14-pinned-native-input.md).
 PR658/659 integrated; dev27 deployed; real ChatGPT greeting queued to exact native conversation.
+
+## P240 | Native input result reconciliation
+
+Status: DONE. Local ticket CW-0240. Plan: [Native input reconciliation](docs/dev/plans/0240-2026-11-14-native-input-result-reconciliation.md).
+PR661 deployed as dev28; original ChatGPT round-trip result now reports completed with exact answer.

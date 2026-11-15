@@ -9909,3 +9909,7 @@ and receipts remain outside Git; no core/native/IdP/browser restart.
 ## 2026-11-14 | P239 ChatGPT native greeting
 
 Pinned native lookup bypasses unrelated account discovery only after complete target equality. Loaded membership remains complete; metadata reads narrow to the exact pinned thread. PR658/659 integrated; dev27 qualified under UID1017 (18 checks), 339 payload members match source and installations. Only connector service restarted. Real ChatGPT tool call admitted and queued the authorized greeting with original idempotency key. Consumption awaits active-turn completion. No native daemon, grant or account changes. Memory disposition forbidden: no explicit memory write requested.
+
+## 2026-11-14 | P240 stale native input cancellation
+
+Captured replay reproduces cached cancelled result despite exact native turn reporting completed. Terminal early return prevented fresh observation. PR661/bfb0a1d0 allows read-only completion correction only with original turn/client/input match and records prior cancellation in a correction event. Version dev28 qualified under UID1017: 14 focused checks, 339 payload members matched. Real ChatGPT reread reports completed / owner_observed / exact reply for original operation, no new prompt. Initial interrupted snapshot origin remains unestablished. Only connector restarted. Memory disposition forbidden: no explicit memory write requested.

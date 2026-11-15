@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: native-input-reconciliation-0240
+    owner: root / ecochran76
+    objective: Reconcile stale cancelled input with exact native completion
+    work_items: [CW-0240]
+    plan: docs/dev/plans/0240-2026-11-14-native-input-result-reconciliation.md
+    branch: fix/native-input-result-reconciliation
+    target: origin/main
+    plan_state: DONE
+    custody_state: MERGED
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-14
+    disposition: PR661 deployed; original ChatGPT operation completed; checkout retiring
+
   - id: pinned-native-input-0239
     owner: root / ecochran76
     objective: Deliver the authorized ChatGPT greeting to its exact native thread
