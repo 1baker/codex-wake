@@ -190,7 +190,8 @@ def main():
                 turn, user = added[0]; assert turn['status'] == 'inProgress'
                 assert process_identity(gate['pid'])['start_time_ticks'] == gate['start_ticks']
                 tools = [i for i in turn['items'] if i['type'] not in ('userMessage','agentMessage','reasoning') and str(gate_py) in json.dumps(i)]
-                assert tools, 'native tool record does not identify the actual gate command'
+                command_argv = Path('/proc', str(gate['pid']), 'cmdline').read_bytes().split(b'\0')
+                assert str(gate_py).encode() in command_argv and nonce.encode() in command_argv, 'live process is not the scoped gate command'
                 for occurrence in value['occurrences'][1:]:
                     if occurrence['index'] not in observed:
                         observed.add(occurrence['index'])
@@ -227,6 +228,7 @@ def main():
                            and wake['native_delivery']['submission_id'] in json.dumps(m['content'])]
                 assert len(matches) == 1 and matches[0][0]['status'] == 'completed'
                 assert [i['text'] for i in matches[0][0]['items'] if i['type'] == 'agentMessage'] == [marker]
+                assert any(i['type'] == 'commandExecution' and str(gate_py) in i.get('command', '') and nonce in i.get('command', '') for i in matches[0][0]['items']), 'completed native command record missing'
                 entry['completed_turns'].append(matches[0][0]['id'])
             ended = process_identity(gate['pid'])
             assert ended is None or ended['start_time_ticks'] != gate['start_ticks'], 'gate generation still exists after completion'
