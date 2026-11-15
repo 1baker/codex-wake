@@ -30,9 +30,9 @@ for a repeated clock time. `both` creates distinct UTC occurrences. Explicit clo
 times that resolve to the same UTC instant identify one due instant.
 
 Agree whether “twice a day” means local clock times or elapsed intervals.
-For example, Chicago `08:00`/`20:00` stays at those local times, with an11-hour
-spring overnight gap and13-hour fall overnight gap. An interval of43200seconds
-keeps12-hour gaps and changes its local clock times across those transitions.
+For example, Chicago `08:00`/`20:00` stays at those local times, with an 11-hour
+spring overnight gap and a 13-hour fall overnight gap. An interval of 43,200 seconds
+keeps 12-hour gaps and changes its local clock times across those transitions.
 
 Wake calculates UTC due anchors using the host's installed IANA timezone database.
 Persisted occurrences keep their original due/expiry anchors after a restart;
