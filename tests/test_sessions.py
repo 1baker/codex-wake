@@ -185,3 +185,38 @@ class GroupedSessionAliasTests(unittest.TestCase):
             rows = sessions.tmux_inventory('/tmp/sock', 5)
         self.assertEqual([(r['pane_id'], r['session_name']) for r in rows], [('%64', 'byobu')])
         self.assertEqual(len(rows[0]['session_aliases']), 2)
+
+
+class LinkedWindowIndexTests(unittest.TestCase):
+    """Review finding S214-SESSION-INDEX-01: ungrouped sessions that link the same window (tmux link-window) can
+    use different indices; merging them kept one session's index and mis-resolved session-qualified selectors."""
+
+    def rows(self):
+        def r(sid, name, index, pane_id, window, thread_title):
+            row = pane(index=index, name='w' + pane_id[1:], identifier=pane_id, title=thread_title)
+            row.update(session_id=sid, session_name=name, window_id=window, session_group='',
+                       pane_tty='/dev/pts/' + pane_id[1:])
+            return row
+        # A: W at 1, X at 2.  B: X at 1, W at 2 (swapped indices, no session group).
+        return [r('$1', 'A', '1', '%10', '@10', 'Wthread | repo'), r('$1', 'A', '2', '%11', '@11', 'Xthread | repo'),
+                r('$2', 'B', '1', '%11', '@11', 'Xthread | repo'), r('$2', 'B', '2', '%10', '@10', 'Wthread | repo')]
+
+    def test_ungrouped_linked_windows_keep_per_session_indices(self):
+        from codex_wake.sessions import merge_grouped_session_aliases
+        rows = merge_grouped_session_aliases(self.rows())
+        self.assertEqual(len(rows), 4)                                  # nothing merged across ungrouped sessions
+        threads = [dict(id='W', name='Wthread', cwd='/repo', status={'type': 'idle'}),
+                   dict(id='X', name='Xthread', cwd='/repo', status={'type': 'idle'})]
+        s = build_snapshot(threads, rows, {k: dict(availability='available') for k in ['tmux', 'app_server']})
+        self.assertEqual(resolve(s, '1', session='B')['thread_id'], 'X')  # B:1 is X, not W
+        self.assertEqual(resolve(s, '2', session='B')['thread_id'], 'W')
+        self.assertEqual(resolve(s, '1', session='A')['thread_id'], 'W')
+
+    def test_a_window_linked_at_a_different_index_still_resolves_there(self):
+        from codex_wake.sessions import merge_grouped_session_aliases
+        a = pane(index='1', identifier='%20', title='Session | repo')
+        b = dict(a, session_id='$2', session_name='B', window_index='7')
+        a.update(session_group=''); b.update(session_group='')
+        threads = [dict(id='T', name='Session', cwd='/repo', status={'type': 'idle'})]
+        rows = merge_grouped_session_aliases([a, b])
+        self.assertEqual(len(rows), 2)

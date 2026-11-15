@@ -225,7 +225,7 @@ class AgentRefreshTests(unittest.TestCase):
                     return subprocess.CompletedProcess(argv,0,'','')
                 if 'list-panes' in argv:
                     value = (('%158\n%159' if recipient_guard == 'split' else '%158') if '-a' not in argv else '\t'.join([
-                        '$1','owned','@158','1',tab['name'],'%158','0','owned-worker',tmp,tty]))
+                        '$1','owned','@158','1',tab['name'],'%158','0','owned-worker',tmp,tty,'']))
                 elif 'capture-pane' in argv:
                     text = 'UNSUBMITTED_DRAFT_158' if draft else '\x1b[2mAsk Codex to do anything\x1b[0m'
                     value = '\n\n\x1b[1m›\x1b[0m ' + text + '\n'

@@ -348,7 +348,7 @@ class AgentSpawnTests(unittest.TestCase):
                     output = '23,2' if composer == 'draft' else '2,2'
                 elif 'list-panes' in argv:
                     output = (('%157\n%158' if recipient_guard == 'split' else '%157') if '-a' not in argv else '\t'.join([
-                        '$1', 'fixture', '@157', '1', 'worker', '%157', '0', state['name'], tmp, tty]))
+                        '$1', 'fixture', '@157', '1', 'worker', '%157', '0', state['name'], tmp, tty, '']))
                 else:
                     output = ''
                 return subprocess.CompletedProcess(argv, 0, output, '')

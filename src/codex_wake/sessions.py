@@ -59,21 +59,24 @@ _PHYSICAL_PANE = ('pane_id', 'window_id', 'pane_tty', 'client_pid', 'client_star
 def merge_grouped_session_aliases(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """tmux grouped sessions (byobu and its byobu-NN clones) list the same physical pane once per session, so
     'exactly one attachment' checks saw two and refused (work-tracker #214: helper spawn stuck in
-    exact_idle_owned_client_not_ready; close refused). Merge only rows that are the same physical pane (same pane,
-    window, tty and Codex client process generation); keep every (session_id, session_name) as an alias. The
+    exact_idle_owned_client_not_ready; close refused). Merge only rows of the SAME non-empty session group that are
+    the same physical pane (same pane, window, tty and Codex client process generation): grouped sessions share one
+    window list with the same indices, so one row with every (session_id, session_name) as an alias is exact. The
     group's own session (name == session_group) is the primary, so existing session-name comparisons still match.
-    Rows that differ in any physical field are never merged and stay ambiguous."""
+    Ungrouped sessions that link the same window (tmux link-window) can use different indices, so they are never
+    merged (review finding S214-SESSION-INDEX-01); neither are rows that differ in any physical field."""
     merged: dict[tuple, dict[str, Any]] = {}
     for row in rows:
-        key = tuple(row.get(field) for field in _PHYSICAL_PANE)
+        group = row.get('session_group') or ''
+        # An ungrouped row keys on its own session too, so it never merges across sessions.
+        key = (group or ('ungrouped', row['session_id']),) + tuple(row.get(field) for field in _PHYSICAL_PANE)
         alias = (row['session_id'], row['session_name'])
         if key not in merged:
             merged[key] = dict(row, session_aliases=[alias])
             continue
         kept = merged[key]
         kept['session_aliases'].append(alias)
-        group = row.get('session_group')
-        if group and row['session_name'] == group and kept['session_name'] != group:
+        if row['session_name'] == group and kept['session_name'] != group:
             merged[key] = dict(row, session_aliases=kept['session_aliases'])
     return list(merged.values())
 
