@@ -35,6 +35,19 @@ class WakeSessionModes(unittest.TestCase):
                 self.assertEqual(all_records(Path(d))[0].record["attempts"], 0)
             finally:
                 if child.poll() is None: child.terminate(); child.wait(timeout=5)
+    def test_session_only_can_bind_complete_metadata_slower_than_five_seconds(self):
+        from codex_wake.shared_app_server import SharedSourceError
+        identity=process_identity(os.getpid())
+        snapshot={"complete":True,"sessions":[{"thread_id":THREAD,"binding_status":"metadata_matched","attachments":[{"client_pid":os.getpid(),"client_start_time_ticks":identity["start_time_ticks"],"pane_id":"%1","socket":None}]}]}
+        def native_metadata(**kwargs):
+            # The external source requires six seconds; deadlines are enforced
+            # without spending wall-clock time in this deterministic regression.
+            if kwargs['timeout'] < 6:raise SharedSourceError('native metadata observation deadline')
+            return snapshot
+        with tempfile.TemporaryDirectory() as d, patch('codex_wake.sessions.observe',side_effect=native_metadata), patch('codex_wake.native_clock.snapshot',return_value=CLOCK),contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(run(['--wake-root',d,'native','after','--json','--session-mode','session_only','--codex-path',sys.executable,THREAD,'1h','--','check']),0)
+            self.assertEqual(all_records(Path(d))[0].record['target']['session_owner']['pid'],os.getpid())
+
     def test_native_agent_schema_requires_explicit_mode(self):
         from codex_wake.harness_mcp import tool_specs
         for verb in ("after", "at", "file"):

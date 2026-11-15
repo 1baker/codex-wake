@@ -3,6 +3,7 @@ from functools import wraps
 from pathlib import Path
 
 from .records import WakeLifecycleLock, replace_record
+from .wake_session_modes import SESSION_OBSERVATION_TIMEOUT
 from .runtime_delivery import RuntimeCapability, RuntimeObservation, RuntimeSubmission, RuntimeTargetError
 
 
@@ -12,7 +13,7 @@ def observe_mode_presence(target, *, resumed=False):
     endpoint = target['endpoint']
     if endpoint == 'unix://':
         endpoint = locate_shared_endpoint(codex_cmd=target['codex_cmd'], timeout=5)
-    snapshot = observe(endpoint=endpoint, socket_path=target.get('tmux_socket'), timeout=5)
+    snapshot = observe(endpoint=endpoint, socket_path=target.get('tmux_socket'), timeout=SESSION_OBSERVATION_TIMEOUT)
     if not snapshot.get('complete'):
         # A missing *pinned* socket plus lost original client can qualify
         # absence, but only with available native inventory and no loaded

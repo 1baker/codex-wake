@@ -3,6 +3,8 @@ import os
 from .records import WakeError
 from .process import boot_id_value, process_identity
 
+SESSION_OBSERVATION_TIMEOUT = 15
+
 MODES = ("session_only", "reopen_live", "background")
 STARTUP = {"session_only": "active_tab", "reopen_live": "create_load_run", "background": "background_saved"}
 
@@ -35,7 +37,7 @@ def bind_mode(args, root, target):
             return
     from .sessions import observe
     try:
-        snapshot = observe(endpoint=target["endpoint"], timeout=5)
+        snapshot = observe(endpoint=target["endpoint"], timeout=SESSION_OBSERVATION_TIMEOUT)
         rows = [row for row in snapshot.get("sessions", []) if row.get("thread_id") == target["thread_id"]]
         if not snapshot.get("complete") or len(rows) != 1 or rows[0].get("binding_status") != "metadata_matched" or len(rows[0].get("attachments", [])) != 1:
             raise WakeError("session_owner_unverified")
