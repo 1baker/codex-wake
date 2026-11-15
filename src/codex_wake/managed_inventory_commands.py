@@ -129,7 +129,8 @@ class RuntimeObserver:
                      for pane in attachments]
         return Observation('codex', identity.namespace, conversation_id, identity.cwd,
                            state, self.now(), 'native_metadata', process, projected,
-                           {'inspect': 'supported', 'lifecycle_control': 'not_qualified'})
+                           {'inspect': 'supported', 'lifecycle_control': 'not_qualified',
+                            'saved_resume': 'supported' if not attachments and current.get('status', {}).get('type') == 'notLoaded' else 'not_qualified'})
 
     def _grok(self, arguments):
         from .managed_inventory import Observation

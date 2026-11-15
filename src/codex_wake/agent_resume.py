@@ -45,8 +45,11 @@ class SavedRuntime:
         if self.binding_source is not None:
             return self.binding_source(record, profile)
         from .managed_inventory_commands import RuntimeObserver
-        return RuntimeObserver(endpoint=profile['app_server'], socket_path=profile.get('tmux_socket'),
-                               timeout=profile['timeout'], now=self.now)({'conversation_id': record['conversation_id']})
+        sample = RuntimeObserver(endpoint=profile['app_server'], socket_path=profile.get('tmux_socket'),
+                                 timeout=profile['timeout'], now=self.now)({'conversation_id': record['conversation_id']})
+        if not sample.attachments and sample.capabilities.get('saved_resume') != 'supported':
+            raise InventoryError('identity_unavailable', 'saved recovery requires native notLoaded evidence')
+        return sample
 
     def launch(self, record, profile, guard, name):
         from .app_server import resolve_codex_cmd
@@ -186,6 +189,14 @@ class AgentResume:
                 if receipt['status'] in ('starting','uncertain','resumed') or receipt['effects_attempted']:
                     receipt.update(status='uncertain',reason='resume_binding_not_confirmed')
                     _save(path,receipt);return self._public(receipt)
+                from .process import process_identity, process_exists
+                prior = receipt['prior_process']
+                generation = process_identity(prior['pid'])
+                if generation is None and process_exists(prior['pid']):
+                    raise ResumeError('resume_prior_process_unqualified')
+                if (generation is not None and generation.get('boot_id') == prior['boot_id']
+                        and generation.get('start_time_ticks') == prior['start_ticks']):
+                    raise ResumeError('resume_prior_process_still_live')
                 guard()
                 receipt.update(status='starting',reason='resume_binding_not_confirmed',effects_attempted=1)
                 _save(path,receipt)

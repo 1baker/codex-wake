@@ -66,6 +66,14 @@ class ResumeTests(unittest.TestCase):
         from codex_wake.agent_resume import ResumeError
         with self.assertRaises(ResumeError):self.owner().resume(self.args,Principal(THREAD))
 
+    def test_live_prior_generation_cannot_be_replaced_from_an_empty_terminal_view(self):
+        from unittest.mock import patch
+        with patch('codex_wake.process.process_identity', return_value=dict(start_time_ticks=1, boot_id='boot')):
+            result = self.owner().resume(self.args, Principal(THREAD))
+        self.assertEqual(result['status'], 'held')
+        self.assertEqual(result['reason'], 'resume_prior_process_still_live')
+        self.assertEqual(self.runtime.launches, 0)
+
 class WholeContainerResumeTests(unittest.TestCase):
     def test_missing_owned_explicit_terminal_has_complete_empty_inventory(self):
         from codex_wake.sessions import tmux_inventory

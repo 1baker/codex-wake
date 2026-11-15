@@ -110,3 +110,13 @@ nor uses an attach-if-existing retry. Competing/unknown launches remain fenced.
 Focused34tests PASS3.001s, including current protocol and observer paths.
 Exactdev36 qualification, merge/install and renewed fresh actual acceptance
 remain required. This is a product blocker, not completed #681 acceptance.
+
+Targeted review found a consequential duplicate-attachment risk: an unlinked
+socket does not prove the prior server/TUI exited. Dev36 candidate was not
+deployed. Two regressions failed: a still-live prior process could be replaced,
+and a loaded native recipient with no visible attachment could be relaunched.
+The repair now separately requires native notLoaded evidence for saved recovery
+and proves the prior confirmed process generation ended before the launch fence.
+An unreadable yet existing process remains held. Missing pathname is only a
+bounded address census, never process-death proof. Exactdev37 supersedes the
+immutable dev36 candidate; no uncertain intent is cleared or retried.
