@@ -56,3 +56,34 @@ valid native message ID; invalid explicitly supplied client IDs are not promoted
 into a fallback. Matching queue identities must also be valid nonempty strings.
 Eight protocol/reconciliation tests PASS after this bounded remediation; no second
 review loop or new native writes. Final combined/package gates remain separate.
+
+## Exact package and final local gates
+
+Product source 9829b1c00dd85d4b31be7c61b2ae3c8242ba4afe. Immutable
+dev35 wheel SHA256 c92742ef52e89d35a6d34bbcb6a357462b75e1b300cb58cf4c7389a36297ddf7.
+All349 package files match source and the separate UID1017 installation; CLI and
+distribution metadata report0.22.0.dev35. Final source119tests PASS102.736s.
+Undefined-name lint (F821,F822,F823), compileall, policy wiring and diff checks PASS.
+Unrestricted Ruff style selection exposed existing compact-style violations;
+the repository's required undefined-name selection passes.
+
+Separate UID initial119test run had four test-package import errors; correcting
+PYTHONPATH to include the copied tests' parent made all9 lifecycle tests pass.
+The complete corrected installed-package rerun is recorded separately. No source
+package path is in this qualification's PYTHONPATH. Linux UID isolation shares
+the host kernel; test Python3.12.3 versus working3.12.13, with no3.11 matrix run.
+Pinned dependencies are identical.
+
+A fresh own native app-server under UID1017 was stopped after its owned probe.
+It used a private empty CODEX_HOME and received zero native model/input calls.
+Its first alias-socket probe was refused by custody checking; resolving the owned
+physical socket reached the native service. A fresh unsaved empty thread then
+refused turns/list, so that probe is recorded as FAIL, not native history proof;
+the sole created thread was archived. It does not establish history upgrade or
+launcher acceptance and no native daemon package is being installed. The existing
+working daemon2082, browser379435 and unrelated test daemon3287769 remain alive.
+Positive long-history adoption remains the post-deployment read-only gate.
+
+Corrected full installed-package UID1017 run:119tests PASS82.075s, using
+`PYTHONPATH=/tmp/cw674-qual:/tmp/cw674-qual/tests` and the installed venv Python.
+All10 selected modules match the final source run. Initial failed receipts retained.
