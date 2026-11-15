@@ -51,15 +51,23 @@ class SavedRuntime:
     def launch(self, record, profile, guard, name):
         from .app_server import resolve_codex_cmd
         from .session_lifecycle import tmux_command
+        from .sessions import explicit_terminal_absent
         terminal = self.terminal or tmux_command
         runtime = SimpleNamespace(**({'tmux_socket': None} | profile), effect_guard=guard)
-        terminal(runtime, 'has-session', '-t', profile['tmux_session'])
+        absent = explicit_terminal_absent(profile.get('tmux_socket'))
+        if not absent:
+            terminal(runtime, 'has-session', '-t', profile['tmux_session'])
         codex = resolve_codex_cmd(profile['codex_path'], required=True)
         argv = ['env', '-u', 'CODEX_THREAD_ID', '-u', 'TMUX_PANE']
         if profile.get('codex_home'):
             argv.append('CODEX_HOME=' + profile['codex_home'])
         argv += [codex, 'resume', '--no-alt-screen', '-C', record['root'],
                  record['conversation_id'], '--remote', profile['app_server']]
+        if absent:
+            # One atomic create with the saved recipient as its only window;
+            # a competing creator fails rather than attaching or duplicating.
+            return terminal(runtime, 'new-session', '-d', '-P', '-F', '#{window_id}\t#{pane_id}',
+                            '-s', profile['tmux_session'], '-n', name, '-c', record['root'], shlex.join(argv))
         return terminal(runtime, 'new-window', '-d', '-P', '-F', '#{window_id}\t#{pane_id}',
                         '-t', profile['tmux_session'] + ':', '-n', name, '-c', record['root'], shlex.join(argv))
 

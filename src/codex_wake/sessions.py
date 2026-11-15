@@ -23,7 +23,27 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def explicit_terminal_absent(socket_path: str | None) -> bool:
+    """Qualify absence only at an explicit address in a physical private directory."""
+    if socket_path is None:
+        return False
+    path = Path(socket_path)
+    if not path.is_absolute() or '..' in path.parts:
+        raise SharedSourceError('explicit terminal socket must be absolute')
+    try:
+        path.lstat()
+        return False  # Existing, stale, symlinked and inaccessible sockets are not absence.
+    except FileNotFoundError:
+        parent = path.parent.resolve(strict=True)
+        info = parent.stat()
+        if parent != path.parent or info.st_uid != os.geteuid() or info.st_mode & 0o077:
+            raise SharedSourceError('missing terminal requires a physical owned private directory')
+        return True
+
+
 def tmux_inventory(socket_path: str | None, timeout: float, *, shell_metadata: bool = False) -> list[dict[str, Any]]:
+    if explicit_terminal_absent(socket_path):
+        return []
     deadline = time.monotonic() + timeout
     command = ['tmux'] + (['-S', socket_path] if socket_path else [])
     fields = ['session_id', 'session_name', 'window_id', 'window_index', 'window_name',

@@ -65,3 +65,35 @@ class ResumeTests(unittest.TestCase):
         self.inv.set_enrollment(self.agent['managed_agent_id'],enabled=False)
         from codex_wake.agent_resume import ResumeError
         with self.assertRaises(ResumeError):self.owner().resume(self.args,Principal(THREAD))
+
+class WholeContainerResumeTests(unittest.TestCase):
+    def test_missing_owned_explicit_terminal_has_complete_empty_inventory(self):
+        from codex_wake.sessions import tmux_inventory
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertEqual(tmux_inventory(str(Path(directory)/'owned.sock'), 1), [])
+
+    def test_saved_launcher_recreates_explicit_missing_container_with_same_thread(self):
+        from codex_wake.agent_resume import SavedRuntime
+        with tempfile.TemporaryDirectory() as directory:
+            calls = []
+            def terminal(args, *command):
+                args.effect_guard()
+                calls.append(command)
+                return '@0\t%0'
+            runtime = SavedRuntime(terminal=terminal)
+            profile = dict(cwd=directory, app_server='unix:///native.sock', codex_path='/bin/true',
+                           tmux_socket=str(Path(directory)/'owned.sock'), tmux_session='owned', timeout=1)
+            runtime.launch(dict(root=directory, conversation_id=THREAD), profile, lambda: None, 'restore')
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0][0], 'new-session')
+            self.assertIn(THREAD, calls[0][-1])
+            self.assertIn('owned', calls[0])
+
+    def test_missing_socket_under_symlink_directory_is_not_qualified_absence(self):
+        from codex_wake.sessions import tmux_inventory
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root/'real').mkdir(mode=0o700)
+            (root/'alias').symlink_to(root/'real', target_is_directory=True)
+            with self.assertRaises(Exception):
+                tmux_inventory(str(root/'alias'/'owned.sock'), 1)

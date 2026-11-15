@@ -85,3 +85,28 @@ changed directory, arbitrary command failure or missing custody refuses removal.
 No old journal or recipient is reused. A fresh run02 recipient and separate
 coordinator launch remain required; this correction has syntax/help/whitespace
 validation only, with live requalification pending.
+
+## Run02 exposed whole-container product gaps
+
+The corrected test proved the exact original private server/TUI generations gone
+and original socket absent before due. At due, native saved identity remained
+readable, but RuntimeObserver held with identity_unavailable because absence of
+the explicit terminal address made the required terminal census unavailable.
+The original resume receipt has effects_attempted0/statusheld; the schedule
+entered attention. No wake input was sent. Own cleanup succeeded with noerrors,
+private socket absent, isolated policy denied and recipient archived. Original
+intent, launch and delivery journals remain retained without replay.
+
+SavedRuntime.launch also required has-session and could only create a window in
+an existing container. Regressions for complete empty terminal observation and
+exact saved-thread new-session launch failed before repair. The repair qualifies
+missing explicit socket addresses only under an existing physical owned0700
+directory; implicit, inaccessible, stale-existing and symlink-parent addresses
+are not promoted to absence. The existing metadata/completeness/identity checks
+remain. For that qualified absence only, the permission-guarded launcher atomically
+creates the declared session with the exact saved UUID/harness/cwd; otherwise
+the existing has-session/new-window path remains. It neither creates a keeper
+nor uses an attach-if-existing retry. Competing/unknown launches remain fenced.
+Focused34tests PASS3.001s, including current protocol and observer paths.
+Exactdev36 qualification, merge/install and renewed fresh actual acceptance
+remain required. This is a product blocker, not completed #681 acceptance.
