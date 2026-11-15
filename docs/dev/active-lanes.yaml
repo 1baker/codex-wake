@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: pinned-native-input-0239
+    owner: root / ecochran76
+    objective: Deliver the authorized ChatGPT greeting to its exact native thread
+    work_items: [CW-0239]
+    plan: docs/dev/plans/0239-2026-11-14-pinned-native-input.md
+    branch: fix/pinned-native-observation
+    target: origin/main
+    plan_state: DONE
+    custody_state: MERGED
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-14
+    disposition: PR658/659 deployed; ChatGPT queue accepted; checkout retiring
+
   - id: connector-consent-origin-0238
     owner: root / ecochran76
     objective: Preserve browser consent Origin while keeping CSRF checks strict

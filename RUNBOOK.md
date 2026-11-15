@@ -9905,3 +9905,7 @@ exact callback CSP qualified in Chrome. Actual operator consent, token exchange
 and one read-only ChatGPT acceptance completed (cooper/posix/completed). Existing
 plugin identity preserved; blocked prior grant revoked. Private bindings/expiry
 and receipts remain outside Git; no core/native/IdP/browser restart.
+
+## 2026-11-14 | P239 ChatGPT native greeting
+
+Pinned native lookup bypasses unrelated account discovery only after complete target equality. Loaded membership remains complete; metadata reads narrow to the exact pinned thread. PR658/659 integrated; dev27 qualified under UID1017 (18 checks), 339 payload members match source and installations. Only connector service restarted. Real ChatGPT tool call admitted and queued the authorized greeting with original idempotency key. Consumption awaits active-turn completion. No native daemon, grant or account changes. Memory disposition forbidden: no explicit memory write requested.

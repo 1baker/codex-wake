@@ -1761,3 +1761,8 @@ Explicit, scoped operator-authorized agent setup with separate actor attribution
 
 Status: DONE. Plan: [Browser consent Origin](docs/dev/plans/0238-2026-11-14-browser-consent-origin.md).
 Preserve first-party form Origin without sending cross-site referrers.
+
+## P239 | Pinned native input lookup
+
+Status: DONE. Local ticket: CW-0239. Plan: [Pinned native input](docs/dev/plans/0239-2026-11-14-pinned-native-input.md).
+PR658/659 integrated; dev27 deployed; real ChatGPT greeting queued to exact native conversation.
