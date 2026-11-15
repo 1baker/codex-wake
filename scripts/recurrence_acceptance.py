@@ -48,6 +48,7 @@ def main():
     principal = Principal('cw685-operator', 'operator')
     unit = 'cw685-'+base.name+'.service'
     roots, schedules = [], []
+    monitor_stopped = False
     receipt = dict(ticket=685, state='running', target=target, prefix=str(prefix), cases=[], commands=[])
 
     def save(name, value):
@@ -153,6 +154,7 @@ def main():
         save('cadence-result.json', final); save('native-cadence.json', data)
         receipt['cases'].append(dict(name='repeated-cadence', state='passed', occurrence_ids=[x['id'] for x in final['occurrences']]))
         run(['systemctl', '--user', 'stop', unit])
+        monitor_stopped = True
         owner.cancel(admitted['id'], 1, principal=principal)
         # Independent missed cases: no scheduler polls between registration and all four due slots.
         start = clock()['utc']['upper']+20
@@ -208,8 +210,12 @@ def main():
         for owner, identifier in schedules:
             try: owner.cancel(identifier, owner.read(identifier)['revision'], principal=principal)
             except Exception as e: errors.append('cancel:'+str(e))
-        r = run(['systemctl', '--user', 'stop', unit], check=False)
-        if r.returncode: errors.append('monitor stop unconfirmed')
+        if not monitor_stopped:
+            try:
+                r = run(['systemctl', '--user', 'stop', unit], check=False)
+                if r.returncode: errors.append('monitor stop unconfirmed')
+            except Exception as e:
+                errors.append('monitor stop unknown:'+str(e))
         for root in roots:
             try: PermissionStore(root).configure(dict(version=1, **{'global':{'default':'deny'}}), principal, expected_revision=1)
             except Exception as e: errors.append('policy:'+str(e))

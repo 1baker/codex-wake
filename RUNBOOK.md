@@ -9938,3 +9938,22 @@ PR682 merged8009ce7c. Product source9829b1c0, exactdev35 wheel c92742ef52e89d35a
 Run02 exposed missing-terminal observation/launch gaps with0effects. PR683/f9c953e4 repairs explicit private-address absence, atomic saved-session creation, native notLoaded and independent prior-generation-death guards. Review's unlinked-live-TUI finding reproducedred/green and closed; supersededdev36 neverdeployed. Exactdev37 wheel df30d4f8439dafd41f526072b4347eedf76f160395972da029c99833ecdbd27b qualified source155PASS102.382s/UID155PASS112.008s; all349files matchmergedsource andinstall. Onlyconnector restartedPID2121223; ingressready200/401 afterstartup.
 
 Run03 independently accepts actual completeprivatecontainer loss: sameUUID/harness/cwd restored, onecorrelatedinput/completedCW681_1_COMPLETED. Its secondaxis hit a test-runner transientunit recreation error. Retainedfailures; fixedrunner to atomicsystemctlrestart and reran onlyremainingaxis fresh. Run04PASS: monitorPID/generation changed, sameTUI retained, originalrequest/target/due/expiry unchanged, onecorrelatedinput/completedCW681_2_COMPLETED. Cleanups0errors, ownedmonitors inactive, no liveprivatesockets, recipientsarchived/enrollmentssuppressed/isolatedauthoritydenied. Native2082/browser379435/testnative3287769/all44operatorpanes/productionconfig+policyhashes unchanged. Originaljournals/acceptedsubmittedrecords retained, nosyntheticack/no replay. Dead run01socket retained asnonliveforensicartifact. Evidence0243; repeatedcadence/missed/overlap andhostreboot notclaimed. Memory dispositionforbidden.
+
+
+## 2026-11-15 | P244 installed recurrence acceptance (#685)
+
+Existing dev37, no product package or shared runtime change. Three interval30s
+occurrences each matched one native input/completed expected reply and original
+anchors; count exhausted at3. Three real-clock initial-downtime missed policies
+and three pending-overlap policies matched bounded expected states with0added
+native inputs. Fresh installed processes verified cancellation/anchors for all7.
+Original run01 remains failed only for redundant final stop of an already-stopped
+transient monitor. Independent read-only reconciliation proves original monitor
+gone/unitinactive, private terminal gone,7cancellations/defaultdeny policies and
+no pending/firing wakes. Accepted submitted records/journals retained; no replay
+or syntheticack. Runner stop custody/exception capture fixed after Standards P2;
+Spec0findings. Original3daemon/browser generations,43baseline operatorpanes and
+production config/policy hashes preserved. Focused pinnedlint/compile/help/policy/
+diff checks PASS. No new fixture tests, core-suite rerun, paid CI or package
+installation. Evidence0244; native busy-turn queue/calendar/reboot/soak excluded.
+Memory disposition forbidden; no memorywrite requested.
