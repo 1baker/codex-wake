@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: native-queue-694
+    owner: root / ecochran76
+    objective: Qualify native busy queue cancellation and expiry capability boundary
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/694]
+    plan: docs/dev/plans/0247-2026-11-15-native-queue-boundary.md
+    branch: test/native-queue-694
+    target: origin/main
+    plan_state: COMPLETE
+    custody_state: INTEGRATED
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-15
+    disposition: Cancellation/control qualified; expiry implementation remains open in #695; no runtime change
+
   - id: calendar-dst-691
     owner: root / ecochran76
     objective: Qualify installed clock cadence timezone and DST replay across restarts
