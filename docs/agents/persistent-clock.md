@@ -18,7 +18,10 @@ Use `schedules register --request FILE` with an explicitly agreed clock cadence:
 This is the `cadence` field inside the existing complete schedule request. Mode,
 end condition, missed-run/max-lateness policy, overlap bounds and delivery window
 remain explicit fields of that request. `times` contains distinct local `HH:MM`
-values; `start_at` is an inclusive timezone-qualified bound.
+values; `start_at` is an inclusive timezone-qualified bound. It is an absolute
+instant, not midnight in the cadence timezone: `00:00Z` can include an evening
+occurrence on the previous local date. To start at local midnight, provide its
+correct UTC offset (for example `2027-03-13T00:00:00-06:00` in Chicago).
 
 `gap_policy` chooses `skip` (omit a nonexistent local clock time) or
 `shift_forward` (advance by the timezone transition gap, so a missing 02:30 in
