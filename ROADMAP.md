@@ -1806,7 +1806,9 @@ cleanup failure retained and independently reconciled. Evidence0244.
 
 ## P245 | Actual native busy-turn scheduler overlap
 
-Status ACTIVE. Issue #688; plan [0245](docs/dev/plans/0245-2026-11-15-native-busy-overlap.md).
+Status FUNCTIONAL ACCEPTANCE COMPLETE. Issue #688; plan [0245](docs/dev/plans/0245-2026-11-15-native-busy-overlap.md).
 Prove skip/latest/bounded queue while a real native turn runs a bounded owned
 command, then exact retained deliveries after release. No direct native busy
-queue, calendar, reboot or soak qualification.
+queue, calendar, reboot or soak qualification. Actual counts1/2/3 verified;
+owned cleanup passed. Global default-pane delta remains unattributed; no full
+operator-snapshot preservation claim. Evidence0245.

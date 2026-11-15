@@ -1,6 +1,7 @@
 # 0245 — Native busy-turn scheduler overlap (#688)
 
-State ACTIVE. Owner root/ecochran76, WIP1. Branch test/native-busy-overlap-688.
+State FUNCTIONAL ACCEPTANCE COMPLETE; global pane-closure attribution unestablished. Owner root/ecochran76, WIP1. Branch test/native-busy-overlap-688.
+Evidence: docs/dev/evidence/0245-native-busy-overlap.md.
 Base f5fedda9. One checkout because primary has unrelated dirty design work;
 remove after exact remote custody. Existing installed dev37 remains the target.
 

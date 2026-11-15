@@ -8,12 +8,12 @@ lanes:
     plan: docs/dev/plans/0245-2026-11-15-native-busy-overlap.md
     branch: test/native-busy-overlap-688
     target: origin/main
-    plan_state: ACTIVE
-    custody_state: ACTIVE_WORKTREE
+    plan_state: COMPLETE_WITH_LIMITATION
+    custody_state: INTEGRATED
     dependencies: []
     overlaps: []
     updated_at: 2026-11-15
-    disposition: Isolated installed acceptance; retire checkout after exact remote custody
+    disposition: Actual busy cases accepted and owned resources cleaned; paneclosure attribution unestablished; retire checkout after evidence remote custody
 
   - id: recurrence-685
     owner: root / ecochran76
