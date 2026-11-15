@@ -125,3 +125,8 @@ revoke every grant listed in `connector_consent_audit` through the existing
 authority revocation path, including pending code grants. Confirm revocation
 receipts before starting that older runtime. Older releases do not enforce this
 new private policy; rollback is not a policy-withdrawal mechanism.
+
+Browser consent headers must preserve the first-party form Origin (`same-origin`
+referrer policy) and permit the validated callback origin/path in CSP form-action.
+Do not accept null Origin or broadly permit callback destinations. Chrome browser
+redirect behavior is an acceptance boundary distinct from HTTP status tests.

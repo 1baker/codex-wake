@@ -9899,3 +9899,9 @@ explicit mode per operator spec. Root/browser/core state preserved.
 Operator selected act-as-me. Chrome rejected POST before grant creation because
 no-referrer suppresses Origin. Real Chrome fixture confirms null versus actual
 origin after same-origin policy; keep strict Origin checking unchanged.
+
+P238 closeout: final dev25-5a801f9 active after PR656/ac60ad7d. Strict Origin and
+exact callback CSP qualified in Chrome. Actual operator consent, token exchange
+and one read-only ChatGPT acceptance completed (cooper/posix/completed). Existing
+plugin identity preserved; blocked prior grant revoked. Private bindings/expiry
+and receipts remain outside Git; no core/native/IdP/browser restart.

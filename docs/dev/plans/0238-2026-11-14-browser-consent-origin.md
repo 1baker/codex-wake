@@ -1,6 +1,6 @@
 # P238 | Browser consent Origin
 
-State: OPEN
+State: DONE
 Owner: root / ecochran76
 Work item: #654
 Branch: fix/connector-consent-origin
@@ -43,3 +43,25 @@ redirect (0requests), permits exact callback (1request), and blocks a different
 origin (0requests). Source10tests PASS9.031s. dev25wheel SHA256
 5a801f993e12c5a624a95c2be36897687314c47ea3df05c2132e10f7b37ea0f3;339payload
 members match source/wheel/UID1017. Installed test result retained privately.
+
+## Deployment and client acceptance
+
+PR655/e69adfa2 deployed dev24 Origin repair; PR656/ac60ad7d deployed final
+dev25-5a801f9 callback repair. Exact qualified339-member package installed; user
+service and existing historical649 drop-in both select that immutable prefix.
+Only connector restarted; shared auth, ingress, core/native and browsers preserved.
+
+Real browser selected the operator-authorized full operator mode. Fixed consent
+reaches the actual ChatGPT callback; server records active audited owner grant and
+access/refresh issuance. The blocked prior grant remains revoked with no tokens.
+Existing personal plugin identity preserved. A single fresh app-selected ChatGPT
+prompt requested only environment snapshot; client returned cooper/posix/completed,
+with an environment-inspection activity step. No mutations or session input.
+Client account/plugin/conversation/grant bindings and expiry are retained privately,
+not published here. No claim of a server read-invocation ledger.
+
+Latest10source tests PASS9.031s;10installed UID1017 tests PASS12.506s. Chrome
+fixtures prove first-party Origin retention, exact callback allowed and another
+origin blocked. No full suite/Python3.11 matrix/paid hosted CI. Task checkout
+retires after documentation integration; unrelated root work remains preserved.
+Memoryforbidden: no explicit user request for memory writes.
