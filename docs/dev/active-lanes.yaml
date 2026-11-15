@@ -8,7 +8,7 @@ lanes:
     plan: docs/dev/plans/0245-2026-11-15-native-busy-overlap.md
     branch: test/native-busy-overlap-688
     target: origin/main
-    plan_state: COMPLETE_WITH_LIMITATION
+    plan_state: COMPLETE
     custody_state: INTEGRATED
     dependencies: []
     overlaps: []
