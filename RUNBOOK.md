@@ -9977,3 +9977,21 @@ unestablished; all task terminal mutations private, native commands only owned
 wait.py. No blanket global-preservation claim or unrelated restoration action.
 Evidence0245. Review Standards0, Spec2/P2 corrected; attribution needs evidence.
 Memory disposition forbidden.
+
+
+## 2026-11-15 | P246 installed calendar/DST replay (#691)
+
+Existingdev37/tzdb2026e, no package/shared runtime change. Twelve valid cases
+cover local08/20 versus43200s across spring/fall, gap/fold choices, repeated-hour
+UTC ordering, gap collision deduplication and inclusive absolute start bounds.
+Eight invalid explicit choices rejected without schedules. Thirty-six occurrence
+anchors retained through153fresh-interpreter steps with alternating childTZ;
+boundary repeats/re-registration did not duplicate or rearm. No native endpoint,
+monitor or dispatcher; synthetic clock shape explicitly replay-only. All13roots
+canceled/denied on cleanup. First vector's UTC/local-midnight expectation failed
+and is retained; minimal correction plus separate UTC-bound case passed.
+Review Standards0/Spec1P2 resolved; focused lint/syntax/help/policy/diff/replay PASS,
+no broad suite/UID reinstall/paidCI. Guide clarifies clock versus interval and
+absolute start bounds; prior operator pane-closure confirmation propagated to0245.
+Evidence0246; liveDST/authenticatedclock/provider coverage remains separate.
+Memory disposition forbidden.
