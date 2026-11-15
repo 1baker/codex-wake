@@ -90,7 +90,10 @@ def main():
             raise RuntimeError('Command failed: '+str(argv[0:3]))
         return result
 
+    server_custody = None
+
     def kill_owned_server():
+        nonlocal server_custody
         # Revalidate physical custody immediately before every destructive command.
         assert socket.parent==target_directory and target_directory.resolve(strict=True)==target_directory
         info=target_directory.stat()
@@ -99,9 +102,44 @@ def main():
         except FileNotFoundError: return
         assert not socket.is_symlink() and stat.S_ISSOCK(info.st_mode) and info.st_uid==os.geteuid()
         assert socket.resolve(strict=True)==socket
-        sessions=run(['tmux', '-S', socket, 'list-sessions', '-F', '#{session_name}']).stdout.splitlines()
-        assert sessions==[session], 'Private server contains undeclared sessions'
-        run(['tmux', '-S', socket, 'kill-server'])
+        inode=(info.st_dev, info.st_ino, info.st_uid)
+        listed=run(['tmux', '-S', socket, 'list-sessions', '-F', '#{session_name}'], check=False)
+        if listed.returncode==0:
+            assert listed.stdout.splitlines()==[session], 'Private server contains undeclared sessions'
+            server_pid=int(run(['tmux', '-S', socket, 'display-message', '-p', '#{pid}']).stdout.strip())
+            generation=process_identity(server_pid)
+            assert generation, 'Exact owned tmux server generation required'
+            attachment=row()['attachments']
+            assert len(attachment)==1
+            tui_pid=attachment[0]['client_pid']; tui_generation=process_identity(tui_pid)
+            assert tui_generation, 'Exact owned TUI generation required'
+            server_custody=dict(inode=inode, pid=server_pid, generation=generation,
+                                tui_pid=tui_pid, tui_generation=tui_generation)
+            receipt.setdefault('server_removals', []).append(server_custody.copy())
+            run(['tmux', '-S', socket, 'kill-server'])
+        else:
+            assert server_custody is not None, 'Dead socket lacks prior exact server custody'
+        custody=server_custody
+        assert custody['inode']==inode, 'Socket inode changed since owned kill'
+        wait_for(lambda: process_identity(custody['pid'])!=custody['generation']
+                 and process_identity(custody['tui_pid'])!=custody['tui_generation'],
+                 'exact owned server and TUI generations gone', 20)
+        if not socket.exists(): return
+        # tmux can leave its physical socket inode after a successful kill-server.
+        # Remove only that captured inode, after a specific cannot-connect result.
+        dead=run(['tmux', '-S', socket, 'list-sessions', '-F', '#{session_name}'], check=False)
+        assert dead.returncode==1 and not dead.stdout and dead.stderr.strip() in (
+            'no server running on '+str(socket),
+            'error connecting to '+str(socket)+' (Connection refused)'), 'Server absence unproven'
+        info=target_directory.stat()
+        assert target_directory.resolve(strict=True)==target_directory and info.st_uid==os.geteuid() and not info.st_mode & 0o077
+        stale=socket.lstat()
+        assert stat.S_ISSOCK(stale.st_mode) and not socket.is_symlink()
+        assert (stale.st_dev, stale.st_ino, stale.st_uid)==custody['inode']
+        assert process_identity(custody['pid'])!=custody['generation']
+        assert process_identity(custody['tui_pid'])!=custody['tui_generation']
+        socket.unlink()
+        receipt['server_removals'][-1]['original_stale_inode_removed']=True
 
     def cli(*argv):
         return json.loads(run([prefix/'bin/codex-wake', '--wake-root', root, *argv]).stdout)
