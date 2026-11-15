@@ -194,8 +194,11 @@ def main():
             o.cancel(identifier, 1, principal=principal)
         assert len(inputs(history())) == 4, 'classification cases dispatched native input'
         for o, identifier in schedules:
-            code = 'from codex_wake.recurring_schedules import ScheduleStore; import sys; v=ScheduleStore(sys.argv[1]).read(sys.argv[2]); assert v["state"]=="cancelled"'
-            run([prefix/'bin/python', '-c', code, o.root, identifier])
+            anchors_before = [(i['id'], i['due_at'], i['expires_at']) for i in o.read(identifier)['occurrences']]
+            code = ('from codex_wake.recurring_schedules import ScheduleStore; import sys,json; '
+                    'v=ScheduleStore(sys.argv[1]).read(sys.argv[2]); assert v["state"]=="cancelled"; '
+                    'assert [[i["id"],i["due_at"],i["expires_at"]] for i in v["occurrences"]]==json.loads(sys.argv[3])')
+            run([prefix/'bin/python', '-c', code, o.root, identifier, json.dumps(anchors_before)])
         receipt['state'] = 'passed'
     except BaseException as e:
         receipt.update(state='failed', failure=type(e).__name__+': '+str(e))
