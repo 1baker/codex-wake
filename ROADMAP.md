@@ -1788,8 +1788,10 @@ readback5pages3.027s with0inputs. See evidence0242.
 
 ## P243 | Whole-container loss and monitor restart
 
-Status ACTIVE preparation. Issue #681; plan [0243](docs/dev/plans/0243-2026-11-15-container-monitor-acceptance.md).
+Status COMPLETE. Issue #681 accepted; plan [0243](docs/dev/plans/0243-2026-11-15-container-monitor-acceptance.md).
 Qualify actual persistent wakes in isolated owned state after complete private
 terminal-container loss and independent owned-monitor restart. Prior668 kept a
-keeper. No working-host reboot, operator service disruption or global policy
-change. Repeated cadence/missed/overlap coverage remains a follow-on packet.
+keeper. Actualdev37 run03 whole-container loss and run04 monitor restart each
+completed exactlyonecorrelatedinput; originaldaemon/browser/44panes/policy
+preserved. Evidence0243. No working-host reboot or global policy change.
+Repeated cadence/missed/overlap coverage remains a follow-on packet.

@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--target', type=Path, required=True)
     parser.add_argument('--artifacts', type=Path, required=True)
     parser.add_argument('--expected-prefix', type=Path, required=True)
+    parser.add_argument('--scenario', choices=('all', 'complete-container-loss', 'owned-monitor-restart'), default='all')
     args = parser.parse_args()
     os.umask(0o077)
     # Imports intentionally follow argument parsing so preparation is effect-free.
@@ -182,12 +183,15 @@ def main():
             cursors.add(cursor)
         raise RuntimeError('Native history page budget exceeded')
 
-    def start_monitor():
+    def start_monitor(*, restart=False):
         prior = (read_monitor_health(root) or {}).get('reader_generation')
-        run(['systemd-run', '--user', '--unit='+unit, '--property=RuntimeMaxSec=1200',
-             '--property=Restart=no', '--property=KillMode=process', '--property=UMask=0077', '--working-directory='+str(cwd),
-             '--setenv=TMUX='+env['TMUX'], '--setenv=PATH='+env['PATH'],
-             prefix/'bin/codex-waked', '--wake-root', root, '--interval', '1'])
+        if restart:
+            run(['systemctl', '--user', 'restart', unit])
+        else:
+            run(['systemd-run', '--user', '--unit='+unit, '--property=RuntimeMaxSec=1200',
+                 '--property=Restart=no', '--property=KillMode=process', '--property=UMask=0077', '--working-directory='+str(cwd),
+                 '--setenv=TMUX='+env['TMUX'], '--setenv=PATH='+env['PATH'],
+                 prefix/'bin/codex-waked', '--wake-root', root, '--interval', '1'])
         def fresh_monitor():
             health = read_monitor_health(root) or {}
             return (health.get('mode')=='loop' and health.get('reader_generation')!=prior
@@ -224,7 +228,9 @@ def main():
         (root/'controller-tabs.json').write_text(json.dumps(dict(schema_version=1, workspaces={
             'cw681':dict(kind='byobu', socket_path=str(socket), session_id=initial['attachments'][0]['session_id'])})))
         start_monitor()
-        for number, scenario in enumerate(('complete-container-loss', 'owned-monitor-restart'), 1):
+        scenarios = ('complete-container-loss', 'owned-monitor-restart') if args.scenario == 'all' else (args.scenario,)
+        for scenario in scenarios:
+            number = 1 if scenario == 'complete-container-loss' else 2
             entry = dict(scenario=scenario); receipt['scenarios'].append(entry)
             attached = row(); old = attached['attachments'][0]
             clock = snapshot()
@@ -252,9 +258,7 @@ def main():
                 assert recipient_generation, 'Restored TUI must be live before monitor-only restart'
                 entry['recipient_before_monitor_restart']=recipient_generation
                 entry['monitor_before']=read_monitor_health(root)
-                run(['systemctl', '--user', 'stop', unit])
-                run(['systemctl', '--user', 'reset-failed', unit], check=False)
-                entry['monitor_after']=start_monitor()
+                entry['monitor_after']=start_monitor(restart=True)
                 assert entry['monitor_before']['reader_generation'] != entry['monitor_after']['reader_generation']
                 entry['recipient_after_monitor_restart']=process_identity(old['client_pid'])
                 assert entry['recipient_after_monitor_restart']==recipient_generation, 'Monitor-only restart killed recipient'

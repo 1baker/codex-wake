@@ -8,12 +8,12 @@ lanes:
     plan: docs/dev/plans/0243-2026-11-15-container-monitor-acceptance.md
     branch: test/wake-container-restart-681
     target: origin/main
-    plan_state: ACTIVE
-    custody_state: ACTIVE_WORKTREE
+    plan_state: COMPLETE
+    custody_state: INTEGRATED
     dependencies: []
     overlaps: []
     updated_at: 2026-11-15
-    disposition: Preparation only until qualified history674 deployment; isolated root and private socket; no operator disruption
+    disposition: PR683 merged and dev37 deployed; run03 whole-loss and run04 monitor-restart accepted; worker checkout removed; final evidence publication closes remaining root checkout
 
   - id: native-history-pages-674
     owner: root / ecochran76

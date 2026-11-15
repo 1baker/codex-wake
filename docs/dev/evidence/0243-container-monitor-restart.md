@@ -1,8 +1,8 @@
 # Container loss and monitor restart: #681
 
-Status: preparation complete; live acceptance has not run. Plan 0243 and the
-coordinator own sequencing and installed-package readiness. This does not close
-#681 or qualify missed-event recovery.
+Status: COMPLETE. Run03 independently accepts complete-container loss; run04
+accepts owned-monitor restart. Exact dev37 is merged and deployed. Earlier failed
+receipts remain retained. This does not qualify missed-event recovery.
 
 The opt-in script `scripts/wake_container_restart_acceptance.py` runs with an
 exact immutable installed package's Python. It uses installed
@@ -147,3 +147,73 @@ A read-only candidate binding observation of the failed run02's exact saved
 recipient under the missing declared socket now establishes native identity and
 no attachment (not a ready session), with zero native input calls. Fresh actual
 installed acceptance remains the live gate after merge/deployment.
+
+## Qualified merged working installation
+
+PR683 mergedf9c953e4f1caca609c5e2d53f85092da5e99899c. Exactqualifieddev37
+349package files match merged main and working prefix
+`~/.local/share/codex-wake/releases/0.22.0.dev37-df30d4f`. Both connector unitpins
+select this prefix, activePID2121223, KillMode=process/SendSIGKILL=no retained.
+Immediate ingress probes during service startup returned502; subsequent readiness
+readback established protected-resource metadata200 and anonymousMCP401 with
+the same healthy connectorPID. Original native2082/startticks2000, browser379435,
+unrelated testnative3287769 and44defaultoperator panes match baseline.
+Run03 uses a fresh recipient/socket and original failed journals remain untouched.
+
+## Run03 — complete container-loss axis accepted
+
+Actual dev37 first scenario PASSED: exact original private server/TUI generations
+ended and socket absent before the finite wake due. Saved UUID
+01a1e00f-766c-7601-90ad-9ebce6739dc7 reopened under the same native executable,
+cwd and declared private socket/session. Original TUI2131446/start8851994 was
+replaced by unique metadata_matched TUI2154991/start8868461. One additional
+user input correlated exact wake/submission IDs; completed native turn
+01a1e012-53ca-75e2-9f7e-7396343ce2ce returned exactly CW681_1_COMPLETED.
+Wake attempts1/native queueaccepted; actual completion is independently observed
+in full native history, not a synthetic acknowledgment or rewritten queue receipt.
+
+Run03's second axis failed in the test runner before its due: recreating an
+already-loaded transient unit with systemd-run was refused. The restored TUI
+was preserved by monitorstop, but no successful new monitor generation was
+established. This does not invalidate the independent completed first axis.
+Cleanup had0errors, no private socket, archived recipient, suppressed enrollment
+and isolated authority denied. The second pending schedule was canceled with
+no second wake input. Failed receipt and all original journals remain retained.
+
+The runner now uses systemctl restart on the already-owned active unit and waits
+for its changed live health generation, preserving KillMode=process. A scenario
+selector permits only the remaining monitor axis on a fresh recipient; it avoids
+repeating an accepted independent axis. Focused lint/compile/installedhelp/diff
+checks PASS. No product package change or new fixture framework is involved.
+
+## Run04 — monitor-restart axis accepted and final preservation
+
+Actual dev37 monitor-only scenario PASSED on a fresh saved recipient. While the
+finite request was pending, systemctl restart changed monitorPID2181423 / health
+generation8886424 toPID2182040 / generation8886736. The existing TUI generation
+was identical before/after. Original request, exact target, due16:41:23.283807Z
+and absolute expiry16:44:23.283807Z were unchanged. Exactly one additional native
+user input correlated the original wake/submission; completed turn
+01a1e015-c862-7303-8275-4b4edae26a55 returned exactly CW681_2_COMPLETED.
+Attempts1, native queueaccepted, no synthetic acknowledgment, no replay.
+
+Cleanup PASS0errors: owned monitor inactive/PID0, private server/socket absent,
+schedules canceled, enrollment suppressed, disposable thread archived and isolated
+authority returned to defaultdeny. The accepted submitted records and all original
+journals remain retained. Run03's accepted independent whole-loss result stands;
+its test-runner second-axis failure is not relabeled as a full-run pass.
+
+Final independent census matches original native2082/start2000, browser379435,
+unrelatedUID1017daemon3287769, all44operatorpanes and hashes of production
+connector configuration and common permission policy. No native restart/upgrade,
+host reboot, production policy edit or original-chat input occurred. Temporary
+UID qualificationtrees and finished worker checkout removed after exactremote
+custody. Failed01's dead socket inode is retained as a nonlive forensic artifact,
+not deleted on invented historical server custody. Private run01–04 receipts and
+synthetic native history remain under user state, outsideGit.
+
+#681 acceptance criteria satisfied by the two independent actual installed axes.
+Repeated cadence, missed/overlap combinations, host reboot and long-duration soak
+remain outside this acceptance. Source155/UID155 checks and targeted review
+remain the product gate; final script lint/compile/help/policy/diff checks pass.
+Memory disposition forbidden: no explicit memory write request.
