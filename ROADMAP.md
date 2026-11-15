@@ -1819,3 +1819,9 @@ Installed deterministic replay for local clock versus interval semantics, explic
 gap/fold policies and restart persistence. All12valid/8rejection cases passed
 under installeddev37/tzdb2026e; no product deployment. Evidence0246.
 No live DST/provider/clock-auth claim.
+
+## P247 | Direct native busy queue boundary
+
+Status ACTIVE. Issue #694; plan [0247](docs/dev/plans/0247-2026-11-15-native-queue-boundary.md).
+Prove cancellation and control dequeue under actual busy execution; retain expiry
+as unqualified when native dequeue enforcement is absent. No native upgrade.
