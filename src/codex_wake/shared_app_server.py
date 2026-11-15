@@ -110,7 +110,7 @@ class SharedAppServerReader:
         except Exception as exc:
             raise SharedSourceError(f"shared metadata read failed: {type(exc).__name__}") from None
 
-    def loaded_threads(self, *, maximum: int = 10000) -> list[dict[str, Any]]:
+    def loaded_threads(self, *, maximum: int = 10000, selected_thread_id: str | None = None) -> list[dict[str, Any]]:
         if maximum <= 0:
             raise WakeError("metadata population bound must be positive")
         ids: list[str] = []
@@ -135,7 +135,8 @@ class SharedAppServerReader:
             if not isinstance(cursor, str) or not cursor or cursor in cursors:
                 raise SharedSourceError("invalid or repeated loaded-thread cursor")
             cursors.add(cursor)
-        return [self.read_thread(thread_id) for thread_id in ids]
+        return [self.read_thread(thread_id) for thread_id in ids
+                if selected_thread_id is None or thread_id == selected_thread_id]
 
     def saved_threads(self, cwd: str, *, maximum: int = 1000) -> list[dict[str, Any]]:
         """Complete bounded history metadata, including unloaded CLI conversations."""
