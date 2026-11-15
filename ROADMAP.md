@@ -1775,3 +1775,20 @@ PR661 deployed as dev28; original ChatGPT round-trip result now reports complete
 ## P241 | External connector acceptance
 
 Status: COMPLETE. All nine childtickets #664–#672 closed from actual deployed acceptance. One final Standards/Spec review and one bounded TDD remediation pass completed; no blocking findings remain. Plan [0241](docs/dev/plans/0241-2026-11-14-connector-acceptance.md), review evidence [0241](docs/dev/evidence/0241-final-review.md). Product repairs merged/deployeddev34; PR676 publishes acceptance artifacts; parent663 unchanged.
+
+
+## P242 | Bounded native history reconciliation
+
+Status ACTIVE. Issue #674; plan [0242](docs/dev/plans/0242-2026-11-15-history-reconciliation.md).
+Replace whole-history reconciliation with bounded full-item turn pages, retaining
+exact identities, complete pagination, shared observation deadline and no replay.
+Display summaries are not treated as full evidence. Qualification and deployment
+remain separate; prior acceptance PR676 merged eb14ec93.
+
+## P243 | Whole-container loss and monitor restart
+
+Status ACTIVE preparation. Issue #681; plan [0243](docs/dev/plans/0243-2026-11-15-container-monitor-acceptance.md).
+Qualify actual persistent wakes in isolated owned state after complete private
+terminal-container loss and independent owned-monitor restart. Prior668 kept a
+keeper. No working-host reboot, operator service disruption or global policy
+change. Repeated cadence/missed/overlap coverage remains a follow-on packet.

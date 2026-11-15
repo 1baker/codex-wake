@@ -1,6 +1,34 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: wake-container-restart-681
+    owner: root / ecochran76; worker prepare_full_container_681
+    objective: Qualify whole owned terminal loss and monitor restart
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/681]
+    plan: docs/dev/plans/0243-2026-11-15-container-monitor-acceptance.md
+    branch: test/wake-container-restart-681
+    target: origin/main
+    plan_state: ACTIVE
+    custody_state: ACTIVE_WORKTREE
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-15
+    disposition: Preparation only until qualified history674 deployment; isolated root and private socket; no operator disruption
+
+  - id: native-history-pages-674
+    owner: root / ecochran76
+    objective: Reconcile long native history through bounded read-only pages
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/674]
+    plan: docs/dev/plans/0242-2026-11-15-history-reconciliation.md
+    branch: fix/native-history-pages-674
+    target: origin/main
+    plan_state: ACTIVE
+    custody_state: ACTIVE_WORKTREE
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-15
+    disposition: Fresh isolated lane after merged PR676; close checkout after remote custody and delivery
+
   - id: connector-acceptance-0241
     owner: root / ecochran76
     objective: Qualify external connector session control and close tickets
