@@ -40,12 +40,28 @@ class UnifiedWakeTests(unittest.TestCase):
         from codex_wake.controller_auth import OAuthAuthority,AuthError
         from codex_wake.controller_http import ProtectedOperations
         from test_unified_connectors import ConnectorTests
-        with tempfile.TemporaryDirectory() as d,patch('codex_wake.sessions.observe',return_value={'complete':False,'sessions':[]}):
+        with tempfile.TemporaryDirectory() as d,patch('codex_wake.app_server.resolve_codex_cmd',return_value='/bin/true'),patch('codex_wake.sessions.observe',return_value={'complete':False,'sessions':[]}):
             auth=OAuthAuthority(Path(d)/'auth.sqlite',issuer='https://wake.test',resource='https://wake.test/controller')
             token=ConnectorTests().token(auth,['control','content.observe'],[dict(host='h',environment='e')])
             owner=ProtectedOperations(auth,SimpleNamespace(host='h',environment='e',inventory=SimpleNamespace(root=Path(d))))
+            from codex_wake.session_permissions import PermissionStore, Principal
+            thread=request()['thread_id']
+            PermissionStore(Path(d)).configure({'version':1,'global':{'default':'deny'},
+                'sessions':{'owner':{'actions':{
+                    action:{'decision':'allow','relationships':['peer'],'targets':[thread]}
+                    for action in ('wake.existing_tab','wake.background')}}}},
+                Principal('operator','operator'),expected_revision=0)
             created=owner.execute(token,'wakes.schedules.register',{'request':request()})['result']
             same=owner.execute(token,'wakes.schedules.register',{'request':request()})['result']
             self.assertEqual(created['id'],same['id'])
+            self.assertEqual(created['wake_policy']['permission_context']['subject'],'owner')
+            from codex_wake.session_permissions import PermissionDenied
+            with self.assertRaises(PermissionDenied):
+                owner.execute(token,'wakes.schedules.register',{'request':request(
+                    idempotency_key='ungranted-mode',session_mode='reopen_live')})
+            with self.assertRaisesRegex(Exception,'schedule_exact_self_required'):
+                from codex_wake.unified_wakes import WakeControls
+                WakeControls(Path(d),principal=Principal('owner','session'),codex_path='/bin/true').execute(
+                    'wakes.schedules.register',{'request':request(idempotency_key='session-peer')})
             auth.revoke_grant(auth.authenticate(token).grant_id)
             with self.assertRaises(AuthError):owner.execute(token,'wakes.schedules.show',{'schedule_id':created['id']})

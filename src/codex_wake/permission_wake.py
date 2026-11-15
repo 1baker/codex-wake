@@ -82,7 +82,7 @@ def decorate_policy(root,args,conversation,policy):
         if getattr(args,'wake_routes',None) is not None:raise PermissionDenied('wake_permission_policy_required')
         return policy
     principal=_principal(args);target=_target(conversation)
-    if principal.role!='operator' and principal.subject!=target:
+    if principal.role=='session' and principal.subject!=target:
         raise PermissionDenied('wake_exact_self_required')
     mode = getattr(args, 'session_mode', None)
     mode_routes = {'session_only': ['existing_tab'], 'reopen_live': ['existing_tab', 'new_tab'],
