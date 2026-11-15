@@ -3,7 +3,7 @@ import html
 import inspect
 import json
 import secrets
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import urlencode, urlsplit, quote
 from urllib.request import Request, build_opener, HTTPRedirectHandler, ProxyHandler
 from urllib.error import HTTPError
 
@@ -179,7 +179,9 @@ class BrowserConsent:
                 '<label>Restricted actions, one canonical operation per line:<textarea name="actions" rows="5" cols="70"></textarea></label>'
                 '<p>This grant expires after ' + escaped(min(self.config['grant_seconds'],int(delegation['expires_at']-self.authority.now())) if delegation else self.config['grant_seconds']) + ' seconds. Existing effects retain their original receipts.</p>'
                 '<button name="decision" value="approve">Approve selected access</button> <button name="decision" value="deny" formnovalidate>Deny</button></form></body></html>')
-            response = HTMLResponse(text, headers=dict(NO_STORE, **{'Content-Security-Policy': "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'", 'Referrer-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff'}))
+            callback=urlsplit(params['redirect_uri'])
+            callback_source=callback.scheme+'://'+quote(callback.netloc,safe='[]:')+quote(callback.path or '/',safe='/%')
+            response = HTMLResponse(text, headers=dict(NO_STORE, **{'Content-Security-Policy': "default-src 'none'; form-action 'self' "+callback_source+"; frame-ancestors 'none'; base-uri 'none'", 'Referrer-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff'}))
             response.set_cookie(COOKIE, cookie, secure=True, httponly=True, samesite='lax', path='/', max_age=300)
             return response
         if request.headers.get('origin') != self.authority.issuer: raise AuthError('invalid_origin')
