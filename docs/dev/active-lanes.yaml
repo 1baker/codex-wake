@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: native-busy-overlap-688
+    owner: root / ecochran76
+    objective: Qualify scheduler overlap while actual native turn is in progress
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/688]
+    plan: docs/dev/plans/0245-2026-11-15-native-busy-overlap.md
+    branch: test/native-busy-overlap-688
+    target: origin/main
+    plan_state: ACTIVE
+    custody_state: ACTIVE_WORKTREE
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-15
+    disposition: Isolated installed acceptance; retire checkout after exact remote custody
+
   - id: recurrence-685
     owner: root / ecochran76
     objective: Qualify installed repeated cadence and bounded missed/overlap policies

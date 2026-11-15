@@ -1803,3 +1803,10 @@ Three completed native occurrences plus independent real-clock missed-run and
 bounded pending-overlap decisions. Native busy-turn queueing, calendar/DST and
 reboot/soak remain outside this acceptance. Seven installed cases passed; original
 cleanup failure retained and independently reconciled. Evidence0244.
+
+## P245 | Actual native busy-turn scheduler overlap
+
+Status ACTIVE. Issue #688; plan [0245](docs/dev/plans/0245-2026-11-15-native-busy-overlap.md).
+Prove skip/latest/bounded queue while a real native turn runs a bounded owned
+command, then exact retained deliveries after release. No direct native busy
+queue, calendar, reboot or soak qualification.
