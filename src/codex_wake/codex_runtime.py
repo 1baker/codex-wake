@@ -168,7 +168,10 @@ class CodexRuntimeAdapter:
             remaining = deadline - self._clock()
             if remaining <= 0:
                 raise WakeError("native reconciliation observation timed out")
-            return self._request(target["endpoint"], target["codex_cmd"], method, params, remaining)
+            response = self._request(target["endpoint"], target["codex_cmd"], method, params, remaining)
+            if self._clock() >= deadline:
+                raise WakeError("native reconciliation observation timed out")
+            return response
 
         def exact(items):
             return (isinstance(items, list) and len(items) == 1
@@ -192,10 +195,59 @@ class CodexRuntimeAdapter:
                 break
         else:
             raise WakeError("native queue observation exceeded its page bound")
-        thread = request("thread/read", dict(threadId=recipient.session_id, includeTurns=True))["thread"]
+        from .native_protocol import NativeCapabilityUnavailable
+        thread = request("thread/read", dict(threadId=recipient.session_id, includeTurns=False))["thread"]
         if thread["id"] != recipient.session_id:
             raise WakeError("native evidence returned a different thread")
-        for turn in thread["turns"]:
+
+        def turns():
+            cursor = None
+            seen_cursors = set()
+            seen_turns = set()
+
+            def checked(turn, *, legacy=False):
+                identifier = turn.get('id') if isinstance(turn, dict) else None
+                if (not isinstance(identifier, str) or not identifier or identifier in seen_turns
+                        or turn.get('itemsView', 'full' if legacy else None) != 'full'
+                        or turn.get('status') not in ('completed', 'failed', 'interrupted', 'inProgress')
+                        or not isinstance(turn.get('items'), list)):
+                    raise WakeError("native history identity or items ambiguous")
+                seen_turns.add(identifier)
+                return turn
+
+            for index in range(128):
+                params = dict(threadId=recipient.session_id, limit=16,
+                              sortDirection="desc", itemsView="full")
+                if cursor is not None:
+                    params['cursor'] = cursor
+                try:
+                    page = request("thread/turns/list", params)
+                except NativeCapabilityUnavailable:
+                    if index:
+                        raise
+                    # Explicitly older native servers retain the original read
+                    # contract. Malformed, incomplete, or failed pages never
+                    # authorize fallback or renewal of the observation budget.
+                    legacy = request("thread/read", dict(threadId=recipient.session_id, includeTurns=True))["thread"]
+                    if legacy.get('id') != recipient.session_id or not isinstance(legacy.get('turns'), list):
+                        raise WakeError("native legacy history identity unavailable")
+                    for turn in legacy['turns']:
+                        yield checked(turn, legacy=True)
+                    return
+                if (not isinstance(page, dict) or not isinstance(page.get('data'), list)
+                        or 'nextCursor' not in page):
+                    raise WakeError("native history page incomplete")
+                for turn in page['data']:
+                    yield checked(turn)
+                cursor = page['nextCursor']
+                if cursor is None:
+                    return
+                if not isinstance(cursor, str) or not cursor or cursor in seen_cursors:
+                    raise WakeError("native history cursor ambiguous")
+                seen_cursors.add(cursor)
+            raise WakeError("native history observation exceeded its page bound")
+
+        for turn in turns():
             for item in turn["items"]:
                 if item.get("type") == "userMessage" and exact(item.get("content")):
                     identity = item.get("clientId") or item["id"]
@@ -219,6 +271,8 @@ class CodexRuntimeAdapter:
                             freshness='Observed with this exact native turn reconciliation',
                             ambiguity='Completion establishes execution, not acceptance of the result.'),
                     )
+        if self._clock() >= deadline:
+            raise WakeError("native reconciliation observation timed out")
         if len(evidence) != 1:
             return RuntimeReconciliation(
                 None, "no_exact_native_evidence" if not evidence else "multiple_native_submissions",
