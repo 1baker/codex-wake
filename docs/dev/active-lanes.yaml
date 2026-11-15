@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: recurrence-685
+    owner: root / ecochran76
+    objective: Qualify installed repeated cadence and bounded missed/overlap policies
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/685]
+    plan: docs/dev/plans/0244-2026-11-15-recurring-acceptance.md
+    branch: test/recurrence-685
+    target: origin/main
+    plan_state: ACTIVE
+    custody_state: ACTIVE_WORKTREE
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-15
+    disposition: Isolated installed acceptance; preserve operator state; remove checkout after exact remote custody
+
   - id: wake-container-restart-681
     owner: root / ecochran76; worker prepare_full_container_681
     objective: Qualify whole owned terminal loss and monitor restart

@@ -1795,3 +1795,10 @@ keeper. Actualdev37 run03 whole-container loss and run04 monitor restart each
 completed exactlyonecorrelatedinput; originaldaemon/browser/44panes/policy
 preserved. Evidence0243. No working-host reboot or global policy change.
 Repeated cadence/missed/overlap coverage remains a follow-on packet.
+
+## P244 | Installed repeated cadence and policy acceptance
+
+Status ACTIVE. Issue #685; plan [0244](docs/dev/plans/0244-2026-11-15-recurring-acceptance.md).
+Three completed native occurrences plus independent real-clock missed-run and
+bounded pending-overlap decisions. Native busy-turn queueing, calendar/DST and
+reboot/soak remain outside this acceptance.
