@@ -128,3 +128,22 @@ explicit private-address absence only after exit1. Successful observations are
 retained. No fixture expansion was needed. Prior-generation protocol tests now
 enroll an actual child generation and end/reap it before recovery, rather than
 expecting recovery to replace the still-live test caller. Failures are retained.
+
+## Final dev37 source/package qualification
+
+Product source47016d668f11aa39371f136063ce8449833e75df. Wheel SHA256
+df30d4f8439dafd41f526072b4347eedf76f160395972da029c99833ecdbd27b.
+All349 package files match source and the actual UID1017 installation; CLI and
+distribution metadata report0.22.0.dev37. Final14module source155tests PASS102.382s;
+exact installed-package UID155tests PASS112.008s (test paths only, no source
+package shadowing). Required undefined-name lint, compileall, policy wiring and
+diff checks PASS. Focused37checks PASS5.261s. Targeted reviewer confirmed the
+unlinked-live-TUI finding closed by source inspection; no fresh discovery loop.
+Linux UID isolation shares the hostkernel; Python3.12.3 test versus3.12.13 working,
+no hosted3.11 matrix. Existing immutable dev36 candidate remains superseded,
+never deployed. No native daemon package/launcher upgrade is part of this repair.
+
+A read-only candidate binding observation of the failed run02's exact saved
+recipient under the missing declared socket now establishes native identity and
+no attachment (not a ready session), with zero native input calls. Fresh actual
+installed acceptance remains the live gate after merge/deployment.
