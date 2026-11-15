@@ -1759,5 +1759,5 @@ Explicit, scoped operator-authorized agent setup with separate actor attribution
 
 ## P238 | Browser consent Origin
 
-Status: OPEN. Plan: [Browser consent Origin](docs/dev/plans/0238-2026-11-14-browser-consent-origin.md).
+Status: DONE. Plan: [Browser consent Origin](docs/dev/plans/0238-2026-11-14-browser-consent-origin.md).
 Preserve first-party form Origin without sending cross-site referrers.

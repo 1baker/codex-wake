@@ -8,12 +8,12 @@ lanes:
     plan: docs/dev/plans/0238-2026-11-14-browser-consent-origin.md
     branch: fix/connector-consent-origin
     target: origin/main
-    plan_state: OPEN
-    custody_state: ACTIVE
+    plan_state: DONE
+    custody_state: MERGED
     dependencies: []
     overlaps: [P236]
     updated_at: 2026-11-14
-    disposition: Qualify exact wheel; connector-only restart; resume selected operator consent
+    disposition: Deployed; operator OAuth and client read verified; checkout retiring
 
   - id: connector-delegation-0236
     owner: root / ecochran76
