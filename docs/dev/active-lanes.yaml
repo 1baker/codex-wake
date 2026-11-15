@@ -9,11 +9,11 @@ lanes:
     branch: test/recurrence-685
     target: origin/main
     plan_state: COMPLETE
-    custody_state: ACTIVE_WORKTREE
+    custody_state: INTEGRATED
     dependencies: []
     overlaps: []
     updated_at: 2026-11-15
-    disposition: Seven installed cases accepted after cleanup reconciliation; no product package change; retire checkout after evidence remote custody
+    disposition: PR686 merged; seven cases accepted and cleanup reconciled; no product deployment; task checkout retiring after exact remote custody
 
   - id: wake-container-restart-681
     owner: root / ecochran76; worker prepare_full_container_681
