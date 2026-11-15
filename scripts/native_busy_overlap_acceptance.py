@@ -228,7 +228,8 @@ def main():
                 assert len(matches) == 1 and matches[0][0]['status'] == 'completed'
                 assert [i['text'] for i in matches[0][0]['items'] if i['type'] == 'agentMessage'] == [marker]
                 entry['completed_turns'].append(matches[0][0]['id'])
-            assert process_identity(gate['pid']) is None, 'gate child still exists after completion'
+            ended = process_identity(gate['pid'])
+            assert ended is None or ended['start_time_ticks'] != gate['start_ticks'], 'gate generation still exists after completion'
             save(policy+'-result.json', final); save(policy+'-native-completed.json', data)
             run(['systemctl','--user','stop',unit]); stopped_units.add(unit)
             owner.cancel(admitted['id'], 1, principal=principal)
