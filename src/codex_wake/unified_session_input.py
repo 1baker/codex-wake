@@ -184,10 +184,30 @@ class SessionInputs:
         row=record['payload']['session']
         actor=self.guard(row,'content.observe')
         self.runtime._owned(actor,record,lambda:self.guard(row,'content.observe'),capability='content.observe')
-        if record['phase']=='terminal':return self.runtime.envelope('environment.conversations.input.result',record)
+        if record['phase']=='terminal' and record['execution']!='cancelled':return self.runtime.envelope('environment.conversations.input.result',record)
         with self._result_lock(identifier) as acquired:
             if not acquired:return self.runtime.envelope('environment.conversations.input.result',record)
             record=self.runtime._load(identifier)
+            if record['phase']=='terminal':
+                # Native interrupted snapshots can precede authoritative completion.
+                # Reconcile only the already correlated original turn, read-only;
+                # never redispatch an input or infer success from answer text.
+                if record['execution']=='cancelled':
+                    try:thread=self.thread(row)
+                    except (OSError,ValueError,WebSocketException) as error:
+                        if getattr(error,'code',None) in ('stale_target','foreign_target'):raise
+                    else:
+                        handle=record.get('result') or {}
+                        turn_id=handle.get('turn_id')
+                        client_id=handle.get('client_message_id') or identifier
+                        matches=self._matched(thread,client_id,record['payload']['prompt'])
+                        if len(matches)==1 and matches[0]['id']==turn_id and matches[0].get('status')=='completed':
+                            self._finish(record,matches[0])
+                            self.runtime._save(record)
+                            if record['execution']=='completed':
+                                self.runtime._event(record,'native_completion_reconciled',dict(kind='native_completion_reconciled',previous_execution='cancelled',turn_id=turn_id))
+                self.runtime._owned(self.guard(row,'content.observe'),record,lambda:self.guard(row,'content.observe'),capability='content.observe')
+                return self.runtime.envelope('environment.conversations.input.result',record)
             try:thread=self.thread(row)
             except (OSError,ValueError,WebSocketException) as error:
                 if getattr(error,'code',None) in ('stale_target','foreign_target'):raise
