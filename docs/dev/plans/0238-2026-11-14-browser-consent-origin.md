@@ -29,3 +29,17 @@ Exactdev24wheel SHA25623111e24e5206cd3b288f65d62b03b769565173d9df3578427d975e54c
 installed under Linux UID1017:10tests PASS7.810s;339package members match source,
 wheel and installed package. Shared kernel; no full-suite/Python3.11 matrix or
 hosted paid CI. No source change after qualification.
+
+Live continuation: dev24 preserved POST Origin, so the selected operator consent
+created an audited grant. Chrome then blocked its external303 under form-action
+self. No token was exchanged; revoked that unused grant through existing authority
+and retained receipt. Add only the already validated exact callback origin/path
+to form-action, encoding directive punctuation. Exact Origin, CSRF, identity,
+client redirect allowlist and delegation fences remain unchanged. CSP regression
+first failed because registered callback was absent. No OAuth callback replay.
+
+Callback continuation qualification: Chrome fixture blocks self-only external
+redirect (0requests), permits exact callback (1request), and blocks a different
+origin (0requests). Source10tests PASS9.031s. dev25wheel SHA256
+5a801f993e12c5a624a95c2be36897687314c47ea3df05c2132e10f7b37ea0f3;339payload
+members match source/wheel/UID1017. Installed test result retained privately.
