@@ -215,6 +215,10 @@ class AgentSpawnTests(unittest.TestCase):
     def test_rendered_local_draft_prevents_native_assignment(self):
         self.spawn_scenario(composer='draft')
 
+    def test_background_painted_empty_composer_is_accepted(self):
+        """#214 S214-EMPTY-COMPOSER-RENDER-03: Codex 0.169 paints the empty composer row's background."""
+        self.spawn_scenario(composer='background')
+
     def test_restart_rechecks_draft_before_prepared_task_admission(self):
         self.spawn_scenario(interrupted_admission=True)
 
@@ -344,6 +348,9 @@ class AgentSpawnTests(unittest.TestCase):
                 elif 'capture-pane' in argv:
                     text = 'UNSUBMITTED_DRAFT_157' if composer == 'draft' else '\x1b[2mAsk Codex to do anything\x1b[0m'
                     output = '\n\n\x1b[1m›\x1b[0m ' + text + '\n\n  GPT-6.1-Sol low · fixture\n'
+                    if composer == 'background':     # exact Codex 0.169 render captured from a held helper (#214)
+                        output = ('\n\n\x1b[1m›\x1b[0m\x1b[48;2;41;41;41m \x1b[2mAsk Codex to do anything\x1b[0m'
+                                  '\x1b[48;2;41;41;41m\n\n  GPT-6.1-Sol low · fixture\n')
                 elif 'display-message' in argv:
                     output = '23,2' if composer == 'draft' else '2,2'
                 elif 'list-panes' in argv:

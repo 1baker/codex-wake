@@ -270,10 +270,13 @@ def advance_spawn(path, receipt, profile):
             cursor = tmux_command(runtime, 'display-message', '-p', '-t', receipt['pane_id'],
                                   '#{cursor_x},#{cursor_y}')
             lines = frame.splitlines()
+            # Same proof the refresh path uses: only background paint is ignored (Codex TUI 0.169 paints the
+            # composer row, #214 S214-EMPTY-COMPOSER-RENDER-03); the bold prompt, the exact dim placeholder and the
+            # cursor position are still required, so drafts and unknown layouts still fail closed.
+            from .refresh_goal import empty_composer_line
             try:
                 x, y = map(int, cursor.strip().split(','))
-                empty = (x == 2 and y >= 0 and y < len(lines) and lines[y] ==
-                         '\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m')
+                empty = x == 2 and 0 <= y < len(lines) and empty_composer_line(lines[y])
             except ValueError:
                 empty = False
             if not empty:

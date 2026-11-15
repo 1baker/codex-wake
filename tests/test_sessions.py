@@ -236,3 +236,17 @@ class AliasJsonStabilityTests(unittest.TestCase):
         self.assertEqual(saved, rows[0])
         single = merge_grouped_session_aliases([dict(base, session_group='')])[0]
         self.assertEqual(json.loads(json.dumps(single)), single)
+
+
+class EmptyComposerRenderTests(unittest.TestCase):
+    """#214 S214-EMPTY-COMPOSER-RENDER-03: the exact empty-composer frame captured from a held helper pane."""
+    CAPTURED = '\x1b[1m›\x1b[0m\x1b[48;2;41;41;41m \x1b[2mAsk Codex to do anything\x1b[0m\x1b[48;2;41;41;41m'
+
+    def test_background_paint_is_ignored_but_the_placeholder_proof_is_kept(self):
+        from codex_wake.refresh_goal import empty_composer_line
+        self.assertTrue(empty_composer_line(self.CAPTURED))
+        self.assertTrue(empty_composer_line('\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m'))
+        for draft in (self.CAPTURED.replace('Ask Codex to do anything', 'my unsent draft'),
+                      '\x1b[1m›\x1b[0m\x1b[48;2;41;41;41m UNSUBMITTED_DRAFT',
+                      self.CAPTURED.replace('\x1b[2m', '')):           # placeholder no longer dim = real text
+            self.assertFalse(empty_composer_line(draft), draft)
