@@ -1,6 +1,6 @@
 # Plan0247 | Selective native reconciliation
 
-State: OPEN
+State: CLOSED
 Owner: root/native-reconcile-discovery
 Issue: #690, follow-up to #674 / PR682
 Branch: fix/native-reconcile-discovery
@@ -8,11 +8,13 @@ Base: 91b80b09626cf256f71fdb9cb54dd21e2e57fa0a
 
 ## Current State
 
-The completed paper-retrieval wake lacks a terminal receipt; subsequent file/time
-wakes made zero attempts and expired. Both installed whole-history reconciliation
-and current main's full-turn pagination time out on this conversation. The repaired
-adapter reconciles the exact incident read-only in1.09s. No production records or
-working package changed. Preserve unrelated dirty primary and other checkouts.
+PR692 merged as8542810979d961f9ac69f1e4706e70c3431a7a0e and the exact qualified
+dev38 wheel is installed for CLI, supervisor and connector.144 source checks and
+144 installed-wheel checks under UID1017 pass;349 package files match. Installed
+peer reconciliation returned unblocked in3.34s using authentic native evidence.
+The single post-deployment time wake delivered to this existing conversation on
+its first attempt; its trigger and native submission match the registered test.
+Shared Codex daemon generation is unchanged. See deployment acceptance0247.
 
 ## Scope and acceptance
 
@@ -25,8 +27,10 @@ accounting still covers native agentMessage text, not tool results or usage.
 
 One serial owner: captured red loop, ranked hypotheses, single-variable probes,
 source regression red, minimal adapter repair, focused green, original read-only
-native replay, PR. No new scheduler, timer retry, native input, daemon build,
-manual completion receipt, production-state edit, service restart or installation.
+native replay, PR. The original source packet excluded installation. The operator
+then explicitly authorized review, merge and deployment, including one live
+verification wake. No new scheduler, native daemon build/restart, fabricated
+completion receipt, deadline reset or manual wake-state edit was introduced.
 See [evidence0247](../evidence/0247-selective-native-reconciliation.md).
 
 Cleanup: normal checkout removal after integrated source/evidence custody;

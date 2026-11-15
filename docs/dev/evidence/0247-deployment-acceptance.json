@@ -1,0 +1,20 @@
+{
+  "source_commit": "8542810979d961f9ac69f1e4706e70c3431a7a0e",
+  "version": "0.22.0.dev38",
+  "wheel_sha256": "169ad1f16fc986a8cc529b91ef32e7ee41663e31b9cab894c2b0e935ba259522",
+  "source_tests": 144,
+  "installed_uid1017_tests": 144,
+  "package_files": 349,
+  "parity_mismatches": 0,
+  "cli_and_both_services_qualified": true,
+  "shared_native_daemon_unchanged": true,
+  "installed_peer_read_seconds": 3.34,
+  "observed_delivery": true,
+  "attempts": 1,
+  "route": "existing_tab",
+  "observed_at": "2026-11-15T21:44:44.846098+00:00",
+  "wake_id_sha256": "47ba76cc662360e52eca5a7c1b6123a21f672969c570618b54d317ddc160f0c7",
+  "submission_id_sha256": "c5864a7000038cc8266a1669989cc66c786bd0fbf4c7e77fec9abe2b005d8ce3",
+  "native_terminal_execution": "not inferred from queue acceptance",
+  "hosted_ci": "skipped under operator cost policy"
+}

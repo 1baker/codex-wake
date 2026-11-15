@@ -2,6 +2,14 @@
 
 ## Turn | 2026-11-15 | Native reconciliation discovery / #690
 
+Closed after operator-authorized review/merge/deploy and actual delivery proof.
+PR692/85428109 is installed as dev38;144 source and144 UID1017 exact-wheel checks
+pass,349 files match. Original installed peer recovery3.34s; the single fresh
+MCP time wake reached this same conversation with1attempt on existing_tab and
+matching native submission. Both services and CLI use the qualified prefix;
+shared native daemon generation unchanged. See evidence0247 deployment acceptance.
+Original source-only observations below are retained as history.
+
 Root owns Plan0247/fix/native-reconcile-discovery from91b80b09. Original installed
 and current full-page source both timed out observing this completed retrieval
 wake, blocking subsequent wakes. New adapter searches summaries and hydrates
