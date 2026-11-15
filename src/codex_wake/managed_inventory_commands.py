@@ -91,9 +91,25 @@ class RuntimeObserver:
                 raise InventoryError('identity_changed', 'native conversation identity changed')
             identity = RuntimeIdentity.from_metadata(thread, reader.server_metadata)
             snapshot = observe(endpoint=endpoint, socket_path=self.socket_path, timeout=self.timeout)
-            row = resolve(snapshot, 'thread:' + conversation_id)
-            repeated = RuntimeIdentity.from_metadata(reader.read_thread(conversation_id), reader.server_metadata)
-            if repeated != identity or row['cwd'] != identity.cwd:
+            saved_only = not any(row.get('thread_id') == conversation_id for row in snapshot['sessions'])
+            if saved_only:
+                # Loaded membership excludes saved recipients after their last TUI
+                # disconnects. Absence is useful only with complete inventory and
+                # no possible competing attachment for this exact saved metadata.
+                name = thread.get('name')
+                if (not snapshot.get('complete') or not isinstance(name, str) or not name
+                        or thread.get('status', {}).get('type') != 'notLoaded'
+                        or any(conversation_id in row.get('candidates', []) or (
+                            row.get('attachments') and row.get('name') == name
+                            and row.get('cwd') == identity.cwd) for row in snapshot['sessions'])):
+                    raise InventoryError('identity_unavailable', 'saved recipient absence is unverified')
+                row = dict(cwd=identity.cwd, attachments=[])
+            else:
+                row = resolve(snapshot, 'thread:' + conversation_id)
+            current = reader.read_thread(conversation_id)
+            repeated = RuntimeIdentity.from_metadata(current, reader.server_metadata)
+            if (repeated != identity or row['cwd'] != identity.cwd
+                    or (saved_only and current.get('status', {}).get('type') != 'notLoaded')):
                 raise InventoryError('identity_changed', 'native conversation changed during observation')
         attachments = row['attachments']
         generations = {(pane.get('client_pid'), pane.get('client_start_time_ticks')) for pane in attachments}
