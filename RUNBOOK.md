@@ -10126,3 +10126,16 @@ No native update/restart/inference or production credential copy. Native daemon
 process exited with cause unestablished. Preserve that uncertainty. #702 complete,
 #695 OPEN; [evidence](docs/dev/evidence/issue0702/deployment.json). No full-suite or
 paid-CI claim. Memory forbidden under this packet; no memory write requested.
+
+
+## Turn P248 | 2026-11-16 | Accepted wake peer-history recovery
+
+Plan0248 / LOCAL-WAKE-ACCEPTED-RECONCILIATION: public native reconcile now
+verifies accepted completion and writes bound terminal receipts while preserving
+original history. Explicit qualified read transport covers removed historical
+pins. Regression red/green and33 focused tests pass; lint/policy/compile/diff pass.
+Bounded live repair verified40 historical completions across two conversations;
+readiness held to ready, original hashes unchanged, no dispatch or package
+installation. PR703 holds source and qualification details; integration and
+installed adoption remain separate. Memory disposition unavailable: qualified
+project routing unresolved by bounded discovery; service itself is healthy.

@@ -1650,3 +1650,17 @@ lanes:
     overlaps: [P216, P222]
     updated_at: 2026-11-11
     disposition: PR587 merged e16bc4d2; dev10 installed; same43pane processes retained; formatting/startup remain disabled and unit pins fixed code
+
+  - id: accepted-wake-reconciliation
+    owner: root / ecochran76
+    objective: Proactively reconcile accepted native completion without replay
+    work_items: [LOCAL-WAKE-ACCEPTED-RECONCILIATION]
+    plan: docs/dev/plans/0248-2026-11-16-accepted-wake-reconciliation.md
+    branch: fix/accepted-wake-reconciliation
+    target: origin/main
+    plan_state: CLOSED
+    custody_state: INTEGRATION_READY
+    dependencies: []
+    overlaps: [P247]
+    updated_at: 2026-11-16
+    disposition: PR703; source validated and40 live completion receipts verified; installed adoption separate; task checkout retires after verified remote custody

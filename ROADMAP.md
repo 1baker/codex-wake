@@ -1825,3 +1825,10 @@ No live DST/provider/clock-auth claim.
 Status COMPLETE (qualification). Issue #694; plan [0247](docs/dev/plans/0247-2026-11-15-native-queue-boundary.md).
 Cancellation and control dequeue passed under actual busy execution. Native expiry
 remains unqualified; enforcement tracked in #695. Evidence0247. No native upgrade.
+
+
+## P248 | Accepted peer-history reconciliation
+
+[Plan0248](docs/dev/plans/0248-2026-11-16-accepted-wake-reconciliation.md):
+source and bounded live completion-evidence repair complete; PR703 pending
+integration, installed adoption separate. No bulk historical wake migration.
