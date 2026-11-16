@@ -1,6 +1,6 @@
 {
   "program": "P233",
-  "phase": "implementation_closed_review_remediation_complete",
+  "phase": "deployed_one_profile",
   "spec": "docs/dev/plans/0233-grok-in-codex-spec.md",
   "design": "docs/dev/plans/0233-2026-11-14-grok-in-codex-design.md",
   "integration_branch": "feat/grok-native-provider",
@@ -343,8 +343,8 @@
     }
   ],
   "remaining_program_stages": [
-    "authorized PR integration/merge and one-profile deployment",
-    "final exact working runtime readbacks and task worktree cleanup"
+    "operator-directed current Grok authentication refresh before inference",
+    "source-checkout custody/cleanup reconciliation"
   ],
   "unrelated_work": [
     "concurrent unified-control design0234",
@@ -375,5 +375,15 @@
   },
   "review_result": "docs/dev/evidence/plan0233/review-and-remediation.md",
   "remediation_native_source": "7cdb5404a247bec03a4a8bb244eb4da84e9c1917",
-  "remediation_scope": "documentation_only; qualified executable/package and Wake wheel unchanged"
+  "remediation_scope": "documentation_only; qualified executable/package and Wake wheel unchanged",
+  "deployment": {
+    "pr": 700,
+    "source": "12345152a43dae728cd7b59f4f63432223703e3a",
+    "version": "0.22.0.dev39",
+    "profile": "codex-ecochran76",
+    "evidence": "docs/dev/evidence/plan0233/integration-and-deployment.md",
+    "native_sha256": "e8eb511af74de41d0d336a0afc6715df15cbd15583977996eb661981de3aea1d",
+    "grok_readiness": "unavailable/native_auth_not_current",
+    "shared_wake_services": "existing pins retained/not restarted"
+  }
 }
