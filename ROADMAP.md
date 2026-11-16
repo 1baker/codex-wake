@@ -1830,5 +1830,5 @@ remains unqualified; enforcement tracked in #695. Evidence0247. No native upgrad
 ## P248 | Accepted peer-history reconciliation
 
 [Plan0248](docs/dev/plans/0248-2026-11-16-accepted-wake-reconciliation.md):
-source and bounded live completion-evidence repair complete; PR703 pending
-integration, installed adoption separate. No bulk historical wake migration.
+PR703 integrated; dev41 exact-wheel qualification and working deployment
+accepted. No bulk historical wake migration. See Plan0248 deployment evidence.

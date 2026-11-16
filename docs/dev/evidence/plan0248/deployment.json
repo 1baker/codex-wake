@@ -1,0 +1,63 @@
+{
+  "source_commit": "96f855643df7010a340329413313f4489a0f6bcb",
+  "pull_request": 703,
+  "version": "0.22.0.dev41",
+  "wheel_sha256": "89663969063d8367cdbb25aa504773a69570d99550162027dae45d1596a2839d",
+  "review": {
+    "standards_accepted_findings": 0,
+    "spec_accepted_findings": 1,
+    "spec_findings_remediated": 1
+  },
+  "source_tests": {
+    "count": 61,
+    "seconds": 37.997,
+    "python": "3.12.13"
+  },
+  "uid1017": {
+    "success": true,
+    "tests": 61,
+    "failures": 0,
+    "errors": 0,
+    "package_files": 351,
+    "uid": 1017,
+    "python": "3.12.3",
+    "production_credentials_copied": false
+  },
+  "rollback": {
+    "previous_version": "0.22.0.dev40",
+    "previous_wheel_sha256": "e9b746afc899012537aa70e9f903ecf499d39b9317c842a5b5c038550e501dd8",
+    "rollback_launch_pass": true,
+    "synthetic_wake_visibility_preserved": true,
+    "reupgrade_launch_pass": true
+  },
+  "working": {
+    "module_files_verified": 351,
+    "dependencies_preserved": 31,
+    "launchers": 9,
+    "tests": 34,
+    "seconds": 8.337,
+    "services_refreshed": [
+      "codex-wake-controller.service",
+      "codex-wake-connector.service"
+    ],
+    "http": {
+      "metadata": 200,
+      "anonymous_mcp": 401,
+      "anonymous_controller": 401
+    },
+    "cached_reconciliation_verified": true,
+    "original_record_hash_unchanged": true,
+    "harness_ready": 4
+  },
+  "runtime": {
+    "supervisor_generation_preserved": true,
+    "native_snapshot_before": 5,
+    "native_present_at_activation": 4,
+    "native_preserved_during_activation": 4,
+    "earlier_exit_cause": "unestablished",
+    "native_restart_issued": false
+  },
+  "shared_kernel": true,
+  "hosted_ci": "skipped; passing local checks satisfy validation",
+  "full_suite_run": false
+}

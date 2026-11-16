@@ -1,6 +1,6 @@
 # Accepted wake completion reconciliation
 
-State: CLOSED (source repair and bounded live evidence repair; integration/deployment pending)
+State: CLOSED (source integrated, dev41 qualified and deployed)
 Work item: LOCAL-WAKE-ACCEPTED-RECONCILIATION (DONE for this bounded packet)
 Owner: root / ecochran76
 Priority: P1
@@ -9,10 +9,14 @@ Base: 12345152
 
 ## Current State
 
-Installed dev39 retains the observed gap: explicit native reconcile skips accepted
-submissions. Registration reports peer_history_reconciliation_required while
-terminal evidence is absent. Automatic due-time admission can reconcile these
-records, so the prior413-record snapshot is not a migration requirement.
+PR703 merged as96f85564. Exact dev41 wheel89663969063d passed61 installed
+checks under UID1017,351 package-file comparisons and dev40 rollback/re-upgrade.
+Nine working launchers and the controller/connector select dev41;34 working
+checks and exact cached native reconciliation pass. All four sampled harness
+readiness checks are ready. Supervisor generation and all four native generations
+present at activation are unchanged. See evidence/plan0248/deployment.json.
+The prior413-record snapshot remains a missing-evidence population, not a
+confirmed migration requirement.
 
 ## Scope and acceptance
 
@@ -93,3 +97,19 @@ Task checkout retires after final pushed-ref verification. Memory disposition
 unavailable: Graphiti is healthy, but reviewed project-cloud routing was not
 resolved by bounded atlas discovery (returned another project's cloud); no
 cross-project memory write attempted.
+
+## Authorized review, merge and deployment | 2026-11-16
+
+Operator explicitly requested review, merge and deployment. Standards0 findings;
+Spec1 blocking cache-before-digest validation finding reproduced red and fixed.
+61 source tests PASS37.997s, exact-wheel61 UID1017 checks PASS,351 packaged files
+match, rollback/re-upgrade preserves synthetic wake visibility. Working34 tests
+PASS8.337s,31 dependency versions preserved; all9 launchers plus controller and
+connector use dev41. Exact installed cached reconciliation preserves original
+hash and sends no input. Four sampled native harness checks ready. Metadata200,
+anonymous connector/controller401. Shared native package unchanged, supervisor
+not restarted. Four immediate pre-activation native generations preserved; one
+of five earlier baseline processes exited before activation, cause unestablished.
+Full suite/Python3.11/provider delivery not asserted; local checks replace paidCI.
+Dev40 rollback prefix retained. Final task checkout retires after evidence merges.
+Memory disposition unavailable: reviewed project-cloud routing remains unresolved.
