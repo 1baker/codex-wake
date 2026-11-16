@@ -387,6 +387,14 @@ not establish another.
 The observed work state of a conversation associated with a tab, such as running,
 idle or waiting for input. It does not establish that the terminal interface is responsive.
 
+**Monitor observation freshness**:
+Whether a retained monitor frame remains within its allowed elapsed age. The
+default reader uses authenticated Stable Time counter evidence from the same
+epoch and frequency, including conservative rate and counter-resolution bounds.
+Missing evidence or lost continuity is stale; guest wall timestamps are display
+metadata and cannot qualify freshness. An authenticated counter can qualify
+elapsed age even when UTC is unavailable.
+
 **Tab responsiveness**:
 The observed ability of the exact terminal interface associated with a tab to
 answer a health check. Conversation activity or an available metadata source

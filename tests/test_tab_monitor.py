@@ -6,9 +6,75 @@ import subprocess
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 
 class TabMonitorTests(unittest.TestCase):
+    def test_uncertain_or_expired_clock_does_not_rebase_a_saved_observation(self):
+        from codex_wake.tab_monitor import TabMonitor
+        anchor = dict(epoch='3c93a3d4-445d-4403-8a40-77fa9162dee6',
+                      counter=1000, frequency=1000, rate_ppm=0)
+        current = [dict(utc=None, reason='authenticated_counter_only', counter=anchor)]
+        provider = lambda: current[0]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root/'controller-tabs.json'
+            config.write_text(json.dumps(dict(schema_version=1, workspaces={})))
+            config.chmod(0o600)
+            TabMonitor(root, clock=lambda:1000., clock_provider=provider).execute('tabs.monitor.refresh', {})
+            cases = [('unavailable', None), ('unauthenticated', dict(counter=anchor))]
+            for name, changes in (
+                    ('rollback', dict(counter=500)),
+                    ('epoch', dict(epoch='21e310d8-f6ac-42de-ac42-f1bc34090131')),
+                    ('frequency', dict(frequency=2000)),
+                    ('invalid_rate', dict(rate_ppm=6000)),
+                    ('expired', dict(counter=22000))):
+                cases.append((name, dict(utc=None, reason='authenticated_counter_only',
+                                         counter=dict(anchor, **changes))))
+            for name, sample in cases:
+                with self.subTest(name=name):
+                    current[0] = sample
+                    reader = TabMonitor(root, clock=lambda:1000., clock_provider=provider)
+                    self.assertEqual(reader.execute('tabs.monitor.status', {})['snapshot']['freshness'], 'stale')
+
+    def test_default_monitor_expires_from_stable_time_without_waiting_for_wall_time(self):
+        from codex_wake.tab_monitor import TabMonitor
+        counter = [1000]
+        def clock_provider():
+            return dict(utc=None, reason='authenticated_counter_only', counter=dict(
+                epoch='3c93a3d4-445d-4403-8a40-77fa9162dee6',
+                counter=counter[0], frequency=1000, rate_ppm=0))
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+                os.environ, CODEX_WAKE_STABLE_TIME_CONFIG='/host-clock.json'), patch(
+                'codex_wake.native_clock.snapshot', side_effect=clock_provider):
+            root = Path(directory)
+            config = root/'controller-tabs.json'
+            config.write_text(json.dumps(dict(schema_version=1, workspaces={})))
+            config.chmod(0o600)
+            TabMonitor(root).execute('tabs.monitor.refresh', {})
+            counter[0] = 22000  # 21 elapsed seconds; default freshness window is20.
+            self.assertEqual(TabMonitor(root).execute('tabs.monitor.status', {})['snapshot']['freshness'], 'stale')
+
+    def test_qualified_freshness_survives_guest_wall_rollback_across_readers(self):
+        from codex_wake.tab_monitor import TabMonitor
+        wall = [1000.0]
+        counter = [1000]
+        def clock_provider():
+            return dict(utc=None, reason='authenticated_counter_only', counter=dict(
+                epoch='3c93a3d4-445d-4403-8a40-77fa9162dee6',
+                counter=counter[0], frequency=1000, rate_ppm=0))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root/'controller-tabs.json'
+            config.write_text(json.dumps(dict(schema_version=1, workspaces={})))
+            config.chmod(0o600)
+            writer = TabMonitor(root, clock=lambda: wall[0], clock_provider=clock_provider)
+            writer.execute('tabs.monitor.refresh', {})
+            wall[0] = 993.0
+            counter[0] = 2000
+            reader = TabMonitor(root, clock=lambda: wall[0], clock_provider=clock_provider)
+            self.assertEqual(reader.execute('tabs.monitor.status', {})['snapshot']['freshness'], 'fresh')
+
     def test_public_refresh_is_derived_read_only_observation(self):
         from codex_wake.tab_monitor import TabMonitor
         if not shutil.which('tmux'):
@@ -38,7 +104,7 @@ class TabMonitorTests(unittest.TestCase):
     def test_one_background_owner_reconnect_and_force_loss_are_observable(self):
         import signal
         from codex_wake.tab_monitor import TabMonitor
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, CODEX_WAKE_STABLE_TIME_CONFIG=''):
             root=Path(directory)
             (root/'controller-tabs.json').write_text(json.dumps(dict(schema_version=1,workspaces={})))
             (root/'controller-tabs.json').chmod(0o600)
@@ -53,7 +119,10 @@ class TabMonitorTests(unittest.TestCase):
                 until=time.monotonic()+3
                 while not owner.execute('tabs.monitor.status',{})['snapshot']:
                     self.assertLess(time.monotonic(),until);time.sleep(.02)
-                self.assertEqual(TabMonitor(root).execute('tabs.monitor.status',{})['snapshot']['freshness'],'fresh')
+                live = TabMonitor(root).execute('tabs.monitor.status',{})
+                self.assertEqual(live['monitor']['status'], 'running')
+                self.assertEqual(live['snapshot']['freshness'], 'stale')
+                self.assertEqual(live['snapshot']['freshness_basis'], 'clock_continuity_unavailable')
                 os.kill(pid,signal.SIGKILL)
                 until=time.monotonic()+2
                 while owner.execute('tabs.monitor.status',{})['monitor']['status']=='running':

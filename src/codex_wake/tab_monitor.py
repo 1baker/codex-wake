@@ -70,6 +70,39 @@ def _publication_interval(settings):
     return min(10.,settings['stale_after']/2)
 
 
+def _stable_time_observation():
+    from .native_clock import configuration, snapshot
+    # Absence of configured Stable Time is uncertainty, never permission to
+    # acquire plain NTP or use the guest wall clock for freshness.
+    return snapshot() if configuration() else {}
+
+
+def _counter_observation(provider):
+    from .native_intents import valid_counter
+    try:
+        value = provider()
+        if (value.get('reason') in ('authenticated_utc', 'authenticated_counter_only')
+                and valid_counter(value.get('counter'))):
+            return dict(value['counter'])
+    except Exception:
+        pass
+    return None
+
+
+def _counter_age(origin, current):
+    from .native_intents import valid_counter
+    if not (valid_counter(origin) and valid_counter(current)
+            and origin['epoch'] == current['epoch']
+            and origin['frequency'] == current['frequency']
+            and current['counter'] >= origin['counter']):
+        return None
+    from decimal import Decimal
+    rate = max(origin['rate_ppm'], current['rate_ppm'])
+    age = (Decimal(current['counter'] - origin['counter'] + 1) * 1000000
+           / (Decimal(origin['frequency']) * (1000000 - rate)))
+    return math.nextafter(float(age), math.inf)
+
+
 def _save(path,value):
     raw=json.dumps(value,allow_nan=False,separators=(',',':')).encode()
     _save_bytes(path,raw)
@@ -107,7 +140,7 @@ class TabMonitor:
                     'activity','health','errors','health_interval','error_interval'},
                  'tabs.monitor.refresh':set(),'tabs.monitor.status':set(),'tabs.monitor.stop':{'timeout'}}
 
-    def __init__(self,root,*,clock=time.time,monotonic=time.monotonic):
+    def __init__(self,root,*,clock=None,monotonic=time.monotonic,clock_provider=None):
         self.root=Path(root).resolve()
         self.root.mkdir(parents=True,exist_ok=True,mode=0o700)
         info=self.root.stat()
@@ -118,7 +151,9 @@ class TabMonitor:
         info=self.directory.lstat()
         if not stat.S_ISDIR(info.st_mode) or info.st_uid!=os.geteuid() or info.st_mode&0o077:
             raise InventoryError('monitor_state_unavailable','Monitor directory must be private and canonical.')
-        self.clock=clock
+        self.clock=clock if clock is not None else time.time
+        self.clock_provider=(clock_provider if clock_provider is not None else
+                             _stable_time_observation if clock is None else None)
         self.monotonic=monotonic
         self._published_revision=None
         self._published_at=-float('inf')
@@ -176,16 +211,18 @@ class TabMonitor:
         if snapshot:
             if running and snapshot.get('monitor_generation')==record.get('generation') and record.get('observer'):
                 snapshot['observer']=record['observer']
-            age=now-snapshot['observed_at']
-            fresh=0<=age<=settings['stale_after'] and (snapshot.get('origin')=='manual' or (running and snapshot.get('monitor_generation')==record.get('generation')))
+            age=(_counter_age(snapshot.get('clock_counter'), _counter_observation(self.clock_provider))
+                 if self.clock_provider is not None else now-snapshot['observed_at'])
+            fresh=age is not None and 0<=age<=settings['stale_after'] and (snapshot.get('origin')=='manual' or (running and snapshot.get('monitor_generation')==record.get('generation')))
             snapshot['freshness']='fresh' if fresh else 'stale'
-            snapshot['age_seconds']=max(0,age)
+            snapshot['age_seconds']=max(0,age) if age is not None else None
+            snapshot['freshness_basis']=('stable_time_counter' if age is not None else 'clock_continuity_unavailable') if self.clock_provider is not None else 'injected_clock'
             if not fresh:
                 for key in ('projection_revision','evidence_revision','projection_valid_until'):
                     snapshot.pop(key,None)
             for row in snapshot.get('resources',[]):
-                row_age=now-row.get('monitor_observed_at',0)
-                row['monitor_freshness']='fresh' if fresh and 0<=row_age<=settings['stale_after'] and not row.get('monitor_unavailable') else 'stale'
+                row_age=age if self.clock_provider is not None else now-row.get('monitor_observed_at',0)
+                row['monitor_freshness']='fresh' if fresh and row_age is not None and 0<=row_age<=settings['stale_after'] and not row.get('monitor_unavailable') else 'stale'
                 if row['monitor_freshness']=='stale':
                     for key in ('projection_revision','evidence_revision','projection_valid_until'):
                         snapshot.pop(key,None);row.pop(key,None)
@@ -304,6 +341,7 @@ class TabMonitor:
     def refresh(self,*,origin='manual',deadline=None):
         settings=self._settings()
         with _lock(self.directory/'refresh.lock'):
+            counter = _counter_observation(self.clock_provider) if self.clock_provider is not None else None
             deadline=deadline or time.monotonic()+settings['cycle_timeout']
             previous=_read(self.directory/'snapshot.json') or {}
             known=self._probe(None,min(settings['probe_timeout'],max(.1,deadline-time.monotonic())))
@@ -331,6 +369,8 @@ class TabMonitor:
                 unavailable.append(dict(status='unavailable',reason=known.get('reason','discovery_unavailable')))
             owner_record,_=self._running()
             snapshot=dict(schema_version=1,observed_at=self.clock(),origin=origin,resources=resources,
+                          clock_counter=counter,
+                          observed_at_time_basis='guest_wall_display_only' if self.clock_provider is not None else 'injected_clock',
                           monitor_generation=owner_record.get('generation') if origin=='daemon' and owner_record else None,
                           unavailable=unavailable,workspaces=names,cursor=(cursor+attempted)%len(names) if names else 0,
                           discovery=known.get('discovery'),
@@ -435,12 +475,14 @@ class TabMonitor:
                     try:
                         settings=self._settings()
                         cycle_deadline=started+settings['cycle_timeout']
+                        counter = _counter_observation(self.clock_provider) if self.clock_provider is not None else None
                         snapshot=observer.tick(deadline=started+settings['cycle_timeout']*.65,materialize=False)
                         def ensure_resources():
                             if 'resources' not in snapshot:
                                 snapshot['resources']=observer.materialize_resources(snapshot['observed_at'])
                             return snapshot['resources']
-                        snapshot.update(origin='daemon',monitor_generation=record['generation'])
+                        snapshot.update(origin='daemon',monitor_generation=record['generation'],
+                                        clock_counter=counter, observed_at_time_basis='guest_wall_display_only')
                         self.publish_observation(snapshot,record,resources_loader=ensure_resources,
                             resources_serializer=lambda:observer.serialize_resources(snapshot['observed_at']),settings=settings)
                         observed=dict(snapshot=snapshot)

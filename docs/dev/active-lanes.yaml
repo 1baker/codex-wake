@@ -1,6 +1,19 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: monitor-clock-702
+    owner: root / ecochran76
+    objective: Release qualified Stable Time monitor freshness
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/702]
+    plan: docs/dev/plans/0249-2026-11-16-monitor-clock-release.md
+    branch: fix/monitor-clock-release-702
+    target: origin/main
+    plan_state: OPEN
+    custody_state: ACTIVE_WORKTREE
+    dependencies: []
+    overlaps: [native-expiry-695]
+    updated_at: 2026-11-16
+    disposition: Clock-only carry-forward; native expiry695 remains separate and unqualified
   - id: P233
     owner: primary / ecochran76
     objective: Use native Grok models inside the modded Codex tool and worker loop

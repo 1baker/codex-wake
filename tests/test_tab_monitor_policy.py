@@ -33,8 +33,17 @@ class MonitorPolicyTests(unittest.TestCase):
                     self.assertLess(time.monotonic(),deadline,status)
                     time.sleep(.02)
                 self.assertEqual(operation['execution'],'completed',operation)
-                self.assertEqual(owner.policy_target()['generation'],enabled_generation,'Background ticks must not invalidate an operator pause pin.')
-                self.assertEqual(owner.execute('tabs.policy.status',{})['policy']['last_reason'],'unqualified_observations')
+                policy=owner.execute('tabs.policy.status',{})['policy']
+                if policy['last_reason']=='clock_regressed':
+                    # Guest UTC may step during this real-process test. The
+                    # safety pause must invalidate the old operator pin once.
+                    self.assertEqual(policy['state'],'paused')
+                    self.assertEqual(policy['control_revision'],int(enabled_generation)+1)
+                else:
+                    self.assertEqual(policy['state'],'enabled')
+                    self.assertEqual(str(policy['control_revision']),enabled_generation,
+                                     'Background ticks must not invalidate an operator pause pin.')
+                    self.assertEqual(policy['last_reason'],'unqualified_observations')
                 owner.execute('tabs.policy.disable',{})
                 self.assertEqual(owner.execute('tabs.policy.status',{})['policy']['state'],'disabled')
                 self.assertNotEqual(owner.policy_target()['generation'],enabled_generation)

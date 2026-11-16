@@ -139,7 +139,8 @@ class SharedRefreshTests(unittest.TestCase):
                         expected_content=[dict(type='text',text='v2')])})})))
             policy.chmod(0o600)
             from datetime import datetime, timezone
-            expiry=datetime.fromtimestamp(time.time()+2,timezone.utc).isoformat() if stale_mcp else '2030-01-01T00:00:00Z'
+            wall_anchor, elapsed_anchor = time.time(), time.monotonic()
+            expiry=datetime.fromtimestamp(wall_anchor+2,timezone.utc).isoformat() if stale_mcp else '2030-01-01T00:00:00Z'
             argv=['--wake-root',str(runtime),'sessions','refresh','--profiles',str(policy),
                 '--profile','self','--intent','self-refresh','--thread-id',THREAD,
                 '--caller-thread-id',THREAD,'--checkpoint','checkpoint.json','--checkpoint-sha256',
@@ -155,7 +156,9 @@ class SharedRefreshTests(unittest.TestCase):
                 argv+=['--bus-root',str(bus.root),'--operator-capability',str(operator_capability)]
             def invoke():
                 output=StringIO()
-                with patch('codex_wake.lifecycle_budget.trusted_upper',return_value=time.time()),redirect_stdout(output):
+                # Keep this injected authority continuous when guest UTC steps;
+                # the independent watcher still enforces the original expiry.
+                with patch('codex_wake.lifecycle_budget.trusted_upper',return_value=wall_anchor+time.monotonic()-elapsed_anchor),redirect_stdout(output):
                     code=run(argv)
                 return code,json.loads(output.getvalue())
             env=dict(os.environ,PYTHONPATH=str(Path(__file__).resolve().parents[1]/'src'))
