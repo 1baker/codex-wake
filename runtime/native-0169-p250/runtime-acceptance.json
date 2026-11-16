@@ -1,0 +1,83 @@
+{
+  "status": "isolated_runtime_qualification_pass_with_explicit_coverage_limits",
+  "native_commit": "a5806e371bf306feb4513c7ef4ac2e77e1a3c5f2",
+  "native_tree": "af926e88d48417af3dbd60ebba8d1555ea5f8e50",
+  "package_hashes": {
+    "codex-package.json": "dd2023289d052ab244c5ccf2c38c19e5812d445be8547f3c8bef5f8bc2ae1ff7",
+    "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+    "codex-resources/bwrap": "7d89611fdd76f7771021bea727185ca400175141c13c8880cd811d4baacf9f8c",
+    "bin/codex-code-mode-host": "fdcd51217542d5b0c31d6f1f56b16721373085b46924509e87c5ed0258336cb5",
+    "bin/codex-exec-server": "8be4da6f5f556d95214e361967e71cec132f823757af9b9037b63c17ce27ddff",
+    "bin/codex": "f32139874cb8e345b0e9ad9980a645df80025e6db57fe423ef7e3143e16e3067"
+  },
+  "upgrade_rollback_baseline": "e8eb511af74de41d0d336a0afc6715df15cbd15583977996eb661981de3aea1d native0.167 portable-worker completepackage",
+  "rollback4712_all6_preserved": true,
+  "frontend_version": "0.22.0.dev41",
+  "frontend_wheel_sha256": "89663969063d8367cdbb25aa504773a69570d99550162027dae45d1596a2839d",
+  "frontend351_working_and_uid_bytes_verified": true,
+  "public_acceptance": [
+    "actualsupportedupgrade+rollback",
+    "historysaved/open/beforeafterrollback",
+    "activemulticlient/reconnect",
+    "privateownerlock/refusedlaunchactionability/release",
+    "failedstartlogpermissionhold+supportedrepair",
+    "governor/nativeauthoritymetadata6invaliddeclarationsrejectedbeforemutation",
+    "independentnativeuserpauseheldrecovery/zeroadditionalproviderrequests"
+  ],
+  "coverage_limits": [
+    "No distinct concurrent local-tool Stop scheduling race fixture exists in reused journey; this task does not independently qualify that race.",
+    "All provider/model traffic is injectedlocalhostsynthetic; no real provider proof.",
+    "UID1017 shares hostkernel/resources."
+  ],
+  "same_boot_census": {
+    "baseline": 0,
+    "protected": 0,
+    "owned": 0,
+    "unattributed": 0
+  },
+  "jobs": [
+    {
+      "job": "job-20261116T214434Z-162dffb6c5b6",
+      "status": "passed",
+      "seconds": 2.403,
+      "sha256": "a226d15f0c56752711636472b080f3a6a4b8e64c75455252ff86834aa6c274df"
+    },
+    {
+      "job": "job-20261116T214458Z-4d4ebfa72bec",
+      "status": "passed",
+      "seconds": 93.524,
+      "sha256": "0d3c934ecff838b7db4fbf8c58fc1ba9df90eaef2b8e4a16fbb719e567b92d48"
+    },
+    {
+      "job": "job-20261116T214458Z-4f2fb2862d32",
+      "status": "passed",
+      "seconds": 94.476,
+      "sha256": "2846d9ca1f3d41aca83c9cbf87d92132dbd210279a9ff9b1dc6035ff7d172c6f"
+    },
+    {
+      "job": "job-20261116T214458Z-957a87a7dbeb",
+      "status": "passed",
+      "seconds": 7.987,
+      "sha256": "a615a7d1fbc36b5fc6865c0a3982bbbd151f07d4bdc97e216075455a7496e489"
+    },
+    {
+      "job": "job-20261116T214458Z-e1d49ebb2a9a",
+      "status": "passed",
+      "seconds": 23.015,
+      "sha256": "ae1751ee244ea9737cdad4f981f247dee19f954a8f9fdd99b199a1cefdc3af87"
+    },
+    {
+      "job": "job-20261116T214716Z-12e0c8d81256",
+      "status": "passed",
+      "seconds": 93.662,
+      "sha256": "cb151e64c72f88cfd46691b1a9d8c2f7481da417fe2be253d7c2beddb3def2ae"
+    },
+    {
+      "job": "job-20261116T214716Z-87aae0eb3b5a",
+      "status": "passed",
+      "seconds": 66.151,
+      "sha256": "7fbe5228747de96395d3132ea05d816c55fdd33b2805009a1a8d518327eaafc2"
+    }
+  ],
+  "primary_verified": "7 terminal receipt hashes and successful exit codes; all6 source hashes; explicit worker custody return"
+}
