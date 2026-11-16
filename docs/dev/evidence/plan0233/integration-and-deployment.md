@@ -1,0 +1,9 @@
+# P233 integration and first-profile deployment
+
+Operator authorized PR merge and one-profile deployment after completed8/8tickets, review1/remediation1. Current main5fa63408 contains88commits newer than the feature base. Integration preserves both Grok controls/account.revoke and newer unified controls/content.observe/terminal.input; runbook entries and lane records from both sides are retained. No feature re-review or remediation cycle was repeated.
+
+Focused combined check:92PASS55.181s, Python3.12.13/private declared dependency environment, explicit umask077. Selection: Grok auth/catalog, canonical usage, controller auth/portable client/operations, unified transports, self limits and supervision. Ruff0.14.2 F821/F822/F823 passes; policy wiring passes. Earlier command named a nonexistent test module and used an older environment lacking msgspec; another intermediate merge syntax error was caught and corrected before this passing run. All attempts are retained privately. Hosted CI is skipped under cost policy. This is affected validation, not full-suite coverage; unchanged OpenClaw work was not resumed.
+
+Versiondev39 preserves main's deployeddev38 feature set. Exact merged wheel still needs isolated UID1017 installed qualification before working installation. Native package1a2fb1/e8eb remains executable-identical and qualified; documentation-only7cdb5404 correction does not require a native rebuild. Selected first-profile target is the independent codex-ecochran76 home. Read-only observation found its managed modded daemon unavailable and its registered rollback4712 intact, so deployment must not interrupt unrelated profiles. No live inference, sign-in or refresh is required for deployment checks.
+
+Deployment state: pending exact merged source, isolated wheel acceptance and supported profile package update/start. Parent628 remains OPEN. Existing unknown usage/stop latches/allowances remain retained.

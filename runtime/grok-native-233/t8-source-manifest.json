@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "phase": "source_diagnostic_validated_package_pending",
+  "native_base": "abc2ce28469ca57e584ef33cf71b4ad172f8bb26",
+  "native_commit": "df4a89bbd7df49691df280674130e3f5e8eedc7e",
+  "native_tree": "bf1976b51b6f5a270696d4a9eb509eaad3463dce",
+  "reconstructed_tree": "bf1976b51b6f5a270696d4a9eb509eaad3463dce",
+  "patch": "t8-http-diagnostic.patch",
+  "patch_sha256": "aa287452879274c60a883d3b28dc72be1ff1cfe7c863c8ec849492d3c22fe540",
+  "apply_flags": [
+    "--unidiff-zero"
+  ],
+  "native_files": {
+    "codex-rs/codex-api/src/endpoint/grok.rs": "d29db349a7e4843cae4f437e04d0feb369041671ecf70a8e0edcd8371124b225",
+    "codex-rs/codex-api/tests/clients.rs": "48cb033087c328c6180d62f613e23967c1de97e3937c3d8355ef8ff6dcfec88d"
+  },
+  "private_bundle_sha256": "21f0cef504d64b975b7c3ad5c5b1c145887c34b9b55aa0d8f84aba97c62deeba",
+  "validation": {
+    "red_job": "job-20261115T195140Z-512d965923b4",
+    "red": "expected missing HTTP status assertion; no compile failure",
+    "green_job": "job-20261115T195408Z-ceb54aa5685b",
+    "green": "4 focused native client checks PASS32.688s; test execution0.20s",
+    "installed_wake_wheel_sha256": "5d94731b6e5d00d8b69e41db12ca88f2b090996c1c546c4bc323922bf7d0ddc9",
+    "installed_auth_catalog": "13PASS7.253s",
+    "installed_usage": "16PASS1.057s"
+  },
+  "live_inference": "unknown outcome held; no replay",
+  "review_runs": 0,
+  "remediation_runs": 0
+}

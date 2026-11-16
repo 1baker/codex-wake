@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T6",
+  "issue": 636,
+  "phase": "source_acceptance_pending_primary_custody",
+  "native_base": "45169bbc996d8baf1da130f2f11ac9f09d05ba2f",
+  "native_commit": "977af9d6c5bf2c5d59de1a46009ffa9a34f00b22",
+  "native_tree": "983f40a3de278cb8c96bdbe1712ee3b25f252a11",
+  "reconstructed_tree": "983f40a3de278cb8c96bdbe1712ee3b25f252a11",
+  "wake_worker_base": "0e61e8c7855fb80d011c373319ac8572760f4ef9",
+  "patch": "t6-provider-continuations.patch",
+  "patch_sha256": "538efa8bc27fc9d3315e68d854237525328cfe9cde172de75feebb2b92773873",
+  "apply_flags": [
+    "--unidiff-zero"
+  ],
+  "native_files": {
+    "codex-rs/app-server-protocol/schema/json/ClientRequest.json": "e1fc1aa66ed1155ef9fdc9d825bdab808cc02248c28fc6c366eb8f64bfdb735a",
+    "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.schemas.json": "bf2df1e1f547a1d6af29e3f00ec8590acb29de41eaea1a88339f14ee3f6475a0",
+    "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.v2.schemas.json": "87d6423aea57a65f09050e16bcff91cd8964a1ed7d5093a90f486a540965286f",
+    "codex-rs/app-server-protocol/schema/json/v2/ThreadForkParams.json": "38e4ea92aa336d965794e047c2ba8fea05317730a8c480beaa9393c8c66f8f8e",
+    "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-experimental.json.zst": "cbe1643292fb85bb56acaad65a731c713c31ad1423a1f423d89dfb1cd17c03b4",
+    "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-stable.json.zst": "665009a0cc9c6bd228743b9006f8b7d02dd82356cc4cba700c2f729cd4f7df2d",
+    "codex-rs/app-server-protocol/schema/typescript/v2/ThreadForkParams.ts": "d6fd869d354a7c9e0c731873a4fd336a3437da972e27f64bc9544d56e7aeb898",
+    "codex-rs/app-server-protocol/src/protocol/v2/thread.rs": "87246af4b9fe4b9280aa62334176c7572c82cd38ff21555f848da208e6591a0c",
+    "codex-rs/app-server/src/config_manager.rs": "8e02a9e7d7b0efa3c209a3277defeefbb0dcbce399f851155d3a860e39871b65",
+    "codex-rs/app-server/src/request_processors/thread_goal_processor.rs": "8601f6c4244ffe19c5e8dfa5a49a85d2831a12318895ee3d189921072580e912",
+    "codex-rs/app-server/src/request_processors/thread_processor.rs": "06ed162b14c1d6872ff35d71d01685357209b325ee778b4aef6714c7aebb4ad4",
+    "codex-rs/app-server/src/request_processors/thread_queue_processor.rs": "bd39710ef624a3e7cd7143f1f408f00dc6b739319f34c253430719ddf9bff78e",
+    "codex-rs/app-server/src/request_processors/turn_processor.rs": "3b9f0d34dbfb174c41e2906da2c3421f3d929739f22315c9a0069c6f920b4bde",
+    "codex-rs/app-server/tests/suite/v2/model_list.rs": "1084f63e5715013c58fa55c71f5446e013a053b7c46052c53ee3c712d2faee66",
+    "codex-rs/app-server/tests/suite/v2/thread_fork.rs": "55b82e57c63cc852890078378248c887334647249157bc803bb40397a111593b",
+    "codex-rs/core/src/agent/control/runtime.rs": "bba6556343ee6a1a4652b71cc7d71b0ead54a7aca2cd13ca6c3df94c8f0cf3cd",
+    "codex-rs/core/src/codex_thread.rs": "988e5d30e83928f5e56a138cd0d8ce6a91bbc5cdd61d0fe7f3a1e9f2ad021cd7",
+    "codex-rs/core/src/governor_guard.rs": "979b088c18d2716c516d98f479793f2b56af02b111e301598583d730b50177f0",
+    "codex-rs/core/src/session/environment.rs": "a25f921efb0aefbf4f18e57e8e6711327c9a193a189037d4742ac20382befd38",
+    "codex-rs/core/src/session/handlers.rs": "516585a1e44abbfd895dae4fe8bc4fbc40ed61c52b8d7fd10a70996ccb7b8c8a",
+    "codex-rs/core/src/session/session.rs": "9891cef5dd593da805468620980896ba71ac67aec927ed8ad4625c6accefd6e8",
+    "codex-rs/core/src/session/turn_input.rs": "7e654df8fea1e13f3824bf07b2f31a10a4ad1f1b128ff63e85a8cc3c7b5c537e",
+    "codex-rs/core/src/tasks/mod.rs": "f3b3548208d9a287ee8ef01ae3e85ce1917ee665163aac0ffa7a36d3762e667d",
+    "codex-rs/core/src/thread_manager.rs": "0b287c529d82bd7b2bcce32438f7a5af746e470495f95944e960a2e88b81c1c5",
+    "codex-rs/core/src/thread_manager/provider_continuation.rs": "16878a0e8c77dd0dacf223d1a93896b6680283b8b2982af4c1c800595aaf05d1",
+    "codex-rs/core/tests/suite/rmcp_client.rs": "bcc0a002d13f4512c2eba8ef5867f784ea6c583df659bcd19ce9a71651698e48",
+    "codex-rs/ext/goal/src/api.rs": "d9af16dd11bd46e7bc496fdc16622b65a3dce7a65ebb834ca00f73b653d993ab",
+    "codex-rs/ext/goal/src/runtime.rs": "2c4d8aec7418c134189d21bae90a3ab723eec62ecab277101204c54eb801621e",
+    "codex-rs/protocol/src/protocol.rs": "174df0b3793a88ccf297ad581a875395c21cfc75962d22fbe30952d3620b410b",
+    "codex-rs/tui/src/app.rs": "feeb4f32a42621aa6bece828050e57be85b4bfd0cac17fb8a3bef5fdfcb21504",
+    "codex-rs/tui/src/app/event_dispatch.rs": "a70f30dbce5dc2f144f60f591cd5af370f546b892d7b36ff969df29014025b4e",
+    "codex-rs/tui/src/app/provider_continuation.rs": "4d81b4fe90076a0effff4593a6b935f8452bc0bd041d455a0046de9c07a54c15",
+    "codex-rs/tui/src/app_event.rs": "05e95b16083b6d7bdb960f2ec81a7c9ae09ab1bb0b7de0599f41ad49385e22c4",
+    "codex-rs/tui/src/app_server_session.rs": "a4a5f846b25296e99681bc249161fcd050e85f5d8500b139d0e5a456ae86bee6",
+    "codex-rs/tui/src/app_server_session/provider_selection.rs": "04d0520a0796b4427e903f71e7e9da1a0af8f21a5f49bde75cc3cd6628897f04",
+    "codex-rs/tui/src/app_server_session/provider_selection_tests.rs": "e1beb643595da11df7ecde84510d4831ab644ef54a3750c8a78c6003ec92bbe5",
+    "codex-rs/tui/src/chatwidget/model_popups.rs": "1352e522f8d13022991167bc2208573b07d53b34ebb510d6aaf7d1b78a97d744",
+    "codex-rs/tui/src/chatwidget/tests/popups_and_settings.rs": "727e05255416404f59eb240303911449362d3d8514219ddc07ecce186085127e",
+    "sdk/python/src/openai_codex/generated/v2_all.py": "fce9dece37f8606fdce64a2d8479fe725ca53b2dc6ca0f094130d4e766ce72fd"
+  },
+  "private_bundle_sha256": "dc216f95afbe917815b67cceb820df853567c4ee8f7837d5964744fa29d3bcbb",
+  "runtime_effects": "source_fixture_only; no install/restart/login/real-account qualification",
+  "validation": {
+    "public_native_continuation": {
+      "job": "job-20261115T081031Z-9c14d8f8b4f2",
+      "receipt": "20261115T081031Z-45ca2ffbeb19/receipt.json",
+      "result": "PASS",
+      "cases": 3,
+      "duration_seconds": 776.558
+    },
+    "native_tool_and_authority": {
+      "job": "job-20261115T090531Z-373a17f83755",
+      "receipt": "20261115T090531Z-35406f62a80e/receipt.json",
+      "result": "PASS",
+      "cases": 2,
+      "duration_seconds": 607.282,
+      "causal_note": "Final delta is heap-boxed preparation await only; no semantic/guard/context changes. Standard8MiB actual embedded consumer validates that allocation change; no broad core replay."
+    },
+    "wake_canonical_usage": {
+      "receipt": "canonical-usage-ownership.json",
+      "result": "PASS",
+      "qualified_tokens": 90,
+      "threads": 2,
+      "missing_usage": "unknown/null"
+    },
+    "tui": {
+      "job": "job-20261115T093245Z-b18d81b87f02",
+      "result": "PASS",
+      "stack_bytes": 8388608,
+      "retained_failure": "job-20261115T091525Z-82ca2dc82aca stack overflow; other2casesPASS",
+      "diagnostic_probe": "job-20261115T093125Z-1d0253ee009e PASS at32MiB; not acceptance",
+      "cases": 3,
+      "duration_seconds": 901.976,
+      "receipt": "20261115T093245Z-df0c19f9019b/receipt.json"
+    },
+    "legacy_input_policy": {
+      "job": "job-20261115T094740Z-5207f96105c4",
+      "receipt": "20261115T094740Z-aebfec250a0d/receipt.json",
+      "result": "PASS",
+      "cases": 3,
+      "duration_seconds": 498.883
+    },
+    "schema_sdk": {
+      "job": "job-20261115T095652Z-853addfac2e7",
+      "receipt": "20261115T095652Z-b703ff845fd8/receipt.json",
+      "result": "PASS",
+      "consistency_cases": 4,
+      "writers_passed": 2,
+      "duration_seconds": 736.153,
+      "sdk_generation": "PASS; existing uint64 format warning",
+      "causal_contract_receipt": "schema-causal-consistency.json"
+    },
+    "format": {
+      "result": "PASS",
+      "files": 31,
+      "command": "rustfmt --edition2024 --config skip_children=true --check changed Rust files",
+      "receipt": "changed-rustfmt-check.txt"
+    }
+  },
+  "causal_validation": {
+    "public_native_continuation": "Public3 preceded only the tested lease-ownership preflight and heap-boxed preparation allocation; no public routing/context/goal source changes followed that pass.",
+    "native_tool_and_authority": "Core2 includes final lease preflight and actual90 capture; only subsequent runtime delta was heap-boxed preparation await, verified by final standard8MiB actual embedded consumer.",
+    "generation": "All31 Rust source hashes unchanged after required schema generation; final4 schema checks cover generated/precomputed bytes."
+  }
+}

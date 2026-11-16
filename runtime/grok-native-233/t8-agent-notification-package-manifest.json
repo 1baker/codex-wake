@@ -1,0 +1,89 @@
+{
+  "native_source": "ee0e0b82ff88a3060d035782229931e8f9484ee9",
+  "native_tree": "034e4da995a9e0b062d09f89a58d8a8243ac49b7",
+  "wake_runtime_source": "a8a9e0c65cc7ab1c456ec787484b0467921eb8f1",
+  "installed_wake_wheel_sha256": "5d94731b6e5d00d8b69e41db12ca88f2b090996c1c546c4bc323922bf7d0ddc9",
+  "files": {
+    "codex-package.json": "64a6c8f7bc146a94e9af84915c6a08d5457d58b5936f825894bbb8e6b1be8133",
+    "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+    "codex-resources/bwrap": "eb495040c5e8c3bc9c7bdec039166d36425314d8ac092083cfac192ff9c6b4d0",
+    "bin/codex-code-mode-host": "0f473d0f4ff857712c350b036567b8f9b013c61c816936860b3375173633f6d3",
+    "bin/codex-exec-server": "8bda1b40ab255e43d6d0a694efb1ab10e1c1127695566f1c1fb2c3db4e98d8c1",
+    "bin/codex": "99447ea05fae83235988bbe37c11689231a5c061ff5b1464751f2c0b039ed03e"
+  },
+  "package_content_sha256": "242e3500ecaf7e8304d45982147bb7c4c7945e5296e964445b1851613b0ae5bb",
+  "process_census": {
+    "owned": 0,
+    "protected_preexisting": 0,
+    "protected_expected": 0,
+    "same_boot_verified": true,
+    "other_unattributed": 0
+  },
+  "all_five_prior_packages_preserved": true,
+  "rollback_4712_all6_preserved": true,
+  "review_counter": 0,
+  "remediation_counter": 0,
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "status": "exact_package_isolated_qualified_live_mixed_worker_pass_handoff_pending",
+  "t8_complete": false,
+  "primary_verified": true,
+  "entrypoint_sha256": "99447ea05fae83235988bbe37c11689231a5c061ff5b1464751f2c0b039ed03e",
+  "primary_source_file_hash_checks": 6,
+  "primary_uid_file_hash_checks": 30,
+  "primary_uid_runtime_receipt_hash_checks": 2,
+  "jobs": [
+    {
+      "job": "job-20261116T024827Z-cebd60511bab",
+      "result": "PASS",
+      "seconds": 665.815,
+      "receipt_sha256": "2853eceb076d7ded089af72aa6ac6722d2ec63c0bb199b9d2b32e4242344b038"
+    },
+    {
+      "job": "job-20261116T025941Z-7c3dffa6c861",
+      "result": "PASS",
+      "seconds": 7.96,
+      "receipt_sha256": "5bace2c3ea0d33b4eb12de991ce489a79d57f67ad2567b8e3f853ed57306bd82"
+    },
+    {
+      "job": "job-20261116T025941Z-93dfe4dd8f77",
+      "result": "PASS",
+      "seconds": 58.961,
+      "receipt_sha256": "b047e8f3d7044b86771791223099f3b574b15b6863dc97e53c91b6cd912c34c9"
+    },
+    {
+      "job": "job-20261116T025941Z-a955ee68094c",
+      "result": "PASS",
+      "seconds": 15.354,
+      "receipt_sha256": "ccb61cb2463b14df037bcff9ca30a5abfe77e1eb553aa0f7cdaad5dcd63a6b46"
+    },
+    {
+      "job": "job-20261116T030126Z-eb9963290433",
+      "result": "PASS",
+      "seconds": 56.227,
+      "receipt_sha256": "57bea6db137c5696c766d7a9276731bcc29a74aa7d9670c1437e9c98b024eb59"
+    }
+  ],
+  "retained_fixture_failure": {
+    "job": "job-20261116T025941Z-d294636fd898",
+    "seconds": 1.328,
+    "cause": "private UNIX socket path109bytes; corrected shorter private fixture label; no product change/rebuild"
+  },
+  "live_mixed_worker": {
+    "parent_result": "MIXED_WORKER_OK",
+    "child_result": "OPENAI_WORKER_OK",
+    "qualified_cache_inclusive_tokens": 223610,
+    "fresh_tokens": 143738,
+    "cached_input_tokens": 79872,
+    "actual_response_records": 4,
+    "scope": "actual parent plus normal OpenAI child; older unknown histories retained separately"
+  },
+  "limitations": [
+    "Shared kernel UID1017 isolation.",
+    "Fresh same-boot preflight baseline0 and final owned0/protected0/unattributed0 verified; historical13 prior-boot snapshot preserved separately.",
+    "Real provider handoff rejected the completed plaintext notification locally before provider I/O. New portable-context source fix is pending validation, not qualified by this package.",
+    "Stop not yet qualified; working-profile installation not performed."
+  ]
+}

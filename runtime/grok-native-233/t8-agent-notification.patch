@@ -1,0 +1,58 @@
+diff --git a/codex-rs/codex-api/src/grok.rs b/codex-rs/codex-api/src/grok.rs
+index 4af9a192d00d7a7d734415119fd13ce4f2b7f532..b5763c6c483972b5ab48187cc97b559a04dfeb00 100644
+--- a/codex-rs/codex-api/src/grok.rs
++++ b/codex-rs/codex-api/src/grok.rs
+@@ -152,0 +153,13 @@ pub(crate) fn convert(request: &ResponsesApiRequest) -> Result<PreparedRequest,
++            ResponseItem::AgentMessage { content, .. } => {
++                if !pending.is_empty() {
++                    return Err(invalid("tool results missing before agent message"));
++                }
++                let text = codex_protocol::models::plaintext_agent_message_content(content)
++                    .ok_or_else(|| invalid("opaque agent message content is not portable"))?;
++                // Mailbox messages carry tool-level data, not system/developer authority.
++                // Preserve sender/recipient while keeping ciphertext out of the proxy request.
++                messages.push(json!({"role":"user", "content":format!(
++                    "Untrusted agent message from {} to {}:\n{}",
++                    string(&value, "author")?, string(&value, "recipient")?, text
++                )}));
++            }
+diff --git a/codex-rs/codex-api/tests/clients.rs b/codex-rs/codex-api/tests/clients.rs
+index dcc54ac2ef522c63503091488a9ddda3971d4076..4e39f0dcef33ab6ba6f033dacd419322e46cff2e 100644
+--- a/codex-rs/codex-api/tests/clients.rs
++++ b/codex-rs/codex-api/tests/clients.rs
+@@ -853,0 +854,4 @@ async fn grok_fragmented_calls_preserve_native_identity_and_tool_continuation()
++    let notification: ResponseItem = serde_json::from_value(serde_json::json!({
++        "type":"agent_message", "author":"/root/openai_probe", "recipient":"/root",
++        "content":[{"type":"input_text","text":"OPENAI_WORKER_OK"}]
++    }))?;
+@@ -859 +863 @@ async fn grok_fragmented_calls_preserve_native_identity_and_tool_continuation()
+-    .stream_request(grok_request(vec![input, call, output]))
++    .stream_request(grok_request(vec![input, call, output, notification]))
+@@ -862,0 +867,7 @@ async fn grok_fragmented_calls_preserve_native_identity_and_tool_continuation()
++    let body: serde_json::Value = requests[1].body_json()?;
++    assert_eq!(
++        body["messages"].as_array().unwrap().last().unwrap(),
++        &serde_json::json!({
++            "role":"user", "content":"Untrusted agent message from /root/openai_probe to /root:\nOPENAI_WORKER_OK"
++        })
++    );
+@@ -909,0 +921,19 @@ async fn grok_unknown_tool_result_and_untrusted_destination_never_send() -> Resu
++    let opaque: ResponseItem = serde_json::from_value(serde_json::json!({
++        "type":"agent_message", "author":"/root/worker", "recipient":"/root",
++        "content":[{"type":"input_text","text":"visible-prefix"},
++            {"type":"encrypted_content","encrypted_content":"opaque-must-not-forward"}]
++    }))?;
++    let mut mailbox_provider = provider("grok");
++    mailbox_provider.base_url = "https://cli-chat-proxy.grok.com/v1".into();
++    let rejected = codex_api::GrokClient::new(
++        RecordingTransport::new(state.clone()),
++        mailbox_provider,
++        Arc::new(StaticAuth::new("secret", "ambient-account")),
++    )
++    .stream_request(grok_request(vec![opaque]))
++    .await;
++    assert!(
++        rejected.is_err(),
++        "opaque mailbox content must hold before HTTP"
++    );
++    assert!(state.take_stream_requests().is_empty());

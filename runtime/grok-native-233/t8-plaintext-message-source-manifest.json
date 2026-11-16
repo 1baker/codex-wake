@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "phase": "plaintext_collaboration_source_validated_package_pending",
+  "native_base": "212d798546aabffe65129464a61905e810fed248",
+  "native_commit": "23bc20474a24e7afbb59a02e0e070017ef58080a",
+  "native_tree": "3f0e6e7e99b0a463e466f744db396e3b80e03f2c",
+  "reconstructed_tree": "3f0e6e7e99b0a463e466f744db396e3b80e03f2c",
+  "patch": "t8-plaintext-message.patch",
+  "patch_sha256": "ade611ad036c769e070703c9dc3e6a07e2d349abe5582c5b46c8705593da7a63",
+  "apply_flags": [
+    "--unidiff-zero"
+  ],
+  "native_files": {
+    "codex-rs/codex-api/src/sse/grok.rs": "4480b85bdc84b0e139547826586c5ebb207f82632b18decd99a579d3526430ee",
+    "codex-rs/codex-api/tests/clients.rs": "0bf404c57d12875788d48265aec4625e73fcd4ccf4bdcf1f8d4b912de963c9a2",
+    "codex-rs/core/tests/suite/subagent_notifications.rs": "8e676c546a7734360605cdc85a1a708795012333f68fed8ad335adef2c926d8f"
+  },
+  "private_bundle_sha256": "b867c5f5e00f17cae9c2ea83ceb8b4441742aeac1fdcc4122a1d620ff7903f88",
+  "public_schema_changes": false,
+  "validation": {
+    "red_job": "job-20261116T013102Z-632a21f13a16",
+    "red": "public client marker Null versus Array[];0.09stest",
+    "first_green": "job-20261116T013931Z-cd82e54c799c",
+    "first_green_test_assertion_failure": "bare task assertion omitted existing native attribution header; no product fix added",
+    "green_api_clients": 5,
+    "green_existing_sse_units": 4,
+    "green_core_job": "job-20261116T015131Z-ae24ab977b17",
+    "green_core_including_v2_and_openai_safety": 12,
+    "green_core_duration_seconds": 730.153,
+    "core_execution_seconds": 4.466,
+    "canonical_cache_inclusive": {
+      "grok_to_openai": 285,
+      "grok_to_grok": 405,
+      "grok_to_openai_v2": 285,
+      "actual_child_records_required": true,
+      "missing_child_records_all": "unknown/null"
+    },
+    "post_validation_formatting": "stable rustfmt only, no behavior change; nightly imports warning retained"
+  },
+  "live_status": "actual coding passed; mixed worker failed before fix; held histories retained; fixed package qualification pending, no replay",
+  "review_runs": 0,
+  "remediation_runs": 0
+}

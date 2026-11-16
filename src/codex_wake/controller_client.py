@@ -45,6 +45,9 @@ from .governor_commands import VERBS as GOVERNOR_VERBS
 MCP_TOOLS.update({'governor.' + verb: 'wake_governor_' + verb for verb in GOVERNOR_VERBS})
 OPERATIONS = OPERATIONS | frozenset(MCP_TOOLS)
 
+# Native Grok account controls use the existing exact-target OAuth contract.
+MCP_TOOLS.update({'grok_auth.status': 'wake_grok_auth_status', 'grok_auth.revoke': 'wake_grok_auth_revoke'})
+OPERATIONS = OPERATIONS | frozenset(MCP_TOOLS)
 # Generated pure metadata keeps portable clients independent of host owners.
 from .unified_public import PUBLIC_MCP_TOOLS
 OPERATIONS = OPERATIONS | frozenset(PUBLIC_MCP_TOOLS)

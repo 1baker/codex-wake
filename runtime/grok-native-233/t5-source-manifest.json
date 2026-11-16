@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T5",
+  "issue": 634,
+  "phase": "source_acceptance",
+  "native_base": "1eee8143f7642561f5d5573613b1e3658e208e63",
+  "native_commit": "45169bbc996d8baf1da130f2f11ac9f09d05ba2f",
+  "native_tree": "4ffbad5fca1eb6c308847907cb3da8563ba245e9",
+  "reconstructed_tree": "4ffbad5fca1eb6c308847907cb3da8563ba245e9",
+  "wake_source_commit": "ec2d7cda1095c1f4a7c626c8ddf08db088418d86",
+  "patch": "t5-mixed-workers.patch",
+  "patch_sha256": "0f0fc619f7caa5fa6436871eff1ff0940a252f8b4a76e07b5cf8873063d58993",
+  "apply_flags": [
+    "--unidiff-zero"
+  ],
+  "native_files": {
+    "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-stable.json.zst": "b4a6fcc37fa0d59136ab8842a40060239bc40acbcaa89d8596f13d1f8c1ded26",
+    "codex-rs/app-server/tests/suite/v2/model_list.rs": "60e9dcb858a2406de418db80b53c55dbbf93d875a4f4278deada1a297f43a050",
+    "codex-rs/core/src/agent/child_config.rs": "afa38f270333bc3cdcd22021ade077b34730565af3e8a91f64986a3db820a66c",
+    "codex-rs/core/src/agent/control_tests.rs": "c813c3266f2eb9bff20661a22f3b5e50d69b4544b650aef869e266e916dde182",
+    "codex-rs/core/src/inference_selection.rs": "87e7c3a87c71311c9c264b6ddd6a83097fdee01febf9a0c6c811b01b218d7c2a",
+    "codex-rs/core/src/session/mod.rs": "760c71a0862894b10da781793a9d76bbf4d8e0d26b552aff3336b888b1dc6688",
+    "codex-rs/core/src/session/tests.rs": "69667e94834f7d9809fe67a69b3ad5ec68b3335316f35b44026286e2418672bc",
+    "codex-rs/core/src/state/session.rs": "efac11a054dbdc3a9ebcb936809b407a12d097aa07ab7cb3d712b43d640b9404",
+    "codex-rs/core/src/state/session_tests.rs": "9d7ac0b551bfa91afe2161e4b4f8f24b629dcea948b884fbc63ee2890b3a320b",
+    "codex-rs/core/tests/suite/cyber_exec_policy.rs": "9ec1a50eac7277f08dfb052d3d69aad469efe9c7b34c04a8862b97ee22a29588",
+    "codex-rs/core/tests/suite/subagent_notifications.rs": "3cf8905902d656cdb22c3fc26c718e3aca490b77ce4231b9b7d45fd9ffe3cee8",
+    "codex-rs/protocol/src/protocol.rs": "a36d89041bb26fe685bcadcfb70fab0a53e78566179569c19cb73c6defe6f18c",
+    "codex-rs/rollout/src/policy.rs": "798a9cbaab4ad1f5e26919af13dcc3d7f184e1746b34a5c0a622dc6fde5a1758"
+  },
+  "private_bundle_sha256": "60935a8ba65c95ea5d549c1f16c46492a79b4e5f3c50f3cd5c423dcf9d433fb7",
+  "validation": {
+    "worker_behavior": "5 PASS; strict successful child completion, exact snapshot inheritance/override, default and exact selection",
+    "canonical_wake_join": {
+      "openai-override": {
+        "used_tokens": 45,
+        "threads": 2,
+        "child_records": 1,
+        "adverse_state": "unknown",
+        "adverse_reason": "response_usage_missing"
+      },
+      "grok-inherited": {
+        "used_tokens": 45,
+        "threads": 2,
+        "child_records": 1,
+        "adverse_state": "unknown",
+        "adverse_reason": "response_usage_missing"
+      }
+    },
+    "regressions": "12 PASS: shared budget, exhaustion/no replay, role/model precedence",
+    "schema": "stable/experimental+SDK generation PASS; 4 consistency checks PASS; internal RolloutLine.json schema changed",
+    "environment": "local GNU Linux Rust1.95 dev-small jobs2 offline locked serialized cache; no hosted CI or live provider"
+  },
+  "jobs": [
+    "job-20261115T025927Z-b3d206c72a95",
+    "job-20261115T024233Z-a1ac921ebb78",
+    "job-20261115T032320Z-ee3a8976b09e"
+  ],
+  "remaining_gates": [
+    "T6 linked continuations",
+    "T7 Stop/revocation/recovery",
+    "T8 real account and exact complete package qualification",
+    "one broad review and bounded remediation after eight child tickets close"
+  ]
+}

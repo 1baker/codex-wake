@@ -1,0 +1,1291 @@
+diff --git a/codex-rs/core/src/agent/control/runtime.rs b/codex-rs/core/src/agent/control/runtime.rs
+index 5b7128309aa24f62d3af03904794b6e5535770b8..3fa2acf8e343128d815122e52ee60a3b6babc608 100644
+--- a/codex-rs/core/src/agent/control/runtime.rs
++++ b/codex-rs/core/src/agent/control/runtime.rs
+@@ -213,0 +214,4 @@ impl LocalAgentRuntime {
++    pub(crate) fn rollout_budget_enforced(&self) -> bool {
++        self.rollout_budget.enforced()
++    }
++
+diff --git a/codex-rs/core/src/compact.rs b/codex-rs/core/src/compact.rs
+index 2f6a91de7054cf67bcda1dc9ee5955d82e9d14dc..ecc5aeda6c45104d68070ed64a0becbdca9c8c9e 100644
+--- a/codex-rs/core/src/compact.rs
++++ b/codex-rs/core/src/compact.rs
+@@ -333 +333 @@ async fn run_compact_task_inner_impl(
+-            turn_context.as_ref(),
++            &turn_context,
+@@ -826,2 +826,2 @@ async fn drain_to_completed(
+-    sess: &Session,
+-    turn_context: &TurnContext,
++    sess: &Arc<Session>,
++    turn_context: &Arc<TurnContext>,
+@@ -832,0 +833,5 @@ async fn drain_to_completed(
++    Box::pin(crate::session::provider_safety::begin_request(
++        sess,
++        turn_context,
++    ))
++    .await?;
+@@ -898 +903,5 @@ async fn drain_to_completed(
+-                sess.update_token_usage_info(
++                let budget_result = sess
++                    .update_token_usage_info(turn_context, token_usage.as_ref(), includes_reasoning)
++                    .await;
++                let safety_result = crate::session::provider_safety::response_completed(
++                    sess,
+@@ -900,4 +909,5 @@ async fn drain_to_completed(
+-                    token_usage.as_ref(),
+-                    includes_reasoning,
+-                )
+-                .await?;
++                    token_usage.is_some(),
++                    budget_result.is_ok(),
++                );
++                budget_result?;
++                safety_result?;
+diff --git a/codex-rs/core/src/inference_selection.rs b/codex-rs/core/src/inference_selection.rs
+index 43d3b50b62f8c3deece880f1c9bd45927dfeaf33..c8863eb6c8cd358eb0f1f6c582baff4cbe11cc93 100644
+--- a/codex-rs/core/src/inference_selection.rs
++++ b/codex-rs/core/src/inference_selection.rs
+@@ -229,0 +230,51 @@ pub fn snapshots(catalog: &InferenceCatalog) -> io::Result<Vec<InferenceSelectio
++/// A semantic account generation event is separate from unrelated catalog
++/// updates and from unconfirmed credential-file absence.
++pub(crate) fn account_revoked(
++    catalog: &InferenceCatalog,
++    accepted: &InferenceSelectionSnapshot,
++) -> io::Result<bool> {
++    let provider = catalog
++        .providers
++        .get(&accepted.selection.provider_id)
++        .ok_or_else(held)?;
++    provider.validate().map_err(|_| held())?;
++    if provider.wire_api != WireApi::Grok
++        || provider.base_url.as_deref() != Some("https://cli-chat-proxy.grok.com/v1")
++    {
++        return Err(held());
++    }
++    let auth = provider.auth.as_ref().ok_or_else(held)?;
++    let tail: Vec<_> = auth
++        .args
++        .iter()
++        .rev()
++        .take(6)
++        .map(|argument| argument.as_str())
++        .collect();
++    if tail.len() != 6
++        || tail[1..]
++            != [
++                "--expected-account-revision",
++                accepted.selection.account_id.as_str(),
++                "token",
++                "auth",
++                "grok",
++            ]
++        || auth.refresh_interval_ms != 0
++        || !std::path::Path::new(&auth.command).is_absolute()
++    {
++        return Err(held());
++    }
++    if tail[0] != accepted.selection.account_revision.as_str() {
++        return Ok(true);
++    }
++    Ok(catalog.selections.iter().any(|row| {
++        row.provider_id == accepted.selection.provider_id
++            && row.account_id == accepted.selection.account_id
++            && row
++                .reasons
++                .iter()
++                .any(|reason| reason == "authentication_revoked")
++    }))
++}
++
+diff --git a/codex-rs/core/src/rollout_budget.rs b/codex-rs/core/src/rollout_budget.rs
+index 332d15b17b679259b4114d9f14b48d6e4b6a2de7..e6c3ed02e457a9de35dfe369419c8e974af986ca 100644
+--- a/codex-rs/core/src/rollout_budget.rs
++++ b/codex-rs/core/src/rollout_budget.rs
+@@ -36,0 +37,4 @@ impl RolloutBudget {
++    pub(crate) fn enforced(&self) -> bool {
++        self.lock().is_some_and(|state| state.config.enforce_limit)
++    }
++
+diff --git a/codex-rs/core/src/session/handlers.rs b/codex-rs/core/src/session/handlers.rs
+index 06a8e6903a5175fee1ad3444a2a334fdd55ca876..142333a4d7ac21bcf2c123345eec16bffd8d430d 100644
+--- a/codex-rs/core/src/session/handlers.rs
++++ b/codex-rs/core/src/session/handlers.rs
+@@ -61,0 +62,8 @@ pub async fn interrupt(sess: &Arc<Session>) {
++    if let Some((turn, _)) = sess.active_turn_context_and_cancellation_token().await {
++        match super::provider_safety::hold(sess, &turn, "local_stop") {
++            Ok(false) => {},
++            Ok(true) | Err(_) => sess.send_event(&turn, EventMsg::Warning(codex_protocol::protocol::WarningEvent {
++                message: "Stopped owned Grok work locally. Local Stop does not confirm provider cancellation, final usage or in-flight effects; reconcile retained evidence before explicit reassignment. No uncertain replay is authorized.".into(),
++            })).await,
++        }
++    }
+diff --git a/codex-rs/core/src/session/mod.rs b/codex-rs/core/src/session/mod.rs
+index c1df95089345f0ac82c48a4c6da527de830a132b..3cddabdf111439eecbc4262d1babeb3daf7a9028 100644
+--- a/codex-rs/core/src/session/mod.rs
++++ b/codex-rs/core/src/session/mod.rs
+@@ -256,0 +257 @@ pub(crate) mod inject;
++pub(crate) mod provider_safety;
+diff --git a/codex-rs/core/src/session/provider_safety.rs b/codex-rs/core/src/session/provider_safety.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..e32f0a56c10175c7e28b32f99cef666475cfcb90
+--- /dev/null
++++ b/codex-rs/core/src/session/provider_safety.rs
+@@ -0,0 +1,489 @@
++//! Durable Grok request intent and local scheduling fences. Numeric usage remains
++//! owned by the canonical rollout and the original shared allowance.
++use super::{Session, TurnContext};
++use crate::agent::control::LocalAgentRuntime;
++use crate::config::Config;
++use codex_model_provider_info::WireApi;
++use codex_protocol::ThreadId;
++use codex_protocol::error::{CodexErr, Result as CodexResult};
++use codex_protocol::inference_selection::InferenceSelectionSnapshot;
++use serde::{Deserialize, Serialize};
++use std::collections::HashMap;
++use std::io::{Read, Write};
++use std::path::PathBuf;
++use std::sync::{Arc, Mutex, OnceLock, Weak};
++use tokio::sync::Notify;
++use tokio_util::sync::CancellationToken;
++
++#[derive(Default)]
++struct LiveRequest {
++    turn: Mutex<Option<String>>,
++    changed: Arc<Notify>,
++}
++#[derive(Clone, Serialize, Deserialize)]
++#[serde(deny_unknown_fields)]
++struct Intent {
++    schema: u32,
++    kind: String,
++    thread_id: ThreadId,
++    original_session_id: String,
++    turn_id: String,
++    selection: Option<InferenceSelectionSnapshot>,
++    state: String,
++    reason: String,
++    strict_accounting: bool,
++    usage_unknown: bool,
++    provider_completion: String,
++    action_replay: String,
++}
++// Retain the existing controller, never a second token balance. A recovered
++// history cannot turn a new controller's zero spend into authority over old work.
++fn authorities() -> &'static Mutex<HashMap<String, LocalAgentRuntime>> {
++    static VALUE: OnceLock<Mutex<HashMap<String, LocalAgentRuntime>>> = OnceLock::new();
++    VALUE.get_or_init(Mutex::default)
++}
++fn retain_authority(session: &Session) -> CodexResult<()> {
++    if !session
++        .services
++        .local_agent_runtime
++        .rollout_budget_enforced()
++    {
++        return Ok(());
++    }
++    let root = session.services.agent_control.identity().to_string();
++    let mut values = authorities()
++        .lock()
++        .unwrap_or_else(std::sync::PoisonError::into_inner);
++    if let Some(original) = values.get(&root) {
++        if !original.shares_task_authority(&session.services.local_agent_runtime) {
++            return Err(held(
++                "original cumulative allowance authority is unavailable",
++            ));
++        }
++    } else {
++        if values.len() >= 8192 {
++            return Err(held("live allowance authority capacity reached"));
++        }
++        values.insert(root, session.services.local_agent_runtime.clone());
++    }
++    Ok(())
++}
++fn held(reason: &str) -> CodexErr {
++    CodexErr::Fatal(format!(
++        "Grok work held: {reason}; reconciliation and explicit reassignment required. Provider completion/usage are not confirmed by local Stop; uncertain actions will not be replayed."
++    ))
++}
++fn live(session: &Session) -> Arc<LiveRequest> {
++    session
++        .services
++        .thread_extension_data
++        .get_or_init(LiveRequest::default)
++}
++fn directory(config: &Config, create: bool) -> CodexResult<Option<PathBuf>> {
++    let path = config.codex_home.join("provider_safety").to_path_buf();
++    if create {
++        let mut builder = std::fs::DirBuilder::new();
++        #[cfg(unix)]
++        {
++            use std::os::unix::fs::DirBuilderExt;
++            builder.mode(0o700);
++        }
++        match builder.create(&path) {
++            Ok(()) => {}
++            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
++            Err(_) => return Err(held("cannot persist request intent before submission")),
++        }
++    }
++    let metadata = match std::fs::symlink_metadata(&path) {
++        Ok(value) => value,
++        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
++        Err(_) => return Err(held("cannot inspect request intent directory")),
++    };
++    if !metadata.is_dir() || metadata.file_type().is_symlink() {
++        return Err(held("invalid request intent directory"));
++    }
++    #[cfg(unix)]
++    {
++        use std::os::unix::fs::MetadataExt;
++        if metadata.uid() != unsafe { libc::geteuid() } || metadata.mode() & 0o077 != 0 {
++            return Err(held("request intent directory is not private and owned"));
++        }
++    }
++    Ok(Some(path))
++}
++fn read(config: &Config, name: &str) -> CodexResult<Option<Intent>> {
++    let Some(dir) = directory(config, false)? else {
++        return Ok(None);
++    };
++    let path = dir.join(name);
++    let metadata = match std::fs::symlink_metadata(&path) {
++        Ok(value) => value,
++        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
++        Err(_) => return Err(held("cannot inspect request intent")),
++    };
++    if !metadata.is_file() || metadata.file_type().is_symlink() || metadata.len() > 65536 {
++        return Err(held("invalid request intent"));
++    }
++    #[cfg(unix)]
++    {
++        use std::os::unix::fs::MetadataExt;
++        if metadata.uid() != unsafe { libc::geteuid() } || metadata.mode() & 0o077 != 0 {
++            return Err(held("request intent is not private and owned"));
++        }
++    }
++    let mut options = std::fs::OpenOptions::new();
++    options.read(true);
++    #[cfg(unix)]
++    {
++        use std::os::unix::fs::OpenOptionsExt;
++        options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
++    }
++    let file = options
++        .open(&path)
++        .map_err(|_| held("cannot read request intent"))?;
++    let mut bytes = Vec::new();
++    file.take(65537)
++        .read_to_end(&mut bytes)
++        .map_err(|_| held("cannot read request intent"))?;
++    let record: Intent =
++        serde_json::from_slice(&bytes).map_err(|_| held("malformed request intent"))?;
++    if bytes.len() > 65536
++        || record.schema != 1
++        || record.action_replay != "forbidden"
++        || !matches!(
++            record.state.as_str(),
++            "request_pending" | "tools" | "held" | "completed"
++        )
++        || record.turn_id.len() > 128
++        || record.reason.len() > 128
++    {
++        return Err(held("unsupported request intent"));
++    }
++    Ok(Some(record))
++}
++fn save(config: &Config, name: &str, record: &Intent, first_only: bool) -> CodexResult<()> {
++    let dir =
++        directory(config, true)?.ok_or_else(|| held("request intent directory unavailable"))?;
++    let path = dir.join(name);
++    if first_only && read(config, name)?.is_some() {
++        return Ok(());
++    }
++    let mut temporary =
++        tempfile::NamedTempFile::new_in(&dir).map_err(|_| held("cannot stage request intent"))?;
++    serde_json::to_writer(temporary.as_file_mut(), record)
++        .map_err(|_| held("cannot encode request intent"))?;
++    temporary
++        .flush()
++        .map_err(|_| held("cannot flush request intent"))?;
++    temporary
++        .as_file()
++        .sync_all()
++        .map_err(|_| held("cannot sync request intent"))?;
++    if first_only {
++        match temporary.persist_noclobber(&path) {
++            Ok(_) => {}
++            Err(e) if e.error.kind() == std::io::ErrorKind::AlreadyExists => {}
++            Err(_) => return Err(held("cannot commit unknown accounting fence")),
++        }
++    } else {
++        temporary
++            .persist(&path)
++            .map_err(|_| held("cannot commit request intent"))?;
++    }
++    std::fs::File::open(&dir)
++        .and_then(|f| f.sync_all())
++        .map_err(|_| held("cannot sync request intent directory"))?;
++    Ok(())
++}
++fn own_name(session: &Session) -> String {
++    format!("{}.json", session.thread_id)
++}
++fn root_name(session: &Session) -> String {
++    format!(
++        "accounting-{}.json",
++        session.services.agent_control.identity()
++    )
++}
++fn unknown_accounting(session: &Session, config: &Config, record: &Intent) -> CodexResult<()> {
++    if record.strict_accounting && record.usage_unknown {
++        let mut marker = record.clone();
++        marker.kind = "accounting_unknown".into();
++        save(config, &root_name(session), &marker, true)?;
++    }
++    Ok(())
++}
++pub(crate) async fn check_admission(session: &Session) -> CodexResult<()> {
++    let config = session.get_config().await;
++    let root = session.services.agent_control.identity().to_string();
++    if let Some(marker) = read(&config, &root_name(session))? {
++        if marker.original_session_id != root || marker.kind != "accounting_unknown" {
++            return Err(held("unknown allowance attribution"));
++        }
++        return Err(held("original shared allowance accounting is unknown"));
++    }
++    let Some(record) = read(&config, &own_name(session))? else {
++        return Ok(());
++    };
++    if record.thread_id != session.thread_id
++        || record.original_session_id != root
++        || record.kind != "thread"
++    {
++        return Err(held("request ownership cannot be attributed"));
++    }
++    if record.state == "completed" {
++        if record.strict_accounting {
++            let values = authorities()
++                .lock()
++                .unwrap_or_else(std::sync::PoisonError::into_inner);
++            if !values.get(&root).is_some_and(|original| {
++                original.shares_task_authority(&session.services.local_agent_runtime)
++            }) {
++                return Err(held(
++                    "original cumulative allowance authority is unavailable",
++                ));
++            }
++        }
++        return Ok(());
++    }
++    if record.state != "held" {
++        let active = session.active_turn.lock().await;
++        let same = active
++            .as_ref()
++            .and_then(|t| t.task.as_ref())
++            .is_some_and(|t| t.turn_context.sub_id == record.turn_id);
++        if same
++            && live(session)
++                .turn
++                .lock()
++                .unwrap_or_else(std::sync::PoisonError::into_inner)
++                .as_deref()
++                == Some(record.turn_id.as_str())
++        {
++            return Ok(());
++        }
++    }
++    Err(held(&record.reason))
++}
++pub(crate) async fn begin_request(
++    session: &Arc<Session>,
++    turn: &Arc<TurnContext>,
++) -> CodexResult<()> {
++    check_admission(session).await?;
++    check_account_config(&turn.config).await?;
++    if turn.config.model_provider.wire_api != WireApi::Grok {
++        return Ok(());
++    }
++    retain_authority(session)?;
++    let state = live(session);
++    let mut active = state
++        .turn
++        .lock()
++        .unwrap_or_else(std::sync::PoisonError::into_inner);
++    if read(&turn.config, &own_name(session))?.is_some_and(|r| r.state == "request_pending") {
++        return Err(held("previous provider request completion is unknown"));
++    }
++    let record = Intent {
++        schema: 1,
++        kind: "thread".into(),
++        thread_id: session.thread_id,
++        original_session_id: session.services.agent_control.identity().to_string(),
++        turn_id: turn.sub_id.clone(),
++        selection: turn.config.inference_selection.clone(),
++        state: "request_pending".into(),
++        reason: "provider_request_unobserved".into(),
++        strict_accounting: session
++            .services
++            .local_agent_runtime
++            .rollout_budget_enforced(),
++        usage_unknown: true,
++        provider_completion: "unconfirmed".into(),
++        action_replay: "forbidden".into(),
++    };
++    save(&turn.config, &own_name(session), &record, false)?;
++    let start_monitor = active.as_deref() != Some(turn.sub_id.as_str());
++    *active = Some(turn.sub_id.clone());
++    drop(active);
++    if start_monitor && turn.config.inference_catalog_command.is_some() {
++        start_account_monitor(Arc::downgrade(session), Arc::clone(turn), state);
++    }
++    Ok(())
++}
++pub(crate) fn hold(session: &Session, turn: &TurnContext, reason: &str) -> CodexResult<bool> {
++    if turn.config.model_provider.wire_api != WireApi::Grok {
++        return Ok(false);
++    }
++    let state = live(session);
++    let mut active = state
++        .turn
++        .lock()
++        .unwrap_or_else(std::sync::PoisonError::into_inner);
++    let Some(mut record) = read(&turn.config, &own_name(session))? else {
++        return Ok(false);
++    };
++    if record.turn_id != turn.sub_id || record.state == "completed" {
++        return Ok(false);
++    }
++    if record.state != "held" {
++        record.state = "held".into();
++        record.reason = reason.into();
++    }
++    unknown_accounting(session, &turn.config, &record)?;
++    save(&turn.config, &own_name(session), &record, false)?;
++    *active = None;
++    state.changed.notify_waiters();
++    Ok(true)
++}
++pub(crate) fn response_completed(
++    session: &Session,
++    turn: &TurnContext,
++    usage_known: bool,
++    budget_admitted: bool,
++) -> CodexResult<()> {
++    if turn.config.model_provider.wire_api != WireApi::Grok {
++        return Ok(());
++    }
++    let state = live(session);
++    let _active = state
++        .turn
++        .lock()
++        .unwrap_or_else(std::sync::PoisonError::into_inner);
++    let Some(mut record) = read(&turn.config, &own_name(session))? else {
++        return Err(held("response intent missing"));
++    };
++    if record.turn_id != turn.sub_id || record.state == "held" {
++        return Err(held("response is no longer admitted"));
++    }
++    record.provider_completion = "observed".into();
++    record.usage_unknown = !usage_known;
++    record.state = "tools".into();
++    if !budget_admitted {
++        record.state = "held".into();
++        record.reason = "original_allowance_exhausted".into();
++    }
++    if !usage_known && record.strict_accounting {
++        record.state = "held".into();
++        record.reason = "response_accounting_missing".into();
++        unknown_accounting(session, &turn.config, &record)?;
++    }
++    save(&turn.config, &own_name(session), &record, false)?;
++    state.changed.notify_waiters();
++    if record.state == "held" {
++        return Err(held(&record.reason));
++    }
++    Ok(())
++}
++pub(crate) async fn finish_turn(session: &Session, turn: &TurnContext) -> CodexResult<()> {
++    if turn.config.model_provider.wire_api != WireApi::Grok {
++        return Ok(());
++    }
++    session.flush_rollout().await.map_err(CodexErr::Io)?;
++    let state = live(session);
++    let mut active = state
++        .turn
++        .lock()
++        .unwrap_or_else(std::sync::PoisonError::into_inner);
++    if let Some(mut record) = read(&turn.config, &own_name(session))? {
++        if record.turn_id != turn.sub_id {
++            return Ok(());
++        }
++        if record.state != "tools" {
++            return Err(held(&record.reason));
++        }
++        record.state = "completed".into();
++        record.reason = "completed".into();
++        save(&turn.config, &own_name(session), &record, false)?;
++    }
++    if active.as_deref() == Some(turn.sub_id.as_str()) {
++        *active = None;
++    }
++    state.changed.notify_waiters();
++    Ok(())
++}
++pub(crate) async fn admit_tool(
++    session: &Session,
++    turn: &TurnContext,
++    cancellation: &CancellationToken,
++) -> CodexResult<()> {
++    let state = live(session);
++    loop {
++        let changed = state.changed.clone().notified_owned();
++        tokio::pin!(changed);
++        changed.as_mut().enable();
++        check_admission(session).await?;
++        check_account_config(&turn.config).await?;
++        let wait = turn.config.model_provider.wire_api == WireApi::Grok
++            && read(&turn.config, &own_name(session))?
++                .is_some_and(|r| r.strict_accounting && r.state == "request_pending");
++        if !wait {
++            return Ok(());
++        }
++        tokio::select! { biased;
++            _ = cancellation.cancelled() => return Err(CodexErr::TurnAborted),
++            _ = &mut changed => {},
++        }
++    }
++}
++
++async fn revocation_observed(config: &Config) -> CodexResult<bool> {
++    if config.model_provider.wire_api != WireApi::Grok {
++        return Ok(false);
++    }
++    let Some(command) = config.inference_catalog_command.as_ref() else {
++        return Ok(false);
++    };
++    let accepted = config
++        .inference_selection
++        .as_ref()
++        .ok_or_else(|| held("selected account identity unavailable"))?;
++    let catalog = crate::inference_selection::load_catalog(Some(command))
++        .await
++        .map_err(|_| held("selected account authorization unavailable"))?;
++    crate::inference_selection::account_revoked(&catalog, accepted)
++        .map_err(|_| held("selected account authorization unverified"))
++}
++async fn check_account_config(config: &Config) -> CodexResult<()> {
++    if revocation_observed(config).await? {
++        return Err(held("selected account revoked or registration replaced"));
++    }
++    Ok(())
++}
++pub(crate) async fn check_account(session: &Session) -> CodexResult<()> {
++    let config = session.get_config().await;
++    check_account_config(&config).await
++}
++fn start_account_monitor(session: Weak<Session>, turn: Arc<TurnContext>, state: Arc<LiveRequest>) {
++    tokio::spawn(async move {
++        loop {
++            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
++            if state
++                .turn
++                .lock()
++                .unwrap_or_else(std::sync::PoisonError::into_inner)
++                .as_deref()
++                != Some(turn.sub_id.as_str())
++            {
++                break;
++            }
++            let Some(session) = session.upgrade() else {
++                break;
++            };
++            // An unavailable source is not semantic revocation. Immediate tool
++            // and request admission still holds when authorization cannot be read.
++            if !matches!(revocation_observed(&turn.config).await, Ok(true)) {
++                continue;
++            }
++            let _ = hold(&session, &turn, "account_revoked_or_replaced");
++            let account = turn
++                .config
++                .inference_selection
++                .as_ref()
++                .map(|value| value.selection.account_id.as_str())
++                .unwrap_or("unattributed");
++            session.abort_turn_if_active(&turn.sub_id, codex_protocol::protocol::TurnAbortReason::Interrupted,
++                Some(codex_protocol::protocol::ErrorEvent {misalignment:None, codex_error_info:None,
++                    message:format!("Grok account {account} was revoked or replaced. Owned work is held locally; provider completion and usage remain unconfirmed. Reconcile retained evidence before explicit reassignment; no uncertain replay.")
++                })).await;
++            break;
++        }
++    });
++}
+diff --git a/codex-rs/core/src/session/turn.rs b/codex-rs/core/src/session/turn.rs
+index b25f718d4704d16f6f113c26ec0d6db1aaee9704..c4be90a6fbb58f90efd524ef0a87263386ce382d 100644
+--- a/codex-rs/core/src/session/turn.rs
++++ b/codex-rs/core/src/session/turn.rs
+@@ -2831,0 +2832 @@ async fn try_run_sampling_request(
++    Box::pin(super::provider_safety::begin_request(&sess, &turn_context)).await?;
+@@ -3365,0 +3367,8 @@ async fn try_run_sampling_request(
++                // Release strict Grok tool admission only after the original
++                // shared allowance has accepted this response's numeric usage.
++                let safety_result = super::provider_safety::response_completed(
++                    &sess,
++                    &turn_context,
++                    token_usage.is_some(),
++                    budget_result.is_ok(),
++                );
+@@ -3370,0 +3380 @@ async fn try_run_sampling_request(
++                safety_result?;
+diff --git a/codex-rs/core/src/session/turn_input.rs b/codex-rs/core/src/session/turn_input.rs
+index 5df6c3b468366a1a61fb673c7603259f2ab84435..bdcf01f3edc71661aca907bf8a8b65fd77dcccf8 100644
+--- a/codex-rs/core/src/session/turn_input.rs
++++ b/codex-rs/core/src/session/turn_input.rs
+@@ -148,0 +149 @@ impl PreparedTurnInputSettings {
++        super::provider_safety::check_account(session).await?;
+diff --git a/codex-rs/core/src/tasks/mod.rs b/codex-rs/core/src/tasks/mod.rs
+index 5c1072fc772cc9583bcc27523b9521b89fba4c8f..6cad46dce0b2434418e9c7dabadad266bad92ed6 100644
+--- a/codex-rs/core/src/tasks/mod.rs
++++ b/codex-rs/core/src/tasks/mod.rs
+@@ -412,0 +413,6 @@ impl Session {
++            let task_result = if task_result.is_ok() && !task_cancellation_token.is_cancelled() {
++                match Box::pin(crate::session::provider_safety::finish_turn(&session, &ctx_for_finish)).await {
++                    Ok(()) => task_result,
++                    Err(error) => Err(error),
++                }
++            } else { task_result };
+@@ -688,0 +695,10 @@ impl Session {
++                let grok = turn_context.config.model_provider.wire_api
++                    == codex_model_provider_info::WireApi::Grok;
++                if grok {
++                    let _ = crate::session::provider_safety::hold(
++                        self,
++                        &turn_context,
++                        "provider_failure",
++                    );
++                }
++                let prefix = grok.then_some("Grok work held; reconcile provider/account/usage evidence and explicitly reassign; uncertain actions will not be replayed");
+@@ -699 +715,3 @@ impl Session {
+-                    EventMsg::Error(err.to_error_event(/*message_prefix*/ None)),
++                    EventMsg::Error(
++                        err.to_error_event(/*message_prefix*/ prefix.map(str::to_owned)),
++                    ),
+diff --git a/codex-rs/core/src/thread_manager/provider_continuation.rs b/codex-rs/core/src/thread_manager/provider_continuation.rs
+index 7bc516da2648b43ccc06293cad144780910932b2..fdc51d7d33423cd7d17f1df3fea5f0a51fbf7ebc 100644
+--- a/codex-rs/core/src/thread_manager/provider_continuation.rs
++++ b/codex-rs/core/src/thread_manager/provider_continuation.rs
+@@ -178,0 +179 @@ pub(crate) async fn check_admission(session: &Session) -> CodexResult<()> {
++    crate::session::provider_safety::check_admission(session).await?;
+diff --git a/codex-rs/core/src/tools/parallel.rs b/codex-rs/core/src/tools/parallel.rs
+index 4361a91aa74fc56ab73145d228ebde941788b767..0cfa86bd8ebd3099b4e65b4f232208ffb6534d3b 100644
+--- a/codex-rs/core/src/tools/parallel.rs
++++ b/codex-rs/core/src/tools/parallel.rs
+@@ -321,0 +322,7 @@ impl ToolCallRuntime {
++                Box::pin(crate::session::provider_safety::admit_tool(
++                    &session,
++                    &turn,
++                    &invocation_cancellation_token,
++                ))
++                .await
++                .map_err(|error| FunctionCallError::Fatal(error.to_string()))?;
+diff --git a/codex-rs/core/tests/suite/abort_tasks.rs b/codex-rs/core/tests/suite/abort_tasks.rs
+index ae4a17ad0fd9a1c492ee5cbe25cf7e0374e9cf0d..e5f1d5fcab2f537a60719cf98f2c945e854a64fd 100644
+--- a/codex-rs/core/tests/suite/abort_tasks.rs
++++ b/codex-rs/core/tests/suite/abort_tasks.rs
+@@ -435,0 +436,595 @@ async fn interrupt_persists_turn_aborted_marker_in_next_request() {
++
++/// Local Stop fences an accepted, still-unobserved Grok request. A late tool
++/// response cannot execute, and a new turn cannot silently replay uncertain work.
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn grok_stop_holds_unobserved_request_before_late_tool_or_replay() -> anyhow::Result<()> {
++    use codex_model_provider_info::{ModelProviderInfo, WireApi};
++    use std::sync::atomic::{AtomicUsize, Ordering};
++    use wiremock::matchers::{method, path};
++    use wiremock::{Mock, ResponseTemplate};
++    let server = start_mock_server().await;
++    let effects = tempfile::tempdir()?;
++    let late = effects.path().join("must-not-run");
++    let calls = Arc::new(AtomicUsize::new(0));
++    let observed = calls.clone();
++    let arguments =
++        json!({"cmd":format!("touch '{}'", late.display()), "yield_time_ms":1000}).to_string();
++    let response = format!(
++        "data: {}\n\ndata: [DONE]\n\n",
++        json!({
++        "id":"grok-late", "choices":[{"index":0,"delta":{"tool_calls":[{"index":0,
++        "id":"uncertain-tool", "type":"function", "function":{"name":"exec_command","arguments":arguments}}]},
++        "finish_reason":"tool_calls"}]})
++    );
++    Mock::given(method("POST"))
++        .and(path("/v1/chat/completions"))
++        .respond_with(move |_: &wiremock::Request| {
++            observed.fetch_add(1, Ordering::SeqCst);
++            ResponseTemplate::new(200)
++                .insert_header("content-type", "text/event-stream")
++                .set_body_string(response.clone())
++                .set_delay(Duration::from_secs(2))
++        })
++        .mount(&server)
++        .await;
++    let auth = crate::suite::client::ProviderAuthCommandFixture::new(&["synthetic-grok-bearer"])?;
++    let auth_info = auth.auth();
++    let base_url = format!("{}/v1", server.uri());
++    let fixture = test_codex().with_model_info_override("gpt-5.4", |model| {
++        model.slug = "grok-build".into();
++        model.use_responses_lite = false;
++        model.supports_search_tool = false;
++        model.tool_mode = Some(codex_protocol::openai_models::ToolMode::Direct);
++    }).with_config(move |config| {
++        config.model = Some("grok-build".into());
++        config.model_provider_id = "grok__personal".into();
++        config.model_provider = ModelProviderInfo {name:"grok".into(), wire_api:WireApi::Grok,
++            base_url:Some(base_url), auth:Some(auth_info), ..Default::default()};
++        config.inference_selection = Some(serde_json::from_value(json!({
++            "providerRevision":"fixture-provider","sourceRevision":"fixture-source","revision":"fixture-snapshot",
++            "selection":{"providerId":"grok__personal","accountId":"personal","accountRevision":"account-v1",
++            "modelId":"grok-build","catalogRevision":"catalog-v1","evidenceRevision":"fixture-coding-proof",
++            "selectionId":"fixture-choice","accountLabel":"Personal Grok","displayName":"Grok Build","contextWindow":32000,
++            "readiness":"qualified","reasons":[],"capabilities":{"text":true,"streaming":true,"terminal":true,"file_editing":true,"mcp":true},
++            "disabledFeatures":[],"defaultForAccount":true,"source":"synthetic-native-fixture"}
++        })).unwrap());
++        config.rollout_budget = Some(codex_core::config::RolloutBudgetConfig {
++            enforce_limit:true, limit_tokens:80, reminder_at_remaining_tokens:vec![20],
++            sampling_token_weight:1.0, prefill_token_weight:1.0,
++        });
++        for feature in [Feature::CodeMode,Feature::CodeModeOnly,Feature::CodeModeToolSearch,
++            Feature::CodeModeHost,Feature::ToolSearch,Feature::ToolSearchAlwaysDeferMcpTools] {
++            config.features.disable(feature).unwrap();
++        }
++    }).build(&server).await?;
++    fixture
++        .codex
++        .start_or_steer_turn(TurnInputRequest::user_input(vec![UserInput::Text {
++            text: "Synthetic disposable Stop acceptance".into(),
++            text_elements: vec![],
++        }]))
++        .await?;
++    tokio::time::timeout(Duration::from_secs(5), async {
++        while calls.load(Ordering::SeqCst) == 0 {
++            tokio::time::sleep(Duration::from_millis(10)).await;
++        }
++    })
++    .await?;
++    fixture.codex.submit(Op::Interrupt).await?;
++    wait_for_event(&fixture.codex, |event| {
++        matches!(event, EventMsg::TurnAborted(_))
++    })
++    .await;
++    let next = fixture
++        .codex
++        .start_or_steer_turn(TurnInputRequest::user_input(vec![UserInput::Text {
++            text: "Must reconcile the uncertain request before continuing".into(),
++            text_elements: vec![],
++        }]))
++        .await;
++    assert!(
++        next.is_err(),
++        "Stop must durably hold a possibly submitted Grok request"
++    );
++    assert!(next.unwrap_err().to_string().contains("reconcil"));
++    tokio::time::sleep(Duration::from_millis(2100)).await;
++    assert!(
++        !late.exists(),
++        "late provider tool must never execute after local Stop"
++    );
++    assert_eq!(
++        calls.load(Ordering::SeqCst),
++        1,
++        "no uncertain request replay"
++    );
++    fixture.codex.flush_rollout().await?;
++    let rollout = fixture
++        .codex
++        .rollout_path()
++        .expect("durable stopped source");
++    if let Some(directory) = std::env::var_os("P233_CANONICAL_EVIDENCE_DIR") {
++        let capture = std::path::PathBuf::from(directory).join("native-stop");
++        std::fs::create_dir_all(capture.join("sessions"))?;
++        std::fs::copy(&rollout, capture.join("sessions/source.jsonl"))?;
++        std::fs::write(
++            capture.join("root-thread-id"),
++            fixture.session_configured.thread_id.to_string(),
++        )?;
++    }
++    let original = fixture.config.clone();
++    fixture.codex.shutdown_and_wait().await?;
++    fixture
++        .thread_manager
++        .remove_thread(&fixture.session_configured.thread_id)
++        .await
++        .expect("unload the stopped source");
++    let recovered = test_codex()
++        .with_model_info_override("gpt-5.4", |model| {
++            model.slug = "grok-build".into();
++            model.use_responses_lite = false;
++            model.supports_search_tool = false;
++            model.tool_mode = Some(codex_protocol::openai_models::ToolMode::Direct);
++        })
++        .with_config(move |config| {
++            *config = original;
++            // A changed launch limit must not create authority over the old unknown request.
++            config.rollout_budget = Some(codex_core::config::RolloutBudgetConfig {
++                enforce_limit: true,
++                limit_tokens: 900,
++                reminder_at_remaining_tokens: vec![],
++                sampling_token_weight: 1.0,
++                prefill_token_weight: 1.0,
++            });
++        })
++        .resume(&server, fixture.home.clone(), rollout)
++        .await?;
++    let replay = recovered
++        .codex
++        .start_or_steer_turn(TurnInputRequest::user_input(vec![UserInput::Text {
++            text: "Recovery must retain uncertainty and original allowance".into(),
++            text_elements: vec![],
++        }]))
++        .await;
++    assert!(
++        replay.is_err(),
++        "cold recovery must not reset uncertainty or allowance"
++    );
++    assert!(replay.unwrap_err().to_string().contains("reconcil"));
++    assert_eq!(calls.load(Ordering::SeqCst), 1);
++    Ok(())
++}
++
++/// Revocation is pinned to the selected registered account, not a global
++/// catalog revision or every session in the process.
++#[cfg(unix)]
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn grok_shared_revocation_interrupts_owned_account_but_preserves_peers() -> anyhow::Result<()>
++{
++    use anyhow::Context;
++    use codex_model_provider_info::{ModelProviderInfo, WireApi};
++    use core_test_support::responses;
++    use std::sync::Mutex;
++    use std::sync::atomic::{AtomicUsize, Ordering};
++    use wiremock::matchers::{method, path};
++    use wiremock::{Mock, ResponseTemplate};
++    let server = start_mock_server().await;
++    let state = tempfile::tempdir()?;
++    let catalog_path = state.path().join("catalog.json");
++    let auth =
++        crate::suite::client::ProviderAuthCommandFixture::new(&["personal-bearer", "work-bearer"])?;
++    let auth_info = auth.auth();
++    let selection = |account: &str, revoked: bool| {
++        json!({
++            "providerId":format!("grok__{account}"),"accountId":account,
++            "accountRevision":if revoked {"revoked-v2"} else {"account-v1"},
++            "modelId":format!("grok-{account}"),"catalogRevision":"catalog-v1","evidenceRevision":"synthetic-proof",
++            "selectionId":format!("choice-{account}"),"accountLabel":account,"displayName":account,"contextWindow":32000,
++            "readiness":if revoked {"unavailable"} else {"qualified"},
++            "reasons":if revoked {vec!["authentication_revoked"]} else {vec![]},
++            "capabilities":{"text":true,"streaming":true,"terminal":true,"file_editing":true,"mcp":true},
++            "disabledFeatures":["image_generation","web_search","reasoning_summary"],
++            "defaultForAccount":true,"source":"synthetic-native-revocation-fixture"
++        })
++    };
++    let catalog = |revoked: bool| -> anyhow::Result<serde_json::Value> {
++        let mut providers = serde_json::Map::new();
++        let mut selections = Vec::new();
++        for account in ["personal", "work"] {
++            let row = selection(account, revoked && account == "personal");
++            let mut command = serde_json::to_value(&auth_info)?;
++            command["command"] = json!(
++                auth_info
++                    .cwd
++                    .as_path()
++                    .join(&auth_info.command)
++                    .to_string_lossy()
++                    .into_owned()
++            );
++            command["args"] = json!([
++                "grok",
++                "auth",
++                "token",
++                account,
++                "--expected-account-revision",
++                row["accountRevision"]
++            ]);
++            command["refresh_interval_ms"] = json!(0);
++            providers.insert(
++                format!("grok__{account}"),
++                json!({"name":"Grok",
++                "wire_api":"grok","base_url":"https://cli-chat-proxy.grok.com/v1",
++                "auth":command,"requires_openai_auth":false,"supports_websockets":false}),
++            );
++            selections.push(row);
++        }
++        Ok(
++            json!({"schemaVersion":1,"sourceRevision":if revoked {"peer-source-changed"} else {"before"},
++            "selections":selections,"providers":providers}),
++        )
++    };
++    std::fs::write(&catalog_path, serde_json::to_vec(&catalog(false)?)?)?;
++    let calls = Arc::new(Mutex::new(
++        std::collections::BTreeMap::<String, usize>::new(),
++    ));
++    let observed = calls.clone();
++    Mock::given(method("POST")).and(path("/v1/chat/completions"))
++        .respond_with(move |request: &wiremock::Request| {
++            let body: serde_json::Value = request.body_json().unwrap();
++            let model = body["model"].as_str().unwrap().to_owned();
++            *observed.lock().unwrap().entry(model.clone()).or_default() += 1;
++            let expected = if model == "grok-personal" {"Bearer personal-bearer"} else {"Bearer work-bearer"};
++            assert_eq!(request.headers.get("authorization").unwrap(), expected);
++            let response = format!("data: {}\n\ndata: [DONE]\n\n", json!({"id":format!("{model}-response"),"model":model,
++                "choices":[{"index":0,"delta":{"content":"unrelated work completes"},"finish_reason":"stop"}],
++                "usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}));
++            ResponseTemplate::new(200).insert_header("content-type","text/event-stream").set_body_string(response)
++                .set_delay(Duration::from_secs(if model == "grok-personal" {60} else {4}))
++        }).mount(&server).await;
++    let mut grok = Vec::new();
++    for account in ["personal", "work"] {
++        let model = format!("grok-{account}");
++        let model_override = model.clone();
++        let snapshot = json!({"providerRevision":"fixture-provider","sourceRevision":"fixture-source",
++            "revision":format!("fixture-{account}"),"selection":selection(account,false)});
++        let auth_info = auth_info.clone();
++        let base_url = format!("{}/v1", server.uri());
++        let path = catalog_path.clone();
++        let cwd = state.path().to_string_lossy().into_owned();
++        let fixture = test_codex()
++            .with_model_info_override("gpt-5.4", move |info| {
++                info.slug = model_override.clone();
++                info.use_responses_lite = false;
++                info.supports_search_tool = false;
++                info.tool_mode = Some(codex_protocol::openai_models::ToolMode::Direct);
++            })
++            .with_config(move |config| {
++                config.model = Some(model.clone());
++                config.model_provider_id = format!("grok__{account}");
++                config.model_provider = ModelProviderInfo {
++                    name: "Grok".into(),
++                    wire_api: WireApi::Grok,
++                    base_url: Some(base_url),
++                    auth: Some(auth_info),
++                    ..Default::default()
++                };
++                config.inference_selection = Some(serde_json::from_value(snapshot).unwrap());
++                config.inference_catalog_command = Some(
++                    codex_protocol::inference_selection::InferenceCatalogCommand {
++                        command: "/bin/cat".into(),
++                        args: vec![path.to_string_lossy().into_owned()],
++                        cwd,
++                        timeout_ms: 1000,
++                    },
++                );
++                config.rollout_budget = Some(codex_core::config::RolloutBudgetConfig {
++                    enforce_limit: true,
++                    limit_tokens: 80,
++                    reminder_at_remaining_tokens: vec![],
++                    sampling_token_weight: 1.0,
++                    prefill_token_weight: 1.0,
++                });
++                for feature in [
++                    Feature::CodeMode,
++                    Feature::CodeModeOnly,
++                    Feature::CodeModeToolSearch,
++                    Feature::CodeModeHost,
++                    Feature::ToolSearch,
++                    Feature::ToolSearchAlwaysDeferMcpTools,
++                ] {
++                    config.features.disable(feature).unwrap();
++                }
++            })
++            .build(&server)
++            .await?;
++        fixture
++            .codex
++            .start_or_steer_turn(TurnInputRequest::user_input(vec![UserInput::Text {
++                text: "Owned disposable account work".into(),
++                text_elements: vec![],
++            }]))
++            .await?;
++        let key = format!("grok-{account}");
++        tokio::time::timeout(Duration::from_secs(5), async {
++            while calls.lock().unwrap().get(&key).copied().unwrap_or(0) == 0 {
++                tokio::time::sleep(Duration::from_millis(10)).await;
++            }
++        })
++        .await
++        .context("Grok request must be accepted before revocation")?;
++        grok.push(fixture);
++    }
++    let openai_calls = Arc::new(AtomicUsize::new(0));
++    let seen = openai_calls.clone();
++    let body = responses::sse(vec![
++        responses::ev_response_created("openai-response"),
++        responses::ev_assistant_message("openai-final", "OpenAI remains active"),
++        responses::ev_completed_with_tokens("openai-response", 15),
++    ]);
++    Mock::given(method("POST"))
++        .and(path("/v1/responses"))
++        .respond_with(move |_: &wiremock::Request| {
++            seen.fetch_add(1, Ordering::SeqCst);
++            responses::sse_response(body.clone()).set_delay(Duration::from_secs(3))
++        })
++        .mount(&server)
++        .await;
++    let openai = test_codex().with_model("gpt-5.4").build(&server).await?;
++    openai
++        .codex
++        .start_or_steer_turn(TurnInputRequest::user_input(vec![UserInput::Text {
++            text: "Unrelated OpenAI work".into(),
++            text_elements: vec![],
++        }]))
++        .await?;
++    tokio::time::timeout(Duration::from_secs(5), async {
++        while openai_calls.load(Ordering::SeqCst) == 0 {
++            tokio::time::sleep(Duration::from_millis(10)).await;
++        }
++    })
++    .await?;
++    let temporary = catalog_path.with_extension("tmp");
++    std::fs::write(&temporary, serde_json::to_vec(&catalog(true)?)?)?;
++    std::fs::rename(temporary, &catalog_path)?;
++    tokio::time::timeout(
++        Duration::from_secs(4),
++        wait_for_event(&grok[0].codex, |event| {
++            matches!(event, EventMsg::TurnAborted(_))
++        }),
++    )
++    .await
++    .context("revoked owned Grok turn must be interrupted")?;
++    let denied = grok[0]
++        .codex
++        .start_or_steer_turn(TurnInputRequest::user_input(vec![UserInput::Text {
++            text: "Revoked account cannot start another turn".into(),
++            text_elements: vec![],
++        }]))
++        .await;
++    assert!(denied.is_err());
++    for peer in [&grok[1].codex, &openai.codex] {
++        let result = tokio::time::timeout(
++            Duration::from_secs(6),
++            wait_for_event(peer, |event| {
++                matches!(
++                    event,
++                    EventMsg::TurnComplete(_) | EventMsg::TurnAborted(_) | EventMsg::Error(_)
++                )
++            }),
++        )
++        .await?;
++        assert!(
++            matches!(&result,EventMsg::TurnComplete(done) if done.error.is_none()),
++            "unrelated peer interrupted: {result:?}"
++        );
++    }
++    assert_eq!(calls.lock().unwrap().get("grok-personal"), Some(&1));
++    assert_eq!(calls.lock().unwrap().get("grok-work"), Some(&1));
++    assert_eq!(openai_calls.load(Ordering::SeqCst), 1);
++    Ok(())
++}
++
++/// Actual native failure and recovery admission, with disposable loopback effects.
++#[cfg(unix)]
++#[test_case("auth"; "auth held")]
++#[test_case("quota"; "quota held")]
++#[test_case("provider"; "provider held")]
++#[test_case("incomplete"; "incomplete held")]
++#[test_case("missing_usage"; "missing usage cannot dispatch tool")]
++#[test_case("compact_missing_usage"; "compaction preserves uncertainty")]
++#[test_case("cold_known"; "cold known history cannot reset allowance")]
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn grok_failures_hold_without_uncertain_replay(case: &str) -> anyhow::Result<()> {
++    use codex_model_provider_info::{ModelProviderInfo, WireApi};
++    use std::sync::atomic::{AtomicUsize, Ordering};
++    use wiremock::matchers::{method, path};
++    use wiremock::{Mock, ResponseTemplate};
++    let server = start_mock_server().await;
++    let effects = tempfile::tempdir()?;
++    let forbidden = effects.path().join("unknown-action-must-not-run");
++    let calls = Arc::new(AtomicUsize::new(0));
++    let observed = calls.clone();
++    let known = case == "cold_known";
++    let status = match case {
++        "auth" => 401,
++        "quota" => 429,
++        "provider" => 503,
++        _ => 200,
++    };
++    let body = if status != 200 {
++        json!({"error":{"message":"synthetic provider rejection","type":"fixture"}}).to_string()
++    } else if case == "missing_usage" {
++        let arguments =
++            json!({"cmd":format!("touch '{}'",forbidden.display()),"yield_time_ms":1000})
++                .to_string();
++        format!(
++            "data: {}\n\ndata: [DONE]\n\n",
++            json!({"id":"missing-usage","model":"grok-build","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"unknown-action","type":"function","function":{"name":"exec_command","arguments":arguments}}]},"finish_reason":"tool_calls"}]})
++        )
++    } else {
++        let chunk = json!({"id":"safety-answer","model":"grok-build","choices":[{"index":0,"delta":{"content":"synthetic answer"},"finish_reason":if case=="incomplete" {serde_json::Value::Null} else {json!("stop")}}]});
++        let mut body = format!("data: {chunk}\n\n");
++        if known {
++            body.push_str(&format!("data: {}\n\n",json!({"id":"safety-answer","model":"grok-build","choices":[],"usage":{"prompt_tokens":5,"completion_tokens":3,"total_tokens":8}})));
++        }
++        if case != "incomplete" {
++            body.push_str("data: [DONE]\n\n");
++        }
++        body
++    };
++    Mock::given(method("POST"))
++        .and(path("/v1/chat/completions"))
++        .respond_with(move |_: &wiremock::Request| {
++            observed.fetch_add(1, Ordering::SeqCst);
++            ResponseTemplate::new(status)
++                .insert_header("content-type", "text/event-stream")
++                .set_body_string(body.clone())
++        })
++        .mount(&server)
++        .await;
++    let auth = crate::suite::client::ProviderAuthCommandFixture::new(&[
++        "synthetic-grok-bearer",
++        "unused-retry-bearer",
++    ])?;
++    let auth_info = auth.auth();
++    let base_url = format!("{}/v1", server.uri());
++    let fixture = test_codex().with_model_info_override("gpt-5.4", |model| {
++        model.slug = "grok-build".into();
++        model.use_responses_lite = false;
++        model.supports_search_tool = false;
++        model.tool_mode = Some(codex_protocol::openai_models::ToolMode::Direct);
++    }).with_config(move |config| {
++        config.model = Some("grok-build".into());
++        config.model_provider_id = "grok__personal".into();
++        config.model_provider = ModelProviderInfo {name:"grok".into(), wire_api:WireApi::Grok,
++            base_url:Some(base_url), auth:Some(auth_info), ..Default::default()};
++        config.inference_selection = Some(serde_json::from_value(json!({
++            "providerRevision":"fixture-provider","sourceRevision":"fixture-source","revision":"fixture-snapshot",
++            "selection":{"providerId":"grok__personal","accountId":"personal","accountRevision":"account-v1",
++            "modelId":"grok-build","catalogRevision":"catalog-v1","evidenceRevision":"fixture-coding-proof",
++            "selectionId":"fixture-choice","accountLabel":"Personal Grok","displayName":"Grok Build","contextWindow":32000,
++            "readiness":"qualified","reasons":[],"capabilities":{"text":true,"streaming":true,"terminal":true,"file_editing":true,"mcp":true},
++            "disabledFeatures":[],"defaultForAccount":true,"source":"synthetic-native-fixture"}
++        })).unwrap());
++        config.rollout_budget = Some(codex_core::config::RolloutBudgetConfig {
++            enforce_limit:true, limit_tokens:80, reminder_at_remaining_tokens:vec![20],
++            sampling_token_weight:1.0, prefill_token_weight:1.0,
++        });
++        for feature in [Feature::CodeMode,Feature::CodeModeOnly,Feature::CodeModeToolSearch,
++            Feature::CodeModeHost,Feature::ToolSearch,Feature::ToolSearchAlwaysDeferMcpTools] {
++            config.features.disable(feature).unwrap();
++        }
++    }).build(&server).await?;
++
++    if case == "compact_missing_usage" {
++        fixture.codex.submit(Op::Compact).await?;
++    } else {
++        fixture
++            .codex
++            .start_or_steer_turn(TurnInputRequest::user_input(vec![UserInput::Text {
++                text: "Synthetic failure/recovery acceptance".into(),
++                text_elements: vec![],
++            }]))
++            .await?;
++    }
++    tokio::time::timeout(Duration::from_secs(15), async {
++        let mut saw_held = false;
++        loop {
++            let event = fixture.codex.next_event().await.expect("native event").msg;
++            match event {
++                EventMsg::TurnComplete(done) => {
++                    if known {
++                        assert!(done.error.is_none(), "known completion: {done:?}");
++                    } else {
++                        assert!(
++                            saw_held && done.error.is_some(),
++                            "uncertain request completed without hold: {done:?}"
++                        );
++                    }
++                    break;
++                }
++                EventMsg::Error(error) if !known => {
++                    assert!(
++                        error.message.contains("held"),
++                        "actionable held error: {}",
++                        error.message
++                    );
++                    saw_held = true;
++                }
++                EventMsg::Error(error) => panic!("known response failed: {}", error.message),
++                _ => {}
++            }
++        }
++    })
++    .await?;
++    assert!(
++        !forbidden.exists(),
++        "missing accounting must block local effects"
++    );
++    assert_eq!(
++        calls.load(Ordering::SeqCst),
++        1,
++        "no provider retry/fallback"
++    );
++    fixture.codex.flush_rollout().await?;
++    if let Some(directory) = std::env::var_os("P233_CANONICAL_EVIDENCE_DIR") {
++        let capture = std::path::PathBuf::from(directory).join(format!("failure-{case}"));
++        std::fs::create_dir_all(capture.join("sessions"))?;
++        std::fs::copy(
++            fixture
++                .codex
++                .rollout_path()
++                .expect("durable failure evidence"),
++            capture.join("sessions/source.jsonl"),
++        )?;
++        std::fs::write(
++            capture.join("root-thread-id"),
++            fixture.session_configured.thread_id.to_string(),
++        )?;
++    }
++    if known {
++        fixture.codex.flush_rollout().await?;
++        let rollout = fixture.codex.rollout_path().expect("known durable history");
++        let original = fixture.config.clone();
++        fixture.codex.shutdown_and_wait().await?;
++        fixture
++            .thread_manager
++            .remove_thread(&fixture.session_configured.thread_id)
++            .await
++            .expect("owned unload");
++        let recovered = test_codex()
++            .with_model_info_override("gpt-5.4", |model| {
++                model.slug = "grok-build".into();
++                model.use_responses_lite = false;
++                model.supports_search_tool = false;
++                model.tool_mode = Some(codex_protocol::openai_models::ToolMode::Direct);
++            })
++            .with_config(move |config| {
++                *config = original;
++                config.rollout_budget.as_mut().unwrap().limit_tokens = 900;
++            })
++            .resume(&server, fixture.home.clone(), rollout)
++            .await?;
++        let input = recovered
++            .codex
++            .start_or_steer_turn(TurnInputRequest::user_input(vec![UserInput::Text {
++                text: "Cannot reset original cumulative allowance".into(),
++                text_elements: vec![],
++            }]))
++            .await;
++        assert!(
++            input.is_err(),
++            "cold history must not authorize a fresh zero-spend allowance"
++        );
++    } else {
++        let input = fixture
++            .codex
++            .start_or_steer_turn(TurnInputRequest::user_input(vec![UserInput::Text {
++                text: "Explicit reconciliation/reassignment required".into(),
++                text_elements: vec![],
++            }]))
++            .await;
++        assert!(input.is_err(), "uncertainty must hold next turn");
++    }
++    assert_eq!(calls.load(Ordering::SeqCst), 1);
++    Ok(())
++}

@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T4",
+  "issue": 633,
+  "phase": "source_acceptance",
+  "native_base": "7699650e005abe2bcedc138434c59aa95bfbf044",
+  "native_commit": "1eee8143f7642561f5d5573613b1e3658e208e63",
+  "native_tree": "6fe769a79e5cac09751f86bb4cf84aef1b91c52e",
+  "wake_source_commit": "c489aa9703019206e44df6c66f09ef1fd4888764",
+  "patch": "t4-native-selection.patch",
+  "patch_sha256": "ee4615fcbb877ca803272ff64c44b75b0af83001b303f71b19b74111f8338967",
+  "reconstructed_tree": "6fe769a79e5cac09751f86bb4cf84aef1b91c52e",
+  "native_files": {
+    "codex-rs/Cargo.lock": "4feb4aba5262562156f10d2aba851cb205f7e7f2b607c5d697c49b6ae28a73cf",
+    "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.schemas.json": "37ab5413a689f2744bd8853ad4b626f74d7e1f95a2e85652bc14078c27f48f0b",
+    "codex-rs/app-server-protocol/schema/json/codex_app_server_protocol.v2.schemas.json": "fdfe41a5c2d9bdd80bfec6188eb0745affb312ed29f5f66befc2580a3017eddf",
+    "codex-rs/app-server-protocol/schema/json/v2/ModelListResponse.json": "93855006f5b37f80bdc58b4f97a35e86a6a35df9499e526b2fc7500fd45daf13",
+    "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-experimental.json.zst": "e616f36b0e4dce49e74e0f5a88f1677b4edad1cd86fdfd6036888fe6b012cb1e",
+    "codex-rs/app-server-protocol/schema/precomputed/app-server-exports-stable.json.zst": "a9160048953b74e280c74bfeea8c69f3202b17c67553f4d5b7f713e91a19520d",
+    "codex-rs/app-server-protocol/schema/typescript/InferenceSelection.ts": "bb4f8ce5c4f5ce21f61bf8b48e0ccb5c1a656fa5f54d7f94091308875ee32eb3",
+    "codex-rs/app-server-protocol/schema/typescript/InferenceSelectionSnapshot.ts": "cdf7710cd4543c121d34f60e1664e66d91fe9f73ad9630f5fd9087c3b7017a1f",
+    "codex-rs/app-server-protocol/schema/typescript/index.ts": "003b4f86db89db6c246904557a69166a04eb7d79d35b9f1f265ec382a68aef0a",
+    "codex-rs/app-server-protocol/schema/typescript/v2/Model.ts": "471e15a805a41480eca23ab1407ec8f78420452ef6baaf05f151a3bb8612c7a8",
+    "codex-rs/app-server-protocol/src/protocol/v2/model.rs": "5899c5587bdcff826396cefc05ccece048cd02070ed1e5ed22ee7ccc89cd2ca5",
+    "codex-rs/app-server/src/models.rs": "766020bb6f1284d64624f177baa07735afaa10a9a15e9149d44442c2e4be6ca7",
+    "codex-rs/app-server/src/request_processors/catalog_processor.rs": "658e8992ec8a8bfbd116f44746d6c04ff4064921f9d8ce978bde753cda8a133d",
+    "codex-rs/app-server/src/request_processors/thread_processor_tests.rs": "7f988329e73c5d3f31ea089bb0c039c3536df4674057554b1e6c6bde9a3b1847",
+    "codex-rs/app-server/tests/common/models_cache.rs": "eac297e571506f515ca29c26ed8c4e74373e0b09b08a9d8375941f68d5ebeb99",
+    "codex-rs/app-server/tests/suite/v2/model_list.rs": "3698f49063e4ac19bc04b9c0abfeb7d168b4c5ebf62e0ea829f69e86b9fe7024",
+    "codex-rs/codex-api/tests/models_integration.rs": "62d2f2e3e3b7e69b188ea5ed43db6fdc05b8401c329f5865264deb166e3b7df1",
+    "codex-rs/config/src/config_toml.rs": "2b85c11878bd728c474a63739dec726463edf82bdb672745751361ae67251d9d",
+    "codex-rs/config/src/thread_config.rs": "e3aa6acf69e3fa0277ebbe7df6d8a06a62d73e190b780c8e29cabbb8299c0ff6",
+    "codex-rs/config/src/thread_config/proto/codex.thread_config.v1.proto": "f553ed874b0cab2ccef1ab1d34ca77b5c47c4c9c64a4da11362a7461398ecefa",
+    "codex-rs/config/src/thread_config/proto/codex.thread_config.v1.rs": "23460beb59e98e05a6840d250c08b5e2d7048bdcec7544918a39e6136d22f02c",
+    "codex-rs/config/src/thread_config/remote.rs": "da261cb162a5794134235cf0a81c64f57952fd089ba851bfe31c56ad19069765",
+    "codex-rs/core/Cargo.toml": "f2e4064e157febdf3438b6e07723637166bf4874c30bd4f0314c38592350c2f5",
+    "codex-rs/core/config.schema.json": "f8a10260350225721ec4159a7c5a075770f35df88eb4e8cad76910de4b83c60e",
+    "codex-rs/core/src/config/mod.rs": "3438f9e2cdd57168f1be7aef836cfa69fde76975522be03329422da7ebde3c33",
+    "codex-rs/core/src/inference_selection.rs": "6e433b1ae7bb9bb270534e640315a956d2e072b4aa075a1ff39cc275ad011002",
+    "codex-rs/core/src/lib.rs": "e7e9aa038905e98e2d1e861874cc174e0d1fd4b80f4f99a059fd42ccebbfeed7",
+    "codex-rs/core/tests/suite/auto_review.rs": "5a6478b7b4165b50a5650d63538b1d0602b41386262ffc2d361ad01bb11c6115",
+    "codex-rs/core/tests/suite/cyber_exec_policy.rs": "d01b4ef394e097d2de3a73c9d59619691739c28e83cc3924740a3d5de60c60a8",
+    "codex-rs/core/tests/suite/model_switching.rs": "95dc99e889f0ee733689a35314be3975d73bfac647d57ba366560d202f3939c3",
+    "codex-rs/core/tests/suite/models_cache_ttl.rs": "3749989a96a814b20493e0fd3c629f7871726c4e5c47f4771eafa84b3167c323",
+    "codex-rs/core/tests/suite/remote_models.rs": "dee9b0611dc40262eaba603cac19b808a4fc41e315e22ad7db205a2c40b76ecf",
+    "codex-rs/core/tests/suite/rmcp_client.rs": "fb2fb39632b3b3f7416d931c7b56c623188f5d8748a6e7ceeb0fbe4c357e23c9",
+    "codex-rs/core/tests/suite/spawn_agent_description.rs": "df2e74710831f37875d7b4953a6707a80fa0c380d3bc2a43011a4950f93c8f8c",
+    "codex-rs/core/tests/suite/view_image.rs": "b96cdd10a78543e6ac7556784bf8e69ee0023f89404e04cfe665c4d17db2113f",
+    "codex-rs/models-manager/src/model_info.rs": "1caee65038317983200ec175c7286d7dbf743c820f014aaadaadcc18c6c36232",
+    "codex-rs/prompts/src/model_instructions_tests.rs": "0291844cae6b53c5edbe1f6595f26aa56cce6a1fa9266a8abc45bcdec366b7d6",
+    "codex-rs/protocol/src/inference_selection.rs": "e2af2941092961c7c14bcaa79aeb10b397fa24bac99b4a3c7f072bb5eb9f28a5",
+    "codex-rs/protocol/src/lib.rs": "4fbe4b998dda187eb813d5c70387f540f9768196ee82c2def86339d1a4ec585d",
+    "codex-rs/protocol/src/openai_models.rs": "8253ccaeac7d92137cfa94d1185a35a07d75d3219e8c087332873c216e2e161d",
+    "codex-rs/tui/src/app/event_dispatch.rs": "dcec2001fb45776c8a3afdd4c56b878a47c3554a0e4f37bb7e25a38962170195",
+    "codex-rs/tui/src/app/session_lifecycle.rs": "0255286fcdd2d64a5b4689360fa228a684ce4f6e286398330a83b8a6ce7e96ee",
+    "codex-rs/tui/src/app_event.rs": "9d2cb601ffe53eebde8ee34ee29522f27a7d767daa355b68d08d2d4178056977",
+    "codex-rs/tui/src/app_server_session.rs": "fc4f395c11cef22029a21253131bb7bfc5146c8fd060dcc196de283cc35264b7",
+    "codex-rs/tui/src/chatwidget/model_command.rs": "da089160e9a56055c6509e2280dfa5f68c01417f303e78d6e358bc12ffeb2a40",
+    "codex-rs/tui/src/chatwidget/model_popups.rs": "4086f9c6d2d9b4425191576263ef35761a7f8ffd0741995c691fe96c5d398abb",
+    "codex-rs/tui/src/chatwidget/settings.rs": "fa02b745361d6ecc915c730b1b76824b0cf2cb77dfb93f478e0eb393d0a66de6",
+    "codex-rs/tui/src/chatwidget/snapshots/codex_tui__chatwidget__tests__model_picker_refreshes_auto_models.snap": "7b1804450d10c0abaa992906aa322c57e341f55b0815e8f47426f1bb52ba4421",
+    "codex-rs/tui/src/chatwidget/snapshots/codex_tui__chatwidget__tests__model_selection_popup.snap": "a4e3b5b32c09b73cd8ba8739ec34e5f13bd6b9f41125a68a4e8200af5a11c77a",
+    "codex-rs/tui/src/chatwidget/tests/popups_and_settings.rs": "9b5a9009f7b557853e65fa4e97303ce535e61732ec2a6d6e7468c4680fb37455",
+    "sdk/python/src/openai_codex/generated/v2_all.py": "923de42e243ca0869041c0b3e208da0c9eddb53c1e4762bc44b26398effd1dd1"
+  },
+  "wake_files": {
+    "docs/dev/plans/0233-2026-11-14-grok-in-codex-design.md": "03206639314f177d126c7682913c2f7fbf457e51ee38f45dc10c47ab05f04880",
+    "docs/dev/plans/0233-execution.json": "7b0e7cea704aaf9e87b16247754bf65b7f1a85eb7e653dbde7d647ff72894a79",
+    "src/codex_wake/controller_http.py": "c73a5a1220d450510972e37ea300ddd41e0325bbcd9a137c09e33293cac91f2d",
+    "src/codex_wake/grok_model_catalog.py": "21073440ccae8d3375f691b8a73ba8d8d019680df006fb38896b580e3c856502",
+    "src/codex_wake/mcp_server.py": "4d05fb153812bb587b051a9cb018bc94843de07ea922314b3d19035664c0c4b6",
+    "src/codex_wake/runtime_wakes.py": "ceb0a7ac9bf75705f136011ae2cc8b660ce6827118b7da8c817932c47e6845dc",
+    "tests/test_grok_model_catalog.py": "bdece67591c211abe57188e82a756994e7797d7d674c26b4df41b790ba37d4c9"
+  },
+  "checks": {
+    "wake_public": {
+      "status": "passed",
+      "surfaces": [
+        "CLI",
+        "protected HTTP",
+        "MCP",
+        "native-catalog"
+      ],
+      "primary_rerun": "catalog1PASS3.740s/auth8PASS1.009s reported by primary"
+    },
+    "auth_regression": {
+      "status": "passed",
+      "tests": 8
+    },
+    "remote": {
+      "status": "passed",
+      "job": "job-20261114T202348Z-036e66d78e17",
+      "tests": [
+        "grok_selection_survives_remote_session_config",
+        "grok_wire_survives_remote_provider_roundtrip"
+      ]
+    },
+    "native_public": {
+      "status": "passed",
+      "job": "job-20261114T211026Z-5026b5157ac9",
+      "test": "grok_catalog_selection_is_qualified_pinned_and_native",
+      "seconds": 3.955
+    },
+    "openai_public": {
+      "status": "passed",
+      "job": "job-20261114T205005Z-df120ec941dc",
+      "test": "list_models_returns_all_models_with_large_limit"
+    },
+    "native_picker_remote_serializer": {
+      "status": "passed",
+      "job": "job-20261114T214036Z-0e17b501ddd9",
+      "test": "grok_picker_keeps_account_identity_and_holds_unqualified_choices",
+      "seconds": 0.196
+    },
+    "openai_picker": {
+      "status": "passed",
+      "job": "job-20261114T215326Z-d41ca06f2602",
+      "note": "Only two unchanged governor header lines refreshed in two stale golden files; model rows preserved; normal rerun passed after update"
+    },
+    "proto_config_schema": {
+      "status": "passed",
+      "job": "job-20261114T215644Z-5d97dfee15eb",
+      "seconds": 128.85
+    },
+    "app_sdk_schemas": {
+      "status": "passed",
+      "job": "job-20261114T220019Z-4fb34319ee85",
+      "tests": 4,
+      "seconds": 1148.31
+    },
+    "public_numeric_contract": {
+      "status": "passed",
+      "job": "job-20261114T222100Z-c84f0a7faf6a",
+      "tests": 4,
+      "seconds": 481.883,
+      "note": "TS-only context_window annotation; JSON tree byte equal; existing SDK JSON inputs unchanged; InferenceCatalogCommand not exported"
+    },
+    "final_affected_production": {
+      "status": "passed",
+      "job": "job-20261114T223052Z-d5bf38138a80",
+      "seconds": 499.136,
+      "command": "cargo check --locked --offline --profile dev-small -p codex-core -p codex-app-server -p codex-tui --message-format=json"
+    },
+    "format": {
+      "status": "passed",
+      "rust_files": 35
+    },
+    "diff": {
+      "status": "passed",
+      "command": "git diff --check; git diff --cached --check"
+    },
+    "T2_transport_loop": {
+      "status": "retained_accepted_source_evidence",
+      "note": "No new transport/SSE/core-client/tool-loop change; no extra core-all runtime rebuild"
+    }
+  },
+  "commands": [
+    "just test --locked --offline --cargo-profile dev-small -p codex-app-server --test all -E 'test(grok_catalog_selection_is_qualified_pinned_and_native)'",
+    "just test --locked --offline --cargo-profile dev-small -p codex-tui --lib -E 'test(grok_picker_keeps_account_identity_and_holds_unqualified_choices) | test(model_picker_refreshes_startup_catalog)'",
+    "just test --locked --offline --cargo-profile dev-small -p codex-tui --lib --retries 0 -E 'test(grok_picker_keeps_account_identity_and_holds_unqualified_choices) | test(model_picker_refreshes_startup_catalog)'"
+  ],
+  "contract": {
+    "discovery": "existing model/list Model.inferenceSelection",
+    "admission": "existing thread/start config.inference_selection; fresh source exact-match + required capability/evidence check",
+    "native_config": [
+      "inference_catalog_command",
+      "inference_selection"
+    ],
+    "remote_proto": {
+      "inference_catalog_command_json": 4,
+      "inference_selection_json": 5
+    },
+    "canonical_persistence": "No new SessionMeta/TurnContextItem/ThreadConfigSnapshot/usage field in T4; T5 owns attribution/inheritance",
+    "private_auth": "Existing account-pinned Wake token command; bare bearer stdout, no JSON, no API-key fallback",
+    "selection": "providerId/accountId/accountRevision/modelId/catalogRevision/evidenceRevision/selectionId plus provider/source/revision hashes; exact accountLabel",
+    "source_bounds": {
+      "stdout_bytes": 1048576,
+      "selections": 200,
+      "timeout_ms_max": 5000
+    },
+    "transition": "Explicit new conversation only; hosted server-settings transport held; staging/linked continuation is T6"
+  },
+  "qualification_gaps": [
+    "Real account entitlement, inference and complete installed package/runtime proof remain T8",
+    "T5 owns accepted-worker identity/account-revision fetch binding, canonical persistence/usage attribution, shared allowances",
+    "T6 owns active-turn staging and linked continuation",
+    "Source/provider revision hashes bind configuration, not installed executable hashes"
+  ],
+  "not_performed": [
+    "native installation",
+    "daemon restart",
+    "real login",
+    "real provider request",
+    "push to OpenAI",
+    "broad review",
+    "postclosure remediation"
+  ],
+  "hosted_ci": "Skipped per operator cost policy; local GNU Linux dev-small/offline/focused checks, not a hosted multi-platform matrix",
+  "private_validation_sha256": "c0bec3429aeed04d80831d503463d7ff15f9468108ec3682899a4ec7f53b134e",
+  "environment": {
+    "profile": "dev-small",
+    "jobs": 2,
+    "incremental": false,
+    "toolchain": "1.95.0",
+    "target": "x86_64-unknown-linux-gnu"
+  },
+  "patch_apply_flags": [
+    "--unidiff-zero"
+  ]
+}

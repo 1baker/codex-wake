@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: P233
+    owner: primary / ecochran76
+    objective: Use native Grok models inside the modded Codex tool and worker loop
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/628]
+    plan: docs/dev/plans/0233-grok-in-codex-spec.md
+    branch: feat/grok-native-provider
+    worker_branches: [feat/p233-release-qualification]
+    target: origin/main
+    plan_state: IN_PROGRESS
+    custody_state: CHECKPOINTED
+    dependencies: []
+    overlaps: [P231, P234]
+    updated_at: 2026-11-15
+    disposition: All8 children closed; exact native and Wake packages plus real coding/mixed workers/linked handoff/local Stop qualified; review1 remediation1 complete with docs-only correction. Parent628 open for later integration and activation; primary retains existing two source lanes for that stage.
   - id: native-queue-694
     owner: root / ecochran76
     objective: Qualify native busy queue cancellation and expiry capability boundary

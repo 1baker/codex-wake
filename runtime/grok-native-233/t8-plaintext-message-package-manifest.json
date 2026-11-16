@@ -1,0 +1,73 @@
+{
+  "native_source": "23bc20474a24e7afbb59a02e0e070017ef58080a",
+  "native_tree": "3f0e6e7e99b0a463e466f744db396e3b80e03f2c",
+  "wake_runtime_source": "a8a9e0c65cc7ab1c456ec787484b0467921eb8f1",
+  "installed_wake_wheel_sha256": "5d94731b6e5d00d8b69e41db12ca88f2b090996c1c546c4bc323922bf7d0ddc9",
+  "files": {
+    "codex-package.json": "64a6c8f7bc146a94e9af84915c6a08d5457d58b5936f825894bbb8e6b1be8133",
+    "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+    "codex-resources/bwrap": "eb495040c5e8c3bc9c7bdec039166d36425314d8ac092083cfac192ff9c6b4d0",
+    "bin/codex-code-mode-host": "d4cbe044f5f0fa2523f04f278b9ab93735a1cd14ae49eecae1fccafad8f8d2ae",
+    "bin/codex-exec-server": "aee3c4df84b3259b8df2e9c1799c7d2fee6c7146247f384d3646baf8e8f236e1",
+    "bin/codex": "e9943677786cbb80a149ef22003bdbfbae105f6423f8b7db7d5656d1b81fe54d"
+  },
+  "package_content_sha256": "49db02f61f46c7a871714c9f6bdb1da36a4d1f00e85b1c801288544b4af3b9d0",
+  "process_census": {
+    "owned": 0,
+    "protected_preexisting": 0,
+    "historical_protected_expected": 13,
+    "other_unattributed": 0
+  },
+  "old_packages_a54_e69_fc9439_bdc780_preserved": true,
+  "rollback_4712_all6_preserved": true,
+  "review_counter": 0,
+  "remediation_counter": 0,
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "status": "isolated_package_qualified_with_previous_boot_census_limitation",
+  "t8_complete": false,
+  "primary_verified": true,
+  "entrypoint_sha256": "e9943677786cbb80a149ef22003bdbfbae105f6423f8b7db7d5656d1b81fe54d",
+  "primary_source_file_hash_checks": 6,
+  "primary_uid_file_hash_checks": 30,
+  "primary_uid_runtime_receipt_hash_checks": 2,
+  "jobs": [
+    {
+      "job": "job-20261116T020639Z-d1e77347ee1e",
+      "result": "PASS",
+      "seconds": 1132.485,
+      "receipt_sha256": "d3799264c4c85fcbe8e791496915f63c23115989a92122aaca05e9fbbf2ecfed"
+    },
+    {
+      "job": "job-20261116T022446Z-0c082a84e251",
+      "result": "PASS",
+      "seconds": 8.601,
+      "receipt_sha256": "7fb90ed33c434d1555d1c24dd7aaedc9d14d368d88f4f78f5b757e91e7d5b9e5"
+    },
+    {
+      "job": "job-20261116T022446Z-c99564fc4c34",
+      "result": "PASS",
+      "seconds": 16.918,
+      "receipt_sha256": "83cc4240c56113a01397e6f3cb03c4e3255c8b4232df98df20bb085943c19615"
+    },
+    {
+      "job": "job-20261116T022446Z-d9d37bdeeee9",
+      "result": "PASS",
+      "seconds": 82.934,
+      "receipt_sha256": "89d5c9e2e7d090de0061ac8f609538236aa5ebfbbf64f2e04a96e8a28d58d8b4"
+    },
+    {
+      "job": "job-20261116T022452Z-36dcd294aead",
+      "result": "PASS",
+      "seconds": 80.794,
+      "receipt_sha256": "5123ca8841f4ccd498dede3583c886e5731b630b87072c79e09764755b18cf35"
+    }
+  ],
+  "limitations": [
+    "UID1017 shares the kernel with the host.",
+    "Historical13process snapshot is from a previous boot: all13 start ticks exceed current boot uptime and none are present. Historical preservation across reboot is not claimed. Current final UID1017/owned/unattributed counts are0.",
+    "Source23bc package isolated gates pass. Live OpenAI worker completes but Grok parent cannot yet ingest its plaintext native AgentMessage; T8 remains open."
+  ]
+}

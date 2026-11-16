@@ -1,0 +1,166 @@
+diff --git a/codex-rs/codex-api/src/sse/grok.rs b/codex-rs/codex-api/src/sse/grok.rs
+index 1a6445fe84dff2e4f4392ac3cd4041c7972c2a42..f95e3087d0f58483046f37aaf7eebb0cd8b101fd 100644
+--- a/codex-rs/codex-api/src/sse/grok.rs
++++ b/codex-rs/codex-api/src/sse/grok.rs
+@@ -84 +84 @@ impl State {
+-            let output = count("completion_tokens")?;
++            let completion = count("completion_tokens")?;
+@@ -86,2 +86,29 @@ impl State {
+-            if input.checked_add(output) != Some(total) {
+-                return Err(self.held("inconsistent usage"));
++            let detail = |container: &str, key: &str| -> Result<i64, ApiError> {
++                let value = &u[container];
++                if value.is_null() {
++                    return Ok(0);
++                }
++                let fields = value.as_object().ok_or_else(|| self.held("invalid usage details"))?;
++                match fields.get(key) {
++                    None => Ok(0),
++                    Some(value) => value.as_i64().filter(|n| *n >= 0)
++                        .ok_or_else(|| self.held("invalid usage details")),
++                }
++            };
++            let reasoning = detail("completion_tokens_details", "reasoning_tokens")?;
++            let cached = detail("prompt_tokens_details", "cached_tokens")?;
++            let inconsistent = || self.held(&format!(
++                "inconsistent usage (input={input}, completion={completion}, reasoning={reasoning}, cached={cached}, total={total})"
++            ));
++            // xAI Chat Completions reports reasoning separately from completion in
++            // its documented example. Some compatible responses already include it.
++            // Reconcile explicit fields with the reported total, never an invented residual.
++            let output = if input.checked_add(completion) == Some(total) {
++                completion
++            } else {
++                completion.checked_add(reasoning)
++                    .filter(|output| input.checked_add(*output) == Some(total))
++                    .ok_or_else(inconsistent)?
++            };
++            if reasoning > output || cached > input {
++                return Err(inconsistent());
+@@ -90,0 +118 @@ impl State {
++                cached_input_tokens: cached,
+@@ -91,0 +120 @@ impl State {
++                reasoning_output_tokens: reasoning,
+diff --git a/codex-rs/codex-api/tests/clients.rs b/codex-rs/codex-api/tests/clients.rs
+index 10774c64d3f6b7ccb6e8bb57fb4eee3273d494b7..0355a6b2f2c861d5dfc1e9f30f78bc80418982b7 100644
+--- a/codex-rs/codex-api/tests/clients.rs
++++ b/codex-rs/codex-api/tests/clients.rs
+@@ -984,0 +985,67 @@ async fn grok_http_failure_retains_only_status_without_replay() -> Result<()> {
++
++#[tokio::test]
++async fn grok_usage_contract_preserves_reasoning_cache_and_unknown_holds() -> Result<()> {
++    use codex_api::{GrokClient, ResponseEvent};
++    use futures::StreamExt;
++    use serde_json::json;
++    use wiremock::matchers::{method, path};
++    use wiremock::{Mock, MockServer, ResponseTemplate};
++    // Independent expected counts: xAI's published Chat Completions example.
++    // https://docs.x.ai/developers/rest-api-reference/inference/chat-completions
++    for (completion, total, cached, expected_output) in [
++        (9, 135, 6, Some(103)),
++        (103, 135, 6, Some(103)),
++        (9, 134, 6, None),
++        (9, 135, 33, None),
++    ] {
++        let server = MockServer::start().await;
++        let chunk = json!({"id":"usage-contract","model":"grok-observed",
++            "choices":[{"index":0,"delta":{"content":"done"},"finish_reason":"stop"}],
++            "usage":{"prompt_tokens":32,"completion_tokens":completion,"total_tokens":total,
++                "prompt_tokens_details":{"cached_tokens":cached},
++                "completion_tokens_details":{"reasoning_tokens":94},
++                "provider_private_blob":"must-not-leak"}});
++        Mock::given(method("POST"))
++            .and(path("/v1/chat/completions"))
++            .respond_with(ResponseTemplate::new(200)
++                .insert_header("content-type", "text/event-stream")
++                .set_body_string(format!("data: {chunk}\n\ndata: [DONE]\n\n")))
++            .expect(1)
++            .mount(&server).await;
++        let mut p = provider("grok");
++        p.base_url = format!("{}/v1", server.uri());
++        let mut stream = GrokClient::new(
++            codex_client::ReqwestTransport::new(reqwest::Client::new()), p,
++            Arc::new(StaticAuth::new("secret", "account")),
++        ).stream_request(grok_request(vec![])).await?;
++        let mut observed = None;
++        let mut error = None;
++        let mut committed = false;
++        while let Some(event) = stream.next().await {
++            match event {
++                Ok(ResponseEvent::Completed { token_usage, .. }) => observed = token_usage,
++                Ok(ResponseEvent::OutputItemDone(_)) => committed = true,
++                Err(failure) => error = Some(failure),
++                _ => {}
++            }
++        }
++        if let Some(output) = expected_output {
++            let usage = observed.expect("documented usage must produce canonical completion");
++            assert!(error.is_none());
++            assert_eq!(usage.input_tokens, 32);
++            assert_eq!(usage.cached_input_tokens, 6);
++            assert_eq!(usage.output_tokens, output);
++            assert_eq!(usage.reasoning_output_tokens, 94);
++            assert_eq!(usage.total_tokens, 135);
++            assert!(committed);
++        } else {
++            assert!(observed.is_none());
++            assert!(!committed);
++            let failure = error.expect("unreconciled counts must hold");
++            assert!(!failure.to_string().contains("must-not-leak"));
++            assert!(codex_api::map_api_error(failure).retry_delay(0).is_none());
++        }
++        server.verify().await;
++    }
++    Ok(())
++}
+diff --git a/codex-rs/core/src/session/mod.rs b/codex-rs/core/src/session/mod.rs
+index 3cddabdf111439eecbc4262d1babeb3daf7a9028..711fc02c1495117cce86f38651452f732b3cc7e8 100644
+--- a/codex-rs/core/src/session/mod.rs
++++ b/codex-rs/core/src/session/mod.rs
+@@ -4441,0 +4442,12 @@ impl Session {
++        if turn_context.config.model_provider.wire_api == codex_model_provider_info::WireApi::Grok {
++            self.send_event(
++                turn_context,
++                EventMsg::Warning(WarningEvent {
++                    message: format!(
++                        "Grok reported model {server_model} for requested model {requested_model}. No provider moderation reason was supplied."
++                    ),
++                }),
++            ).await;
++            return true;
++        }
++
+diff --git a/codex-rs/core/tests/suite/subagent_notifications.rs b/codex-rs/core/tests/suite/subagent_notifications.rs
+index 2ccf34abdc97d788d7ada9c51aca4e57c2939888..c9c726a117f1e7a197a63f67ad428cb2423c1306 100644
+--- a/codex-rs/core/tests/suite/subagent_notifications.rs
++++ b/codex-rs/core/tests/suite/subagent_notifications.rs
+@@ -3882 +3882 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
+-                let mut value = json!({"id":format!("grok-parent-{n}"), "model":"grok-parent",
++                let mut value = json!({"id":format!("grok-parent-{n}"), "model":"grok-parent-build",
+@@ -3885 +3885,3 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
+-                    value["usage"] = json!({"prompt_tokens":12,"completion_tokens":3,"total_tokens":15});
++                    value["usage"] = json!({"prompt_tokens":32,"completion_tokens":9,"total_tokens":135,
++                        "prompt_tokens_details":{"cached_tokens":6},
++                        "completion_tokens_details":{"reasoning_tokens":94}});
+@@ -3955,0 +3958 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
++    let provider_model_warning = std::sync::atomic::AtomicBool::new(false);
+@@ -3956,0 +3960,8 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
++        assert!(!matches!(event, EventMsg::ModelReroute(_)),
++            "Grok model labels do not attest OpenAI cyber moderation");
++        if let EventMsg::Warning(warning) = event {
++            assert!(!warning.message.contains("account was flagged"));
++            if warning.message.contains("Grok reported model") {
++                provider_model_warning.store(true, std::sync::atomic::Ordering::Relaxed);
++            }
++        }
+@@ -3959,0 +3971 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
++    assert!(provider_model_warning.load(std::sync::atomic::Ordering::Relaxed));
+@@ -4000,0 +4013,8 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
++    for record in &usage_records {
++        let usage = &record["payload"]["usage"];
++        assert_eq!(usage["input_tokens"], 32);
++        assert_eq!(usage["cached_input_tokens"], 6);
++        assert_eq!(usage["output_tokens"], 103);
++        assert_eq!(usage["reasoning_output_tokens"], 94);
++        assert_eq!(usage["total_tokens"], 135);
++    }

@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "native_base": "1a2fb1df4cefdef9782cd82d8cceef8c70e1c05c",
+  "native_source": "7cdb5404a247bec03a4a8bb244eb4da84e9c1917",
+  "native_tree": "6c1fc5e2c2fb9e7fe29c9c9f31d601326c980256",
+  "patch": "review-auth-docs.patch",
+  "patch_sha256": "3916f2f424367b1ba6e052242e665b78d7fd1af679f1ce4d06ea333233de15c2",
+  "files": {
+    "docs/grok-provider.md": "8a12922cec7b38510e79b6eab389f3a691850a3a57669e11c98fe0467f6016ea"
+  },
+  "exact_patch_reconstructs_tree": true,
+  "private_bundle_verified": true,
+  "change_scope": "documentation_only",
+  "executable_package_source_unchanged": "1a2fb1df4cefdef9782cd82d8cceef8c70e1c05c",
+  "native_rebuild_required": false,
+  "schema_regeneration_required": false,
+  "review_runs": 1,
+  "remediation_runs": 1
+}

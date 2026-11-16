@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T2",
+  "issue": 630,
+  "phase": "source_acceptance",
+  "native_repository": "https://github.com/openai/codex",
+  "baseline_manifest": "runtime/governor-native-572/manifest.json",
+  "source_base": "f986f6ed53d6b324aedbd7e32991e0185eacae14",
+  "source_commit": "7699650e005abe2bcedc138434c59aa95bfbf044",
+  "source_tree": "bd92911d261f37aa1e2f125f8d0a5ccc8f4af0d9",
+  "patch": "t2-native-provider.patch",
+  "patch_sha256": "d7ae3b22f9120e9834359b55d4134f27a391a52e27144219cffada9f1cb6e4fe",
+  "patch_reconstructed_tree": "bd92911d261f37aa1e2f125f8d0a5ccc8f4af0d9",
+  "source_files": {
+    "codex-rs/Cargo.lock": "ce00620a0d77f60780c3b543044c0893758c7dd3e520b70eea8f614374a1605a",
+    "codex-rs/codex-api/Cargo.toml": "e151510517bf020bc2e760764f6b8d20a8f0609d8d73d2561050e9e9abd5b660",
+    "codex-rs/codex-api/src/endpoint/grok.rs": "1375c0ca773570db17dd73fae717b444287893658a2a67435ca34b33fc0495d5",
+    "codex-rs/codex-api/src/endpoint/mod.rs": "3177b29d96e6bd6aaca4ec2fc7b964155c1d97020a871534dff3c5869b9fddde",
+    "codex-rs/codex-api/src/grok.rs": "61edb20cbe622cb64628cbc04e2a6bc5b8f2b9eb4318ebb257d5a2169822b1b7",
+    "codex-rs/codex-api/src/lib.rs": "4fe763e741e39d2f1e97ec6b3e2c394c4a783bc65c4db47edd2d68b13e912e9f",
+    "codex-rs/codex-api/src/sse/grok.rs": "ae56b6e06b2b73dfb2c56615ddc48ca2071b153d78b289283790ef3a8f1e34aa",
+    "codex-rs/codex-api/src/sse/mod.rs": "2a3444016bfba05619c6955b1bc02e2af8d7554d2e9250e21e0ca0059b5e7457",
+    "codex-rs/codex-api/tests/clients.rs": "c70d5b366968f908b3ba92b2d3b34413f884cfee66b0d88fc8f18395b9db258d",
+    "codex-rs/config/src/thread_config/proto/codex.thread_config.v1.proto": "60a2330ca1307f86cb0fa46aef0dafcffb07e40dbb35aff3056e35d7026a4a63",
+    "codex-rs/config/src/thread_config/proto/codex.thread_config.v1.rs": "450acdf605be4bb350b10fee87cc7f08686f95b4ff1c18c3adb27ce158179a5c",
+    "codex-rs/config/src/thread_config/remote.rs": "c93a30bf898e392bff294b18ac038bdab0a32d7b52bccff46a26b081be839783",
+    "codex-rs/core/config.schema.json": "43a21eff9165155d79fdef593a7d60f4d4adb38c67c38bd27fb13c4c44844d73",
+    "codex-rs/core/src/client.rs": "82beae12aa42b2087c4735a42df407d08caac72b02d255064ac6cbf5a4208e1b",
+    "codex-rs/core/tests/suite/rmcp_client.rs": "1249388f0d8ff35844144be242df55902e6e803c81829dce0e0bdec218ef6817",
+    "codex-rs/model-provider-info/src/lib.rs": "3b483eb4b35c9b9e8941a7828aa26983da08d2f2fdeb3587b216c4b35d02951e",
+    "codex-rs/model-provider-info/src/model_provider_info_tests.rs": "2d2bc3567a65daac30b95baf62d2605d7d756f240b5654d7099c53fa31ce4d4f",
+    "codex-rs/model-provider/src/capabilities.rs": "3ba368a1db8cf6d303f74c948b86c8f4c7f2b2d2be1c9a98ac60c4a1da070fbc",
+    "docs/grok-provider.md": "ee8fc6bdb1c3bf5c553193b9b6da67c296fab4b16310f32c97c047738bbebbfa"
+  },
+  "checks": {
+    "api_provider": {
+      "result": "passed",
+      "tests": 274,
+      "skipped": 0,
+      "command": "just test --locked --offline --cargo-profile dev-small -p codex-api -p codex-model-provider-info"
+    },
+    "api_lint": {
+      "result": "passed",
+      "command": "cargo clippy --locked --offline --profile dev-small -p codex-api --lib --message-format=json -- -D warnings"
+    },
+    "native": {
+      "result": "passed",
+      "tests": 3,
+      "unselected": 2776,
+      "command": "just test --locked --offline --cargo-profile dev-small -p codex-core --test all -E 'test(grok_native_terminal_patch_mcp_and_final_continuation) | test(provider_auth_command_supplies_bearer_token) | test(openai_stateless_responses_requests_preserve_item_turn_metadata_across_turns)'",
+      "scope": [
+        "real native terminal",
+        "native apply_patch creates file",
+        "existing MCP echo server",
+        "fragmented calls",
+        "call-linked tool results and final continuation",
+        "OpenAI command auth regression",
+        "OpenAI multi-turn metadata regression"
+      ],
+      "causal_note": "After this passing run, only a transparent private converter return type alias was added to satisfy clippy. The final API tests and library lint passed after that alias; no native behavior changed."
+    },
+    "remote": {
+      "result": "passed",
+      "tests": 1,
+      "unselected": 402,
+      "command": "just test --locked --offline --cargo-profile dev-small -p codex-config --lib -E 'test(grok_wire_survives_remote_provider_roundtrip)'"
+    },
+    "proto": {
+      "result": "byte_equal",
+      "command": "cargo run --locked --offline --profile dev-small -p codex-config --example generate-proto -- PRIVATE_REGENERATED_PROTO_DIR; retain canonical existing lint attribute; rustfmt; cmp",
+      "generator_source": "codex-rs/config/examples/generate-proto.rs",
+      "canonical_sha256": "450acdf605be4bb350b10fee87cc7f08686f95b4ff1c18c3adb27ce158179a5c"
+    },
+    "format": {
+      "result": "passed",
+      "rust_files": 14,
+      "command": "rustfmt +1.95.0 --edition 2024 --check TOUCHED_RS_FILES"
+    },
+    "workspace_format": {
+      "result": "preexisting_differences_preserved",
+      "files": [
+        "codex-rs/app-server/src/request_processors/thread_governor_lease.rs",
+        "codex-rs/core/src/governor_guard.rs",
+        "codex-rs/tui/src/chatwidget.rs"
+      ]
+    },
+    "diff_check": {
+      "result": "passed",
+      "command": "git diff --check; git diff --cached --check"
+    }
+  },
+  "environment": {
+    "source_base": "f986f6ed53d6b324aedbd7e32991e0185eacae14",
+    "toolchain": "1.95.0",
+    "target": "x86_64-unknown-linux-gnu",
+    "profile": "dev-small",
+    "jobs": 2,
+    "incremental": false,
+    "lock_sha256": "8ce6e8ba6f35054304773c1decd50c1d960d6eeb911a549fec3e4a22dbcb9863",
+    "stages": [
+      "model-provider-info RED",
+      "native transport and configuration focused checks",
+      "core native tool continuation focused check"
+    ],
+    "qualification_excluded": [
+      "package assembly",
+      "installation",
+      "real provider calls"
+    ],
+    "lock_sha256_after_declared_dev_dependency": "ce00620a0d77f60780c3b543044c0893758c7dd3e520b70eea8f614374a1605a",
+    "precommit_diff_sha256": "db08587b95ee189a573285ea9176627465580c352550dacae2b35bd23e4f8fc0",
+    "material_hosted_differences": [
+      "local GNU Linux only",
+      "dev-small profile, jobs2, incremental disabled",
+      "offline cached dependencies",
+      "focused core fixture rather than full multi-platform hosted matrix",
+      "no installed package or real-provider calls"
+    ]
+  },
+  "remaining_gates": [
+    "parent exact source/patch/bundle custody and ticket acceptance",
+    "T4 qualified model/account selection",
+    "joined real-account entitlement and inference acceptance in T8",
+    "complete exact package and runtime upgrade/rollback qualification",
+    "program broad review and bounded remediation",
+    "authorized integration/publication/deployment"
+  ],
+  "not_performed": [
+    "native installation",
+    "native daemon restart",
+    "real login",
+    "real provider inference",
+    "source push",
+    "broad review",
+    "post-closure remediation"
+  ],
+  "private_validation_sha256": "03d7a4cb356ab94f4ab1cab5377a819468a659073503fce2ac94c97b55a5c25f",
+  "patch_apply_flags": [
+    "--unidiff-zero"
+  ]
+}

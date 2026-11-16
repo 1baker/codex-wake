@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "phase": "version_header_source_validated_package_pending",
+  "native_base": "df4a89bbd7df49691df280674130e3f5e8eedc7e",
+  "native_commit": "b77a743f7e07edbc5e2f7c30d4e20a56ea4f3df8",
+  "native_tree": "a608795ec6258fed0aa1392d11f81a8e863c2c71",
+  "reconstructed_tree": "a608795ec6258fed0aa1392d11f81a8e863c2c71",
+  "patch": "t8-version-header.patch",
+  "patch_sha256": "e299f22bf2268f0c07a96be01d5295dcad60858d23e613dfed3d6b7920218835",
+  "apply_flags": [
+    "--unidiff-zero"
+  ],
+  "native_files": {
+    "codex-rs/codex-api/src/endpoint/grok.rs": "58cc4b1321932da9fc0ceb469873188c04e3024ff0bed17f74da373af4e30d60",
+    "codex-rs/codex-api/tests/clients.rs": "5270ca4b4fd256219a921d5666adc42f0c55f70d73a9762a8d403902be5e0698"
+  },
+  "private_bundle_sha256": "2eab595b1119d6865264e2fcfd56d910724882dd70776794df35ca293e7da867",
+  "wire_compatibility_profile": "1.0.77",
+  "product_identifier": "codex-wake-native",
+  "codex_user_agent_unchanged": true,
+  "official_contract_source": "https://github.com/xai-org/grok-build/blob/2bdd1d6a6369de0e8c68132ea4539e9abd9e14a8/crates/codegen/xai-grok-sampler/src/client.rs#L524",
+  "validation": {
+    "red_job": "job-20261115T203137Z-d5981f28a0ad",
+    "red": "expected missing version-header assertion FAIL; three other cases PASS; no compile failure",
+    "green_job": "job-20261115T203232Z-4535e35cb5d2",
+    "green": "4 focused native client checks PASS20.469s; execution0.21s"
+  },
+  "live_status": "prior package HTTP426; no live request with this source; correction unproven",
+  "review_runs": 0,
+  "remediation_runs": 0
+}

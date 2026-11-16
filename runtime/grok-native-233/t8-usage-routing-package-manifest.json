@@ -1,0 +1,71 @@
+{
+  "status": "isolated_package_qualified_live_gate_held",
+  "t8_complete": false,
+  "native_source": "212d798546aabffe65129464a61905e810fed248",
+  "native_tree": "0ec65313faf6a60f74149da89e85be7f7a5ebb6f",
+  "wake_runtime_source": "a8a9e0c65cc7ab1c456ec787484b0467921eb8f1",
+  "installed_wake_wheel_sha256": "5d94731b6e5d00d8b69e41db12ca88f2b090996c1c546c4bc323922bf7d0ddc9",
+  "files": {
+    "codex-package.json": "64a6c8f7bc146a94e9af84915c6a08d5457d58b5936f825894bbb8e6b1be8133",
+    "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+    "codex-resources/bwrap": "eb495040c5e8c3bc9c7bdec039166d36425314d8ac092083cfac192ff9c6b4d0",
+    "bin/codex-code-mode-host": "9419ea7febc7235cd5086fc8092fb1620061d1b46506f8c6df92a6225d5b0304",
+    "bin/codex-exec-server": "a59a877868e92b81b1f9d3a019d231201456b6a3b90b24ed00ebc4d809ae437c",
+    "bin/codex": "bdc780c81a0f62619b5b38037963e2f603e9b902c82211c37251bcad05ef1a8a"
+  },
+  "package_content_sha256": "6172ec680e095f56dd35b476f3d2eec9a5f0af497f90c655684c1dfb82fb1cd5",
+  "process_census": {
+    "owned": 0,
+    "protected_preexisting": 13,
+    "other_unattributed": 0
+  },
+  "old_packages_a54_e69_fc9439_preserved": true,
+  "rollback_4712_all6_preserved": true,
+  "review_counter": 0,
+  "remediation_counter": 0,
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "primary_verified": true,
+  "entrypoint_sha256": "bdc780c81a0f62619b5b38037963e2f603e9b902c82211c37251bcad05ef1a8a",
+  "primary_uid_hash_checks": 34,
+  "jobs": [
+    {
+      "job": "job-20261115T214410Z-e82f3e4f200d",
+      "result": "PASS",
+      "seconds": 877.387,
+      "receipt_sha256": "3d7db9beb968b8f16258c992fe2c469fdb8a36cd079291c46e77d5c7512107f1"
+    },
+    {
+      "job": "job-20261115T215814Z-178c0cafc0d3",
+      "result": "PASS",
+      "seconds": 19.73,
+      "receipt_sha256": "c58ee1cfbf53fe7a1ea846e0b7af256844545dcea5882443a71346e75c041cc4"
+    },
+    {
+      "job": "job-20261115T215814Z-34f3bf4dbc08",
+      "result": "PASS",
+      "seconds": 9.638,
+      "receipt_sha256": "10623fef46881f5a39616dfa622bacf56599c25515c16e1376816f241a584443"
+    },
+    {
+      "job": "job-20261115T215814Z-4f5c7eddd714",
+      "result": "PASS",
+      "seconds": 102.699,
+      "receipt_sha256": "89f7ab69055cc191090a0a5b96496769c21a5fe5a9ae1c730200dc28d56fa7a9"
+    },
+    {
+      "job": "job-20261115T215814Z-b41f7bdfcd42",
+      "result": "PASS",
+      "seconds": 102.221,
+      "receipt_sha256": "a174ea7b2fccf5083240e08eb97686f289869dbfae6af7f2537e47db18a6a2d0"
+    }
+  ],
+  "limitations": [
+    "Shared WSL kernel; isolated UID1017/local fixtures, not hosted CI.",
+    "Live usage/tool/worker/handoff/Stop acceptance remains incomplete.",
+    "Historical unknown usage stays unknown; no replay or allowance reset.",
+    "No working profile installation, restart or deployment."
+  ]
+}

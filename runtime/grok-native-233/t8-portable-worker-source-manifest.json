@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "phase": "portable_worker_source_validated_package_pending",
+  "native_base": "ee0e0b82ff88a3060d035782229931e8f9484ee9",
+  "native_commit": "1a2fb1df4cefdef9782cd82d8cceef8c70e1c05c",
+  "native_tree": "fc3e28d007f1b9925b3f768d3e6d894f491d2ec3",
+  "reconstructed_tree": "fc3e28d007f1b9925b3f768d3e6d894f491d2ec3",
+  "patch": "t8-portable-worker.patch",
+  "patch_sha256": "1ccafb612967a0120f0bf5183f90566217a60f3d309d20c13ab0a855a376936e",
+  "apply_flags": [
+    "--unidiff-zero"
+  ],
+  "native_files": {
+    "codex-rs/core/src/thread_manager/provider_continuation.rs": "83da324bb3c0833429295d45a4dfb8676249a08ee2fd1eb18f6bebfe24f0d212"
+  },
+  "private_bundle_sha256": "ed0127947efb7d25391ee7c0049b9e83c707cf7ac7ce8b8a998cf595e6e0b6b5",
+  "public_schema_changes": false,
+  "validation": {
+    "red": "Actual public thread/fork after real mixed-worker PASS rejects completed plaintext AgentMessage locally, zero provider requests; private final-handoff-result.json retained",
+    "cancelled_redundant_local_red": "job-20261116T031554Z-b2a1c35b3331 deliberately stopped while artifact-lock waiting; exit143/396.793s is NOT behaviorRED",
+    "green_job": "job-20261116T032223Z-2713407d75fe",
+    "green_checks": 1,
+    "green_seconds": 784.095,
+    "test_execution_seconds": 0.0,
+    "selection": "Corelib portable_worker_notification_keeps_attribution_and_rejects_ciphertext",
+    "behavior": "Attributed untrusted recentPublicContext; objectives unchanged; roundtrip preserves completed notification; opaque content held; bounded2048/last8; credential-bearing text held",
+    "post_validation_cleanup": "Deleted duplicate identical immutable-context assertions only; one copy plus roundtrip/opaque checks retained; production unchanged after GREEN",
+    "reused": "Unchanged API5/SSE4 and Core12 source receipts retained; no schema change; no redundant suites rerun"
+  },
+  "live_status": "Actual mixed tree qualified223610 before handoff; no repaired live handoff/Stop claim. Corrected exact package pending.",
+  "review_runs": 0,
+  "remediation_runs": 0
+}

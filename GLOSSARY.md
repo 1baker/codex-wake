@@ -326,6 +326,19 @@ model selection is distinct from an observed model identity.
 The hosted service or local serving runtime through which a model is accessed.
 It is distinct from the coding harness, account profile and execution host.
 
+**Provider session**:
+An authenticated relationship with an inference-provider account. It is distinct
+from an agent conversation and may be shared by related conversations.
+
+**Inference selection**:
+The chosen model and provider account for a conversation or worker. It is distinct
+from the provider-reported model identity and verified execution readiness.
+
+**Provider handoff**:
+A logical agent's transition to another inference provider through a linked
+successor conversation, carrying portable context while preserving source history.
+_Avoid_: Model change when the inference provider also changes.
+
 **Runtime instance**:
 A particular running instance of a coding agent or app server. It is distinct
 from the durable conversations it can serve.

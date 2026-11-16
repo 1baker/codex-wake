@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "phase": "isolated_package_qualified_real_account_gate_pending",
+  "t8_complete": false,
+  "native_source_commit": "abc2ce28469ca57e584ef33cf71b4ad172f8bb26",
+  "native_tree": "16c26eb541990a1fb57edf7dc2b3346bff1e6dc0",
+  "native_source_changed_in_t8": false,
+  "wake_runtime_source_base": "1f8fd14b33faad7e145919a6861daa5a36bc2b16",
+  "wake_wheel_sha256": "48675871d83010a29f6499a84f0a17a4d051e8470642116fef7b0ad7351d1ae0",
+  "package_content_digest": "a41b5251f74eb2f76d9034804f107bbeaec153a3a0e81adeb5412f9494dc0e25",
+  "package_digest_contract": "SHA256 of compact sorted JSON mapping all six package relative paths to SHA256; ownership/time excluded",
+  "package_manifest": {
+    "layoutVersion": 1,
+    "version": "0.167.0",
+    "target": "x86_64-unknown-linux-gnu",
+    "variant": "codex",
+    "entrypoint": "bin/codex",
+    "execServer": "bin/codex-exec-server",
+    "resourcesDir": "codex-resources",
+    "pathDir": "codex-path"
+  },
+  "files": {
+    "codex-package.json": {
+      "sha256": "64a6c8f7bc146a94e9af84915c6a08d5457d58b5936f825894bbb8e6b1be8133",
+      "mode": "0o600",
+      "size": 245
+    },
+    "codex-path/rg": {
+      "sha256": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+      "mode": "0o711",
+      "size": 5408904
+    },
+    "codex-resources/bwrap": {
+      "sha256": "eb495040c5e8c3bc9c7bdec039166d36425314d8ac092083cfac192ff9c6b4d0",
+      "mode": "0o711",
+      "size": 434936
+    },
+    "bin/codex-code-mode-host": {
+      "sha256": "664caa8b7b5dba41ad83c70453bc03d14e1a2ae0190e5f6cb783ce70510e5cea",
+      "mode": "0o711",
+      "size": 108245992
+    },
+    "bin/codex-exec-server": {
+      "sha256": "b778d80b253406e577724f7481a3c140b1ec40e93ae7002d757a312b5514ead1",
+      "mode": "0o711",
+      "size": 168112792
+    },
+    "bin/codex": {
+      "sha256": "a54f0739611354fcdd535f5a6a391197c4c0fe92615ade9f4bfd6bb725713792",
+      "mode": "0o711",
+      "size": 449586760
+    }
+  },
+  "package_executable_count": 5,
+  "assembly_entrypoint": "just assemble-codex-package",
+  "compile_bins": [
+    "codex",
+    "codex-code-mode-host",
+    "codex-exec-server",
+    "bwrap"
+  ],
+  "profile": "dev-small",
+  "toolchain": "1.95.0",
+  "target": "x86_64-unknown-linux-gnu; implicit host compilation, explicit package target",
+  "jobs": 2,
+  "incremental": 0,
+  "offline": true,
+  "locked": true,
+  "strip": "none",
+  "build_job": "job-20261115T122851Z-04459228458e",
+  "build_seconds": 1048.585,
+  "uid": 1017,
+  "installed_python": "3.14.6",
+  "installed_module_resource_hashes_matched": 336,
+  "rollback_entrypoint_sha256": "4712ca4a88e64b367899b5b45334552c42248453d70f0e606c0dbf918de980fa",
+  "validation": {
+    "complete_inventory_and_5exec_smoke": "PASS",
+    "upgrade_history_multiclient_reconnect_rollback": {
+      "job": "job-20261115T125020Z-c4235c9ef4d8",
+      "result": "PASS",
+      "seconds": 63.88
+    },
+    "failed_start_repair_rollback": {
+      "job": "job-20261115T130518Z-71e80025d8ef",
+      "result": "PASS",
+      "seconds": 64.439
+    },
+    "saved_conversation_open_close_resume": {
+      "job": "job-20261115T125042Z-c77026d8c937",
+      "result": "PASS",
+      "seconds": 14.222
+    },
+    "private_client_owner_refused_launch_reopen": {
+      "job": "job-20261115T124843Z-5a177b1cdb18",
+      "result": "PASS",
+      "seconds": 7.793
+    },
+    "installed_wake_auth_catalog13_usage16": {
+      "job": "job-20261115T130120Z-8513dded5e5a",
+      "result": "PASS",
+      "seconds": 8.016
+    },
+    "installed_complete_candidate_and_rollback_all6_hashes": "PASS",
+    "owned_processes_after": 0,
+    "preexisting_persistent_processes_preserved": 13,
+    "unattributed_processes_after": 0
+  },
+  "qualification_mcp_helper": {
+    "source": "existing T6/T7 test_stdio_server, unchanged source; separate qualification resource",
+    "sha256": "fda8fcef03ac2ad123602d2f056c850a10a47aed5e33d1501ee39662354f2ef3"
+  },
+  "real_account": {
+    "state": "NOT_QUALIFIED",
+    "current_sanitized_authentication": "unavailable",
+    "reason": "native_auth_missing",
+    "entitlement": "unverified",
+    "inference": "unverified",
+    "login_retry": false,
+    "effect_authority": "primary_only"
+  },
+  "limitations": [
+    "Shared WSL kernel; selected local Linux qualification, not hosted/full-platform CI.",
+    "Discarded unreadable-config control used defaults; no real provider response observed, whole-OS network traffic not captured. Retain possible unauthenticated warmup/metadata-attempt uncertainty and prior historical unpinned attempt.",
+    "No working-profile install/restart, live-account inference/login/refresh/logout qualification or deployment.",
+    "Broad review/remediation remain zero until all eight children close; causal requalification follows any accepted source remediation."
+  ],
+  "private_validation_locator": "~/.local/state/codex-wake/p233-t8/",
+  "memory_disposition": "forbidden"
+}

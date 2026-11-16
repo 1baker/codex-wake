@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "phase": "usage_routing_source_validated_package_pending",
+  "native_base": "b77a743f7e07edbc5e2f7c30d4e20a56ea4f3df8",
+  "native_commit": "212d798546aabffe65129464a61905e810fed248",
+  "native_tree": "0ec65313faf6a60f74149da89e85be7f7a5ebb6f",
+  "reconstructed_tree": "0ec65313faf6a60f74149da89e85be7f7a5ebb6f",
+  "patch": "t8-usage-routing.patch",
+  "patch_sha256": "d1071a160b935eb924c2515cf9c268bc92226450326b8ad018fba6e29fce8148",
+  "apply_flags": [
+    "--unidiff-zero"
+  ],
+  "native_files": {
+    "codex-rs/codex-api/src/sse/grok.rs": "7d9b0b0127dbcfb5ecf95e3d607b3104583b6f6160d4431fda15f6427b35f9a8",
+    "codex-rs/codex-api/tests/clients.rs": "51175c241aea233d9d8745d8814f269bd03da1f3450526ca01693445c3193b5b",
+    "codex-rs/core/src/session/mod.rs": "93d1763764ab416927fcf870afa50e32562c2a1313fce2a278b2df9976771e07",
+    "codex-rs/core/tests/suite/subagent_notifications.rs": "712452936c12c1d0493d7ae61fa40218e294efd53568b69fb58db5787be9fcfa"
+  },
+  "private_bundle_sha256": "fc404b1dbc01486ff8b5a3616c342fdd3accb4fcb3c492ee11169c5896aa58de",
+  "public_schema_changes": false,
+  "validation": {
+    "warning_red_job": "job-20261115T210124Z-4bcec6aee50b",
+    "public_usage_red_job": "job-20261115T212325Z-23eccc972d29",
+    "green_job": "job-20261115T212527Z-1b7621f75e5a",
+    "green_api_clients": 5,
+    "green_existing_sse_units": 4,
+    "green_core_including_openai_safety": 11,
+    "green_duration_seconds": 1043.295,
+    "cache_inclusive_actual_native_tree_usage": {
+      "grok_to_openai": 285,
+      "grok_to_grok": 405,
+      "actual_child_records_required": true,
+      "missing_child_records_both": "unknown/null; response_usage_missing"
+    }
+  },
+  "live_status": "prior probe completion held; corrected live usage unqualified; no additional call authorized",
+  "review_runs": 0,
+  "remediation_runs": 0
+}

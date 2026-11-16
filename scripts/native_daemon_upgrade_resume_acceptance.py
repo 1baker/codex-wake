@@ -20,7 +20,7 @@ report['authority_case']=authority_case
 resume_stream_release=threading.Event()
 class QualificationPassed(Exception):pass
 retention_locks=[]
-coordinator=None;coordinator_child=None;failed_executable=None;failed_mode=None
+coordinator=None;coordinator_child=None;failed_executable=None;failed_mode=None;failed_start_log=None;failed_start_log_mode=None
 def digest(p):
  with p.open('rb') as f:return hashlib.file_digest(f,'sha256').hexdigest()
 def durable_fixture_json(path,value):
@@ -168,6 +168,21 @@ def pane(name,tid):
  t('new-session','-d','-s',name,'-x','180','-y','55',shlex.join([str(launcher),'--no-alt-screen','resume',tid]));wait(lambda:'mock-model' in t('capture-pane','-p','-t',name,check=False),'Actual '+name+' TUI',20)
  frame=t('capture-pane','-p','-S','-2000','-t',name)
  if 'Resume paused goal?' in frame and 'Leave paused' in frame:t('send-keys','-t',name,'Escape')
+def history_visibility(address,executable,label):
+ # Query the public history surface, not only already-attached TUI state.
+ listed=native_request(address,str(executable),'thread/list',dict(limit=100),8)['data']
+ expected=set(report['active_threads']+[report['idle_thread']])
+ # The default conversation list intentionally omits message-less idle threads.
+ assert set(report['active_threads']) <= {thread['id'] for thread in listed},(label,report['active_threads'],[thread['id'] for thread in listed])
+ evidence={}
+ for tid in expected:
+  thread=native_request(address,str(executable),'thread/read',dict(threadId=tid,includeTurns=True),8)['thread']
+  assert thread['id']==tid and thread.get('path') and P(thread['path']).is_file(),thread
+  turns={turn['id'] for turn in thread['turns']}
+  if tid in active:assert active[tid]['turn_id'] in turns,(label,tid,turns)
+  evidence[tid]=dict(path=thread['path'],turn_ids=sorted(turns))
+ report.setdefault('public_history_visibility',{})[label]=evidence
+
 try:
  t('new-session','-d','-s','bootstrap','-x','180','-y','55',shlex.join([str(launcher),'--no-alt-screen','-C',str(ws)]))
  wait(lambda:'mock-model' in t('capture-pane','-p','-t','bootstrap',check=False),'Managed bootstrap',60)
@@ -235,6 +250,7 @@ try:
  idle=rpc('thread/start',dict(cwd=str(ws),historyMode='paginated'))['thread']['id'];report['idle_thread']=idle
  rpc('thread/notice/append',dict(threadId=idle,eventId='upgrade_fixture_idle',text='Idle isolated session. [External supervision event upgrade_fixture_idle]'));pane('idle',idle)
  report['goals_before']={tid:rpc('thread/goal/get',dict(threadId=tid))['goal'] for tid in active}
+ history_visibility(endpoint,baseline,'before_upgrade')
  report['old_selection']=os.readlink(home/'packages/app-server-daemon/current')
  if report['mode']=='retention':
   import fcntl
@@ -270,13 +286,11 @@ try:
      else:fcntl.flock(coordinator,fcntl.LOCK_EX|fcntl.LOCK_NB)
     if report['mode']=='startup-fail':
      import stat
-     releases=home/'packages/app-server-daemon/releases';old=P(report['old_selection']).resolve()
-     marker=(target.parent.parent/'codex-resources/upgrade-qualification.txt').read_bytes()
-     candidates=[path/'bin/codex' for path in releases.iterdir() if path.resolve()!=old and (path/'bin/codex').is_file() and (path/'codex-resources/upgrade-qualification.txt').is_file() and (path/'codex-resources/upgrade-qualification.txt').read_bytes()==marker]
-     assert len(candidates)==1,candidates
-     failed_executable=candidates[0];assert digest(failed_executable)==digest(target)
-     failed_mode=stat.S_IMODE(failed_executable.stat().st_mode);failed_executable.chmod(failed_mode & ~0o111)
-     report['failed_start_injection']=dict(path=str(failed_executable),original_mode=failed_mode,kind='Owned staged replacement execute bits removed before checkpoint release; readable qualified bytes unchanged')
+     # Fail the mandatory new-process log open; old inherited handles and
+     # canonical history remain available. Config errors otherwise use defaults.
+     failed_start_log=home/'app-server-daemon/daemon.stderr.log';failed_start_log_mode=stat.S_IMODE(failed_start_log.stat().st_mode)
+     failed_start_log.chmod(0)
+     report['failed_start_injection']=dict(path=str(failed_start_log),original_mode=failed_start_log_mode,kind='Owned daemon stderr log made unwritable before replacement mandatory startup open; package and account configuration bytes unchanged')
     rejected=raw_rpc('thread/start',dict(cwd=str(ws),historyMode='paginated'))
     assert rejected.get('error',{}).get('data',{}).get('reason')=='daemonUpgradePreparing',rejected
     report['new_work_held_during_preparation']=True
@@ -315,10 +329,9 @@ try:
   assert files[idle]['kind']=='idle_snapshot';assert idle not in report.get('agent_handoffs',{}),'Idle session unnecessarily called model'
   report['handoff_files']=files
   if report['mode']=='startup-fail':
-   assert updater.returncode!=0 and failed_executable is not None and state['phase']=='installing',state
-   assert 'Permission denied' in (root/'update.log').read_text(),(root/'update.log').read_text()
+   assert updater.returncode!=0 and failed_start_log is not None and state['phase']=='installing',state
    assert not report.get('resumed'),'Work woke while the replacement could not start'
-   failed_executable.chmod(failed_mode)
+   failed_start_log.chmod(failed_start_log_mode)
    report['failed_start_no_work_before_repair']=True
    repaired=subprocess.run([str(target),'app-server','daemon','start'],env=env,cwd=ws,capture_output=True,text=True,timeout=30)
    (root/'failed-start-repair.log').write_text(repaired.stdout+repaired.stderr);assert repaired.returncode==0,repaired.stderr
@@ -484,6 +497,7 @@ with unix_connect(sys.argv[1],open_timeout=5,close_timeout=1) as c:
    report.setdefault('fixture_build_registrations',[]).append(dict(executable=str(executable),sha256=digest(executable)))
   select_launcher_build(target);pane('fresh',report['active_threads'][0])
   def status_checks(label):
+   history_visibility(newendpoint,target if label=='upgrade' else rollback_executable,label)
    result={}
    for name,tid in [('active0',report['active_threads'][0]),('active0mirror',report['active_threads'][0]),('active1',report['active_threads'][1]),('idle',idle),('fresh',report['active_threads'][0])]+([('rollbackfresh',report['active_threads'][0])] if label=='rollback' else []):
     frame=t('capture-pane','-p','-S','-2000','-t',name)
@@ -578,6 +592,7 @@ except BaseException as e:
  for name in ['bootstrap','active0','active0mirror','active1','idle','fresh','rollbackfresh']:
   (root/('failure-'+name+'.txt')).write_text(t('capture-pane','-p','-S','-2000','-t',name,check=False))
 finally:
+ if failed_start_log is not None:failed_start_log.chmod(failed_start_log_mode)
  if failed_executable is not None:failed_executable.chmod(failed_mode)
  for lease in retention_locks:lease.close()
  if coordinator_child is not None and coordinator_child.poll() is None:coordinator_child.kill();coordinator_child.wait(timeout=5)

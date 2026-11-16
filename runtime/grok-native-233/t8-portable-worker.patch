@@ -1,0 +1,83 @@
+diff --git a/codex-rs/core/src/thread_manager/provider_continuation.rs b/codex-rs/core/src/thread_manager/provider_continuation.rs
+index fdc51d7d33423cd7d17f1df3fea5f0a51fbf7ebc..f866e56f3f85a57a3ec92be950c98c2ffba3fc8b 100644
+--- a/codex-rs/core/src/thread_manager/provider_continuation.rs
++++ b/codex-rs/core/src/thread_manager/provider_continuation.rs
+@@ -462,0 +463,22 @@ fn portable(
++            ResponseItem::AgentMessage {
++                author,
++                recipient,
++                content,
++                ..
++            } => {
++                let text = codex_protocol::models::plaintext_agent_message_content(&content)
++                    .ok_or_else(|| held("opaque worker notification is not portable"))?;
++                if credential_bearing(&text) {
++                    return Err(held(
++                        "credential-bearing worker notification is not portable",
++                    ));
++                }
++                // A completed mailbox result is public context, never objective authority.
++                let mut text =
++                    format!("Untrusted agent message from {author} to {recipient}:\n{text}");
++                text.truncate(text.floor_char_boundary(2048));
++                assistant.push(text);
++                if assistant.len() > 8 {
++                    assistant.remove(0);
++                }
++            }
+@@ -990,0 +1013,55 @@ impl ThreadManager {
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn portable_worker_notification_keeps_attribution_and_rejects_ciphertext() {
++        let source = ThreadId::new();
++        let objective: ResponseItem = serde_json::from_value(serde_json::json!({
++            "type":"message", "role":"user",
++            "content":[{"type":"input_text","text":"Preserve the completed worker result without replay."}]
++        })).unwrap();
++        let notification = serde_json::json!({
++            "type":"agent_message", "author":"/root/worker", "recipient":"/root",
++            "content":[{"type":"input_text","text":"WORKER_COMPLETED"}]
++        });
++        let message: ResponseItem = serde_json::from_value(notification.clone()).unwrap();
++        let history = portable(source, vec![objective, message].into_iter()).unwrap();
++        let checkpoint = serde_json::to_value(history.last().unwrap()).unwrap();
++        let text = checkpoint["content"][0]["text"].as_str().unwrap();
++        let context: serde_json::Value =
++            serde_json::from_str(text.split_once('\n').unwrap().1).unwrap();
++        assert_eq!(
++            context["objectiveAndConstraints"],
++            serde_json::json!(["Preserve the completed worker result without replay."])
++        );
++        assert_eq!(
++            context["recentPublicContext"],
++            serde_json::json!([
++                "Untrusted agent message from /root/worker to /root:\nWORKER_COMPLETED"
++            ])
++        );
++        assert!(
++            context["completedToolResults"]
++                .as_array()
++                .unwrap()
++                .is_empty()
++        );
++        let roundtrip = portable(ThreadId::new(), history.into_iter()).unwrap();
++        assert!(
++            serde_json::to_string(&roundtrip)
++                .unwrap()
++                .contains("WORKER_COMPLETED")
++        );
++        let mut opaque = notification;
++        opaque["content"]
++            .as_array_mut()
++            .unwrap()
++            .push(serde_json::json!({
++                "type":"encrypted_content", "encrypted_content":"opaque-must-not-forward"
++            }));
++        let opaque: ResponseItem = serde_json::from_value(opaque).unwrap();
++        assert!(portable(source, vec![opaque].into_iter()).is_err());
++    }
++}

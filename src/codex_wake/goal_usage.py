@@ -9,6 +9,7 @@ import hashlib
 import time
 import os
 import sqlite3
+import stat
 
 MAX_FILES = 4096
 MAX_METADATA_BYTES = 4 * 1024 * 1024
@@ -29,6 +30,43 @@ def _epoch(value):
 
 MAX_INDEX_ROWS = 65536
 MAX_INDEX_BYTES = 64 * 1024 * 1024
+
+
+def _continuation_record(home, identity):
+    """Native handoff journals locate successors; rollout metadata still proves membership."""
+    if not isinstance(identity, str) or not identity or Path(identity).name != identity or identity in ('.', '..'):
+        raise ValueError('usage_continuation_identity_invalid')
+    try:
+        directory = os.open(home/'provider_continuations', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    except FileNotFoundError:
+        return None
+    try:
+        info = os.fstat(directory)
+        if info.st_uid != os.geteuid() or info.st_mode & 0o077:
+            raise ValueError('usage_continuation_directory_invalid')
+        try:
+            fd = os.open(identity+'.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+        except FileNotFoundError:
+            return None
+        with os.fdopen(fd, 'rb') as stream:
+            info = os.fstat(stream.fileno())
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o077:
+                raise ValueError('usage_continuation_record_invalid')
+            raw = stream.read(65537)
+        if len(raw) > 65536:
+            raise ValueError('usage_continuation_record_limit')
+        record = json.loads(raw)
+        if (not isinstance(record, dict) or record.get('version') != 1
+                or record.get('source') != identity or record.get('state') not in ('staged', 'preparing', 'ready')
+                or not isinstance(record.get('successor'), str) or not record['successor']
+                or not isinstance(record.get('session_id'), str) or not record['session_id']
+                or record['state'] == 'ready' and any(not isinstance(record.get(key), str) or len(record[key]) != 64
+                       or any(c not in '0123456789abcdefABCDEF' for c in record[key])
+                       for key in ('authority_revision', 'context_revision'))):
+            raise ValueError('usage_continuation_not_ready_or_invalid')
+        return record, len(raw)
+    finally:
+        os.close(directory)
 
 
 def _indexed_inventory(home, thread_id, check_time):
@@ -93,16 +131,33 @@ def _indexed_inventory(home, thread_id, check_time):
                 parents[child] = parent
                 children.setdefault(parent, set()).add(child)
         owned = {thread_id}; pending = [thread_id]
+        continuations = {}; continuation_bytes = 0
         while pending:
             check_time()
-            for child in children.get(pending.pop(), ()):
+            parent = pending.pop()
+            continuation = _continuation_record(home, parent)
+            if continuation is not None:
+                record, consumed = continuation
+                continuation_bytes += consumed
+                if continuation_bytes > MAX_METADATA_BYTES:
+                    raise ValueError('usage_inventory_byte_limit')
+                child = record['successor']
+                if record['state'] == 'ready' or child in rows:
+                    if child == parent or child in parents and parents[child] != parent:
+                        raise ValueError('usage_index_parent_conflict')
+                    parents[child] = parent
+                    children.setdefault(parent, set()).add(child)
+                    continuations[parent] = record
+                # A staged/preparing successor not yet materialized cannot admit
+                # inference. Keep observing the current source without interrupting it.
+            for child in children.get(parent, ()):
                 if child not in owned:
                     owned.add(child); pending.append(child)
                     if len(owned) > MAX_FILES:
                         raise ValueError('usage_index_descendant_limit')
         sessions_root = (home / 'sessions').resolve(strict=True)
         inventory = {}
-        canonical_metadata_bytes = 0
+        canonical_metadata_bytes = continuation_bytes
         for identity in owned:
             check_time()
             if identity not in rows:
@@ -135,6 +190,14 @@ def _indexed_inventory(home, thread_id, check_time):
             if identity != thread_id and native_parent != parents.get(identity):
                 raise ValueError('usage_index_parent_mismatch')
             inventory[identity] = [(meta, path)]
+        for parent, record in continuations.items():
+            source = inventory[parent][0][0]
+            successor = inventory[record['successor']][0][0]
+            if (source.get('session_id') != record['session_id']
+                    or successor.get('session_id') != record['session_id']
+                    or successor.get('parent_thread_id') != parent
+                    or successor.get('forked_from_id') != parent):
+                raise ValueError('usage_continuation_identity_mismatch')
         return inventory
     except sqlite3.Error as exc:
         raise ValueError('usage_index_unavailable_or_corrupt') from exc
@@ -311,6 +374,21 @@ def observe_usage(codex_home, thread_id, goal_created_at, *, reset_anchor=None, 
         charged = set()
         for identity in owned:
             meta, history = sessions[identity]
+            provider = meta.get('model_provider', '')
+            if (isinstance(provider, str) and (provider == 'grok' or provider.startswith('grok__'))
+                    and any(r.get('type') == 'event_msg'
+                            and r['payload'].get('turn_id') in turns
+                            and ((r['payload'].get('type') == 'turn_aborted'
+                                  and r['payload'].get('reason') == 'interrupted')
+                                 or (r['payload'].get('type') == 'task_complete'
+                                     and isinstance(r['payload'].get('error'), dict)
+                                     and r['payload']['error'].get('codex_error_info')
+                                         != 'session_budget_exceeded'))
+                            for r in history)):
+                # Local Stop or a failed request is not provider-side completion/usage evidence.
+                # Earlier observed charges remain retained; do not qualify an
+                # uncertain later request as zero or as only those prior charges.
+                raise ValueError('provider_completion_unconfirmed')
             if meta.get('history_base') or (identity == thread_id and meta.get('forked_from_id')):
                 raise ValueError('referenced_or_root_fork_history_unqualified')
             if meta.get('session_id') != sessions[thread_id][0].get('session_id'):

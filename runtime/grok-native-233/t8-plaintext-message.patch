@@ -1,0 +1,147 @@
+diff --git a/codex-rs/codex-api/src/sse/grok.rs b/codex-rs/codex-api/src/sse/grok.rs
+index f95e3087d0f58483046f37aaf7eebb0cd8b101fd..26194d386b093889b45acc8a0c0b53213da2a6b3 100644
+--- a/codex-rs/codex-api/src/sse/grok.rs
++++ b/codex-rs/codex-api/src/sse/grok.rs
+@@ -91 +91,3 @@ impl State {
+-                let fields = value.as_object().ok_or_else(|| self.held("invalid usage details"))?;
++                let fields = value
++                    .as_object()
++                    .ok_or_else(|| self.held("invalid usage details"))?;
+@@ -94 +96,3 @@ impl State {
+-                    Some(value) => value.as_i64().filter(|n| *n >= 0)
++                    Some(value) => value
++                        .as_i64()
++                        .filter(|n| *n >= 0)
+@@ -100 +104,2 @@ impl State {
+-            let inconsistent = || self.held(&format!(
++            let inconsistent = || {
++                self.held(&format!(
+@@ -102 +107,2 @@ impl State {
+-            ));
++            ))
++            };
+@@ -109 +115,2 @@ impl State {
+-                completion.checked_add(reasoning)
++                completion
++                    .checked_add(reasoning)
+@@ -256 +263 @@ impl State {
+-                json!({"type":"function_call","id":format!("grok-call-{}",call.id),"call_id":call.id,"name":tool.name,"namespace":tool.namespace,"arguments":call.arguments,"status":"completed"})
++                json!({"type":"function_call","id":format!("grok-call-{}",call.id),"call_id":call.id,"name":tool.name,"namespace":tool.namespace,"arguments":call.arguments,"encrypted_function_args":[],"status":"completed"})
+diff --git a/codex-rs/codex-api/tests/clients.rs b/codex-rs/codex-api/tests/clients.rs
+index 0355a6b2f2c861d5dfc1e9f30f78bc80418982b7..dcc54ac2ef522c63503091488a9ddda3971d4076 100644
+--- a/codex-rs/codex-api/tests/clients.rs
++++ b/codex-rs/codex-api/tests/clients.rs
+@@ -848,0 +849,2 @@ async fn grok_fragmented_calls_preserve_native_identity_and_tool_continuation()
++    // Grok supplies plaintext arguments, never Responses encrypted message fields.
++    assert_eq!(value["encrypted_function_args"], serde_json::json!([]));
+@@ -868 +870,3 @@ async fn grok_fragmented_calls_preserve_native_identity_and_tool_continuation()
+-            req.headers.get("x-grok-client-version").map(|v| v.to_str().unwrap()),
++            req.headers
++                .get("x-grok-client-version")
++                .map(|v| v.to_str().unwrap()),
+@@ -872 +876,3 @@ async fn grok_fragmented_calls_preserve_native_identity_and_tool_continuation()
+-            req.headers.get("x-grok-client-identifier").map(|v| v.to_str().unwrap()),
++            req.headers
++                .get("x-grok-client-identifier")
++                .map(|v| v.to_str().unwrap()),
+@@ -1010,3 +1016,5 @@ async fn grok_usage_contract_preserves_reasoning_cache_and_unknown_holds() -> Re
+-            .respond_with(ResponseTemplate::new(200)
+-                .insert_header("content-type", "text/event-stream")
+-                .set_body_string(format!("data: {chunk}\n\ndata: [DONE]\n\n")))
++            .respond_with(
++                ResponseTemplate::new(200)
++                    .insert_header("content-type", "text/event-stream")
++                    .set_body_string(format!("data: {chunk}\n\ndata: [DONE]\n\n")),
++            )
+@@ -1014 +1022,2 @@ async fn grok_usage_contract_preserves_reasoning_cache_and_unknown_holds() -> Re
+-            .mount(&server).await;
++            .mount(&server)
++            .await;
+@@ -1018 +1027,2 @@ async fn grok_usage_contract_preserves_reasoning_cache_and_unknown_holds() -> Re
+-            codex_client::ReqwestTransport::new(reqwest::Client::new()), p,
++            codex_client::ReqwestTransport::new(reqwest::Client::new()),
++            p,
+@@ -1020 +1030,3 @@ async fn grok_usage_contract_preserves_reasoning_cache_and_unknown_holds() -> Re
+-        ).stream_request(grok_request(vec![])).await?;
++        )
++        .stream_request(grok_request(vec![]))
++        .await?;
+diff --git a/codex-rs/core/tests/suite/subagent_notifications.rs b/codex-rs/core/tests/suite/subagent_notifications.rs
+index c9c726a117f1e7a197a63f67ad428cb2423c1306..cbddd208bc2f26b93b355b5ec1d2f96862fca5ec 100644
+--- a/codex-rs/core/tests/suite/subagent_notifications.rs
++++ b/codex-rs/core/tests/suite/subagent_notifications.rs
+@@ -3852,2 +3852,3 @@ async fn spawn_agent_tool_description_mentions_role_locked_settings() -> Result<
+-#[test_case(Some(REQUESTED_MODEL); "explicit OpenAI override")]
+-#[test_case(None; "inherits pinned Grok selection")]
++#[test_case(Some(REQUESTED_MODEL), false; "explicit OpenAI override")]
++#[test_case(None, false; "inherits pinned Grok selection")]
++#[test_case(Some(REQUESTED_MODEL), true; "v2 plaintext OpenAI task")]
+@@ -3855 +3856,4 @@ async fn spawn_agent_tool_description_mentions_role_locked_settings() -> Result<
+-async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static str>) -> Result<()> {
++async fn grok_parent_can_select_openai_worker(
++    requested_model: Option<&'static str>,
++    multi_agent_v2: bool,
++) -> Result<()> {
+@@ -3876,0 +3881,5 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
++                let mut arguments = json!({"message":CHILD_PROMPT,"model":requested_model});
++                if multi_agent_v2 {
++                    arguments["task_name"] = json!("openai_probe");
++                    arguments["fork_turns"] = json!("none");
++                }
+@@ -3878,2 +3887 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
+-                    "function": {"name": function["name"], "arguments": json!({"message": CHILD_PROMPT,
+-                        "model": requested_model}).to_string()}}]})
++                    "function": {"name": function["name"], "arguments": arguments.to_string()}}]})
+@@ -3926,0 +3935,3 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
++            if multi_agent_v2 {
++                config.features.enable(Feature::MultiAgentV2).unwrap();
++            }
+@@ -3960,2 +3971,4 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
+-        assert!(!matches!(event, EventMsg::ModelReroute(_)),
+-            "Grok model labels do not attest OpenAI cyber moderation");
++        assert!(
++            !matches!(event, EventMsg::ModelReroute(_)),
++            "Grok model labels do not attest OpenAI cyber moderation"
++        );
+@@ -4080,0 +4094,27 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
++    if multi_agent_v2 {
++        let requests = server.received_requests().await.unwrap_or_default();
++        let child_body = requests
++            .iter()
++            .filter_map(|request| request.body_json::<serde_json::Value>().ok())
++            .find(|body| {
++                body["input"]
++                    .as_array()
++                    .is_some_and(|items| items.iter().any(|item| item["type"] == "agent_message"))
++            })
++            .expect("actual OpenAI worker request");
++        let message = child_body["input"]
++            .as_array()
++            .unwrap()
++            .iter()
++            .find(|item| item["type"] == "agent_message")
++            .unwrap();
++        assert!(message["content"].as_array().unwrap().iter().any(|item| item["type"] == "input_text" && item["text"] == format!("Message Type: NEW_TASK\nTask name: /root/openai_probe\nSender: /root\nPayload:\n{CHILD_PROMPT}")),
++            "Grok task text must reach OpenAI as plaintext, never opaque ciphertext");
++        assert!(
++            message["content"]
++                .as_array()
++                .unwrap()
++                .iter()
++                .all(|item| item["type"] != "encrypted_content")
++        );
++    }
+@@ -4085,6 +4125,7 @@ async fn grok_parent_can_select_openai_worker(requested_model: Option<&'static s
+-        let destination =
+-            std::path::PathBuf::from(destination).join(if requested_model.is_some() {
+-                "openai-override"
+-            } else {
+-                "grok-inherited"
+-            });
++        let destination = std::path::PathBuf::from(destination).join(if multi_agent_v2 {
++            "openai-v2-plaintext"
++        } else if requested_model.is_some() {
++            "openai-override"
++        } else {
++            "grok-inherited"
++        });

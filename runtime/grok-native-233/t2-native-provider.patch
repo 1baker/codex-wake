@@ -1,0 +1,1413 @@
+diff --git a/codex-rs/Cargo.lock b/codex-rs/Cargo.lock
+index d8afe8cfe5830146060a2458156d0da527f11391..53f72a558b4b985daa1828fee840e5a8590b4adf 100644
+--- a/codex-rs/Cargo.lock
++++ b/codex-rs/Cargo.lock
+@@ -2040,0 +2041 @@ dependencies = [
++ "reqwest 0.12.28",
+diff --git a/codex-rs/codex-api/Cargo.toml b/codex-rs/codex-api/Cargo.toml
+index 90db05b840e451b5242e2a7fb21b347aad75e2a4..ad3da3a5a527434412598ade2237a214b5845387 100644
+--- a/codex-rs/codex-api/Cargo.toml
++++ b/codex-rs/codex-api/Cargo.toml
+@@ -34,0 +35 @@ uuid = { workspace = true }
++reqwest = { workspace = true }
+diff --git a/codex-rs/codex-api/src/endpoint/grok.rs b/codex-rs/codex-api/src/endpoint/grok.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..0e3a06eac3917cfd450f5408213bd220094cd258
+--- /dev/null
++++ b/codex-rs/codex-api/src/endpoint/grok.rs
+@@ -0,0 +1,151 @@
++use crate::auth::AuthError;
++use crate::auth::AuthProvider;
++use crate::auth::SharedAuthProvider;
++use crate::common::ResponseStream;
++use crate::common::ResponsesApiRequest;
++use crate::endpoint::session::EndpointSession;
++use crate::error::ApiError;
++use crate::grok::invalid;
++use crate::provider::Provider;
++use codex_client::EncodedJsonBody;
++use codex_client::HttpTransport;
++use codex_client::RequestTelemetry;
++use http::HeaderMap;
++use http::HeaderValue;
++use http::Method;
++use std::sync::Arc;
++
++/// Session-authenticated Grok inference, normalized to the native Codex event contract.
++pub struct GrokClient<T: HttpTransport> {
++    transport: T,
++    provider: Provider,
++    auth: SharedAuthProvider,
++    telemetry: Option<Arc<dyn RequestTelemetry>>,
++}
++
++struct PinnedBearer(HeaderValue);
++impl AuthProvider for PinnedBearer {
++    fn add_auth_headers(&self, headers: &mut HeaderMap) -> Result<(), AuthError> {
++        headers.insert(http::header::AUTHORIZATION, self.0.clone());
++        Ok(())
++    }
++}
++
++impl<T: HttpTransport> GrokClient<T> {
++    pub fn new(transport: T, provider: Provider, auth: SharedAuthProvider) -> Self {
++        Self {
++            transport,
++            provider,
++            auth,
++            telemetry: None,
++        }
++    }
++    pub fn with_telemetry(mut self, telemetry: Option<Arc<dyn RequestTelemetry>>) -> Self {
++        self.telemetry = telemetry;
++        self
++    }
++
++    pub async fn stream_request(
++        self,
++        request: ResponsesApiRequest,
++    ) -> Result<ResponseStream, ApiError> {
++        validate_grok_base_url(&self.provider.base_url)?;
++        if self
++            .provider
++            .query_params
++            .as_ref()
++            .is_some_and(|q| !q.is_empty())
++        {
++            return Err(invalid(
++                "Grok session proxy query parameters are not admitted",
++            ));
++        }
++        let (body, tools, prior_ids) = crate::grok::convert(&request)?;
++        let model = HeaderValue::from_str(&request.model)
++            .map_err(|_| invalid("invalid model routing identity"))?;
++        // Resolve exactly once for this request. Never forward ambient account/first-party headers.
++        let resolved = self
++            .auth
++            .apply_auth_headers(HeaderMap::new())
++            .await
++            .map_err(|_| invalid("session authentication unavailable"))?;
++        let mut bearer = resolved
++            .get(http::header::AUTHORIZATION)
++            .filter(|v| {
++                v.to_str()
++                    .is_ok_and(|s| s.starts_with("Bearer ") && s.len() > 7)
++            })
++            .cloned()
++            .ok_or_else(|| invalid("session bearer authentication required"))?;
++        bearer.set_sensitive(true);
++        let mut provider = self.provider;
++        // A failed POST may already have reached inference. Do not automatically replay it.
++        provider.retry.max_attempts = 0;
++        provider.retry.retry_transport = false;
++        provider.retry.retry_5xx = false;
++        provider.retry.retry_429 = false;
++        provider.headers.clear();
++        let idle = provider.stream_idle_timeout;
++        let session =
++            EndpointSession::new(self.transport, provider, Arc::new(PinnedBearer(bearer)))
++                .with_request_telemetry(self.telemetry);
++        let mut headers = HeaderMap::new();
++        headers.insert("x-xai-token-auth", HeaderValue::from_static("xai-grok-cli"));
++        headers.insert("x-grok-model-override", model);
++        let body =
++            EncodedJsonBody::encode(&body).map_err(|_| invalid("request encoding failed"))?;
++        let response = session
++            .stream_encoded_json_with(
++                Method::POST,
++                "/chat/completions",
++                headers,
++                Some(body),
++                |req| {
++                    req.headers.insert(
++                        http::header::ACCEPT,
++                        HeaderValue::from_static("text/event-stream"),
++                    );
++                    req.response_body_limit_bytes = Some(16 * 1024 * 1024);
++                },
++            )
++            .await
++            .map_err(|error| match error {
++                ApiError::Transport(codex_client::TransportError::Http { status, .. })
++                    if status == http::StatusCode::UNAUTHORIZED
++                        || status == http::StatusCode::FORBIDDEN =>
++                {
++                    invalid("session authentication or entitlement rejected")
++                }
++                ApiError::Transport(codex_client::TransportError::Http { status, .. })
++                    if status == http::StatusCode::TOO_MANY_REQUESTS =>
++                {
++                    invalid("provider rate limit; explicit reassignment required")
++                }
++                _ => invalid("inference request outcome unknown; automatic replay withheld"),
++            })?;
++        Ok(crate::sse::grok::spawn(response, idle, tools, prior_ids))
++    }
++}
++
++/// Reject unsupported destinations before resolving any account authentication.
++pub fn validate_grok_base_url(base_url: &str) -> Result<(), ApiError> {
++    let destination =
++        url::Url::parse(base_url).map_err(|_| invalid("invalid session proxy destination"))?;
++    let loopback = matches!(
++        destination.host_str(),
++        Some("127.0.0.1" | "localhost" | "[::1]")
++    ) && matches!(destination.scheme(), "http" | "https");
++    if !(destination.scheme() == "https"
++        && destination.host_str() == Some("cli-chat-proxy.grok.com")
++        && destination.port_or_known_default() == Some(443)
++        || loopback)
++        || !destination.username().is_empty()
++        || destination.password().is_some()
++        || destination.query().is_some()
++        || destination.fragment().is_some()
++        || destination.path().trim_end_matches('/') != "/v1"
++    {
++        return Err(invalid("Grok session proxy destination is not admitted"));
++    }
++    Ok(())
++}
+diff --git a/codex-rs/codex-api/src/endpoint/mod.rs b/codex-rs/codex-api/src/endpoint/mod.rs
+index f3d3c4fd3cca5d6d0f84b9a37db6fbd6eb9632e4..d1ba240810758fa43e1167c1ea237291ba2d9f54 100644
+--- a/codex-rs/codex-api/src/endpoint/mod.rs
++++ b/codex-rs/codex-api/src/endpoint/mod.rs
+@@ -0,0 +1 @@
++pub(crate) mod grok;
+diff --git a/codex-rs/codex-api/src/grok.rs b/codex-rs/codex-api/src/grok.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..4af9a192d00d7a7d734415119fd13ce4f2b7f532
+--- /dev/null
++++ b/codex-rs/codex-api/src/grok.rs
+@@ -0,0 +1,233 @@
++//! Grok session-proxy compatibility. This is deliberately not a generic chat provider.
++use crate::common::ResponsesApiRequest;
++use crate::error::ApiError;
++use codex_protocol::models::ResponseItem;
++use serde_json::Value;
++use serde_json::json;
++use std::collections::BTreeMap;
++use std::collections::HashSet;
++
++#[derive(Clone)]
++pub(crate) struct Tool {
++    pub name: String,
++    pub namespace: Option<String>,
++    pub custom: bool,
++}
++
++pub(crate) fn invalid(reason: &str) -> ApiError {
++    ApiError::InvalidRequest {
++        message: format!("Grok request held: {reason}"),
++    }
++}
++
++fn string<'a>(value: &'a Value, key: &str) -> Result<&'a str, ApiError> {
++    value
++        .get(key)
++        .and_then(Value::as_str)
++        .filter(|s| !s.is_empty())
++        .ok_or_else(|| invalid("missing required history/tool field"))
++}
++
++fn add_tools(
++    values: &[Value],
++    namespace: Option<&str>,
++    tools: &mut Vec<Value>,
++    names: &mut BTreeMap<String, Tool>,
++) -> Result<(), ApiError> {
++    for value in values {
++        let kind = string(value, "type")?;
++        if kind == "namespace" {
++            if namespace.is_some() {
++                return Err(invalid("nested tool namespace is unsupported"));
++            }
++            add_tools(
++                value["tools"]
++                    .as_array()
++                    .ok_or_else(|| invalid("invalid tool namespace"))?,
++                Some(string(value, "name")?),
++                tools,
++                names,
++            )?;
++            continue;
++        }
++        if kind != "function" && kind != "custom" {
++            return Err(invalid("unsupported provider tool capability"));
++        }
++        let name = string(value, "name")?.to_owned();
++        if names
++            .values()
++            .any(|t| t.name == name && t.namespace.as_deref() == namespace)
++        {
++            return Err(invalid("duplicate tool declaration"));
++        }
++        // The wire alias is request-local; native names and namespaces are never guessed from it.
++        let alias = format!("codex_tool_{}", names.len());
++        let custom = kind == "custom";
++        let parameters = if custom {
++            json!({"type":"object", "properties":{"input":{"type":"string"}}, "required":["input"], "additionalProperties":false})
++        } else {
++            value
++                .get("parameters")
++                .cloned()
++                .ok_or_else(|| invalid("tool has no parameters"))?
++        };
++        let label = namespace
++            .map(|n| format!("{n}.{name}"))
++            .unwrap_or_else(|| name.clone());
++        let description = format!(
++            "{label}: {}",
++            value["description"].as_str().unwrap_or_default()
++        );
++        tools.push(json!({"type":"function","function":{"name":alias,"description":description,"parameters":parameters}}));
++        names.insert(
++            alias,
++            Tool {
++                name,
++                namespace: namespace.map(str::to_owned),
++                custom,
++            },
++        );
++    }
++    Ok(())
++}
++
++type PreparedRequest = (Value, BTreeMap<String, Tool>, HashSet<String>);
++
++pub(crate) fn convert(request: &ResponsesApiRequest) -> Result<PreparedRequest, ApiError> {
++    if request.model.trim().is_empty() {
++        return Err(invalid("model selection is missing"));
++    }
++    if request
++        .text
++        .as_ref()
++        .is_some_and(|text| text.format.is_some())
++    {
++        return Err(invalid("structured output is not qualified"));
++    }
++    if request.service_tier.is_some() {
++        return Err(invalid("service-tier billing selection is not qualified"));
++    }
++    if request.access_programs.is_some() {
++        return Err(invalid("access programs are unsupported"));
++    }
++    let mut tools = Vec::new();
++    let mut names = BTreeMap::new();
++    if let Some(raw) = &request.tools {
++        let values: Vec<Value> = serde_json::from_str(raw.as_raw_value().get())
++            .map_err(|_| invalid("invalid tool declarations"))?;
++        add_tools(&values, None, &mut tools, &mut names)?;
++    }
++    let mut messages = Vec::new();
++    let mut pending = HashSet::new();
++    let mut seen = HashSet::new();
++    for item in &request.input {
++        let value =
++            serde_json::to_value(item).map_err(|_| invalid("history serialization failed"))?;
++        match item {
++            ResponseItem::Message { .. } => {
++                if !pending.is_empty() {
++                    return Err(invalid("tool results missing before next message"));
++                }
++                let role = string(&value, "role")?;
++                if !matches!(role, "developer" | "system" | "user" | "assistant") {
++                    return Err(invalid("unsupported message role"));
++                }
++                let content = value["content"]
++                    .as_array()
++                    .ok_or_else(|| invalid("invalid message content"))?;
++                let mut text = String::new();
++                for part in content {
++                    if !matches!(part["type"].as_str(), Some("input_text" | "output_text")) {
++                        return Err(invalid("non-text content is not qualified"));
++                    }
++                    text.push_str(
++                        part["text"]
++                            .as_str()
++                            .ok_or_else(|| invalid("invalid text content"))?,
++                    );
++                }
++                messages.push(
++                    json!({"role":if role=="developer" {"system"} else {role},"content":text}),
++                );
++            }
++            ResponseItem::FunctionCall { .. } | ResponseItem::CustomToolCall { .. } => {
++                let call_id = string(&value, "call_id")?;
++                if !seen.insert(call_id.to_owned()) {
++                    return Err(invalid("duplicate historical tool call ID"));
++                }
++                pending.insert(call_id.to_owned());
++                let custom = matches!(item, ResponseItem::CustomToolCall { .. });
++                let name = string(&value, "name")?;
++                let namespace = value["namespace"].as_str();
++                let (alias, _) = names
++                    .iter()
++                    .find(|(_, t)| {
++                        t.name == name && t.namespace.as_deref() == namespace && t.custom == custom
++                    })
++                    .ok_or_else(|| invalid("history references an unavailable tool"))?;
++                let arguments = if custom {
++                    json!({"input":value["input"]}).to_string()
++                } else {
++                    string(&value, "arguments")?.to_owned()
++                };
++                let parsed: Value = serde_json::from_str(&arguments)
++                    .map_err(|_| invalid("malformed historical arguments"))?;
++                if !parsed.is_object() {
++                    return Err(invalid("tool arguments must be an object"));
++                }
++                let call = json!({"id":call_id,"type":"function","function":{"name":alias,"arguments":arguments}});
++                if let Some(last) = messages
++                    .last_mut()
++                    .filter(|m| m.get("tool_calls").is_some())
++                {
++                    last["tool_calls"]
++                        .as_array_mut()
++                        .ok_or_else(|| invalid("invalid tool history"))?
++                        .push(call);
++                } else {
++                    messages.push(json!({"role":"assistant","tool_calls":[call]}));
++                }
++            }
++            ResponseItem::FunctionCallOutput { .. } | ResponseItem::CustomToolCallOutput { .. } => {
++                let call_id = string(&value, "call_id")?;
++                if !pending.remove(call_id) {
++                    return Err(invalid("unknown or duplicate tool result"));
++                }
++                let content = match &value["output"] {
++                    Value::String(s) => s.clone(),
++                    Value::Array(parts) => {
++                        let mut text = String::new();
++                        for part in parts {
++                            if part["type"] != "input_text" {
++                                return Err(invalid("non-text tool output is not qualified"));
++                            }
++                            text.push_str(
++                                part["text"]
++                                    .as_str()
++                                    .ok_or_else(|| invalid("invalid tool output"))?,
++                            );
++                        }
++                        text
++                    }
++                    _ => return Err(invalid("unsupported tool output")),
++                };
++                messages.push(json!({"role":"tool","tool_call_id":call_id,"content":content}));
++            }
++            // Opaque reasoning must never cross the provider boundary. Visible context stays intact.
++            ResponseItem::Reasoning { .. } => {}
++            _ => {
++                return Err(invalid(
++                    "unsupported history item; linked continuation required",
++                ));
++            }
++        }
++    }
++    if !pending.is_empty() {
++        return Err(invalid("unresolved tool call in history"));
++    }
++    Ok((
++        json!({"model":request.model,"stream":true,"stream_options":{"include_usage":true},"messages":messages,"tools":tools,"tool_choice":"auto","parallel_tool_calls":request.parallel_tool_calls}),
++        names,
++        seen,
++    ))
++}
+diff --git a/codex-rs/codex-api/src/lib.rs b/codex-rs/codex-api/src/lib.rs
+index 88d5568703c6d3021deead30fc4885dbf1e6241e..7837f925486806ea3a4f3aa2833cb1e7866742cd 100644
+--- a/codex-rs/codex-api/src/lib.rs
++++ b/codex-rs/codex-api/src/lib.rs
+@@ -6,0 +7 @@ pub(crate) mod files;
++mod grok;
+@@ -130,0 +132,3 @@ pub use codex_protocol::protocol::RealtimeEvent;
++
++pub use crate::endpoint::grok::GrokClient;
++pub use crate::endpoint::grok::validate_grok_base_url;
+diff --git a/codex-rs/codex-api/src/sse/grok.rs b/codex-rs/codex-api/src/sse/grok.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..1a6445fe84dff2e4f4392ac3cd4041c7972c2a42
+--- /dev/null
++++ b/codex-rs/codex-api/src/sse/grok.rs
+@@ -0,0 +1,389 @@
++//! Normalize Grok's Chat Completions stream without admitting partial tool effects.
++use crate::common::ResponseEvent;
++use crate::common::ResponseStream;
++use crate::error::ApiError;
++use crate::grok::Tool;
++use codex_client::StreamResponse;
++use codex_protocol::error::ResponseIncompleteError;
++use codex_protocol::models::ResponseItem;
++use codex_protocol::protocol::TokenUsage;
++use eventsource_stream::Eventsource;
++use futures::StreamExt;
++use serde_json::Value;
++use serde_json::json;
++use std::collections::BTreeMap;
++use std::collections::HashSet;
++use std::time::Duration;
++use tokio::sync::mpsc;
++
++#[derive(Default)]
++struct Call {
++    id: String,
++    name: String,
++    arguments: String,
++}
++
++#[derive(Default)]
++struct State {
++    id: Option<String>,
++    model: Option<String>,
++    text: String,
++    calls: BTreeMap<u64, Call>,
++    finish: Option<String>,
++    usage: Option<TokenUsage>,
++    bytes: usize,
++}
++
++impl State {
++    fn held(&self, reason: &str) -> ApiError {
++        ApiError::ResponseIncomplete(Box::new(ResponseIncompleteError {
++            reason: format!("Grok completion unknown: {reason}; automatic replay withheld"),
++            response_id: self.id.clone(),
++            token_usage: self.usage.clone(),
++            partial_output: Vec::new(),
++        }))
++    }
++
++    fn accept(&mut self, chunk: Value) -> Result<Vec<ResponseEvent>, ApiError> {
++        if chunk.get("error").is_some() {
++            return Err(self.held("provider returned a stream error"));
++        }
++        let id = chunk["id"]
++            .as_str()
++            .filter(|s| !s.is_empty())
++            .ok_or_else(|| self.held("missing response identity"))?;
++        let model = chunk["model"]
++            .as_str()
++            .filter(|s| !s.is_empty())
++            .ok_or_else(|| self.held("missing observed model"))?;
++        let mut events = Vec::new();
++        if let Some(old) = &self.id {
++            if old != id || self.model.as_deref() != Some(model) {
++                return Err(self.held("response identity changed"));
++            }
++        } else {
++            self.id = Some(id.to_owned());
++            self.model = Some(model.to_owned());
++            events.push(ResponseEvent::Created {
++                response_id: self.id.clone(),
++            });
++            events.push(ResponseEvent::ServerModel(model.to_owned()));
++        }
++        if !chunk["usage"].is_null() {
++            if self.usage.is_some() {
++                return Err(self.held("duplicate usage"));
++            }
++            let u = &chunk["usage"];
++            let count = |key| {
++                u[key]
++                    .as_i64()
++                    .filter(|n| *n >= 0)
++                    .ok_or_else(|| self.held("invalid usage"))
++            };
++            let input = count("prompt_tokens")?;
++            let output = count("completion_tokens")?;
++            let total = count("total_tokens")?;
++            if input.checked_add(output) != Some(total) {
++                return Err(self.held("inconsistent usage"));
++            }
++            self.usage = Some(TokenUsage {
++                input_tokens: input,
++                output_tokens: output,
++                total_tokens: total,
++                ..Default::default()
++            });
++        }
++        let choices = chunk["choices"]
++            .as_array()
++            .ok_or_else(|| self.held("missing choices"))?;
++        if choices.is_empty() {
++            if self.finish.is_none() || self.usage.is_none() {
++                return Err(self.held("unexpected empty choices"));
++            }
++            return Ok(events);
++        }
++        if choices.len() != 1 || choices[0]["index"].as_u64() != Some(0) || self.finish.is_some() {
++            return Err(self.held("unexpected choice or content after finish"));
++        }
++        let choice = &choices[0];
++        let delta = choice["delta"]
++            .as_object()
++            .ok_or_else(|| self.held("invalid delta"))?;
++        // Provider-specific reasoning is not promoted into portable Codex history.
++        for (key, value) in delta {
++            if value.is_null() {
++                continue;
++            }
++            match key.as_str() {
++                "role" if value.as_str() == Some("assistant") => {}
++                "content" => {
++                    let text = value.as_str().ok_or_else(|| self.held("non-text output"))?;
++                    if !text.is_empty() {
++                        if self.text.is_empty() {
++                            events.push(ResponseEvent::OutputItemAdded(self.message(false)?));
++                        }
++                        self.text.push_str(text);
++                        events.push(ResponseEvent::OutputTextDelta(text.to_owned()));
++                    }
++                }
++                "tool_calls" => {
++                    for v in value
++                        .as_array()
++                        .ok_or_else(|| self.held("invalid tool deltas"))?
++                    {
++                        let index = v["index"]
++                            .as_u64()
++                            .filter(|n| *n < 128)
++                            .ok_or_else(|| self.held("invalid tool index"))?;
++                        if v.get("type").is_some_and(|t| t != "function") {
++                            return Err(self.held("unsupported tool type"));
++                        }
++                        self.calls.entry(index).or_default();
++                        if let Some(id) = v.get("id") {
++                            let id = id
++                                .as_str()
++                                .filter(|s| !s.is_empty())
++                                .ok_or_else(|| self.held("invalid call ID"))?;
++                            let Some(call) = self.calls.get_mut(&index) else {
++                                return Err(self.held("missing call state"));
++                            };
++                            if !call.id.is_empty() && call.id != id {
++                                return Err(self.held("call ID changed"));
++                            }
++                            call.id = id.to_owned();
++                        }
++                        if let Some(function) = v.get("function") {
++                            for field in ["name", "arguments"] {
++                                if let Some(fragment) = function.get(field) {
++                                    let fragment = fragment
++                                        .as_str()
++                                        .ok_or_else(|| self.held("invalid function fragment"))?;
++                                    let Some(call) = self.calls.get_mut(&index) else {
++                                        return Err(self.held("missing call state"));
++                                    };
++                                    if field == "name" {
++                                        call.name.push_str(fragment);
++                                    } else {
++                                        call.arguments.push_str(fragment);
++                                    }
++                                }
++                            }
++                        }
++                    }
++                }
++                "reasoning_content" | "reasoning" => {}
++                _ => return Err(self.held("unsupported stream delta")),
++            }
++        }
++        if !choice["finish_reason"].is_null() {
++            self.finish = Some(
++                choice["finish_reason"]
++                    .as_str()
++                    .ok_or_else(|| self.held("invalid finish reason"))?
++                    .to_owned(),
++            );
++        }
++        Ok(events)
++    }
++
++    fn message(&self, done: bool) -> Result<ResponseItem, ApiError> {
++        serde_json::from_value(json!({"type":"message","id":format!("grok-msg-{}",self.id.as_deref().unwrap_or_default()),"role":"assistant","status":if done {"completed"} else {"in_progress"},"content":[{"type":"output_text","text":if done {self.text.as_str()} else {""}}]})).map_err(|_| self.held("invalid message"))
++    }
++
++    fn complete(
++        &self,
++        tools: &BTreeMap<String, Tool>,
++        prior_ids: &HashSet<String>,
++    ) -> Result<Vec<ResponseEvent>, ApiError> {
++        let finish = self
++            .finish
++            .as_deref()
++            .ok_or_else(|| self.held("terminal marker without finish reason"))?;
++        if !matches!(finish, "stop" | "tool_calls")
++            || (finish == "tool_calls") == self.calls.is_empty()
++        {
++            return Err(self.held("incomplete or inconsistent finish reason"));
++        }
++        let mut events = Vec::new();
++        let mut ids = prior_ids.clone();
++        for call in self.calls.values() {
++            if call.id.is_empty() || !ids.insert(call.id.clone()) {
++                return Err(self.held("missing or reused call ID"));
++            }
++            let tool = tools
++                .get(&call.name)
++                .ok_or_else(|| self.held("unknown tool"))?;
++            let arguments: Value = serde_json::from_str(&call.arguments)
++                .map_err(|_| self.held("malformed function arguments"))?;
++            if !arguments.is_object() {
++                return Err(self.held("function arguments must be an object"));
++            }
++            let item = if tool.custom {
++                if arguments.as_object().is_none_or(|a| a.len() != 1) {
++                    return Err(self.held("invalid custom tool arguments"));
++                }
++                json!({"type":"custom_tool_call","id":format!("grok-call-{}",call.id),"call_id":call.id,"name":tool.name,"namespace":tool.namespace,"input":arguments["input"].as_str().ok_or_else(|| self.held("missing custom input"))?,"status":"completed"})
++            } else {
++                json!({"type":"function_call","id":format!("grok-call-{}",call.id),"call_id":call.id,"name":tool.name,"namespace":tool.namespace,"arguments":call.arguments,"status":"completed"})
++            };
++            let item = serde_json::from_value(item)
++                .map_err(|_| self.held("invalid normalized tool call"))?;
++            events.push(ResponseEvent::OutputItemDone(item));
++        }
++        if !self.text.is_empty() {
++            events.insert(0, ResponseEvent::OutputItemDone(self.message(true)?));
++        }
++        events.push(ResponseEvent::Completed {
++            response_id: self
++                .id
++                .clone()
++                .ok_or_else(|| self.held("missing response identity"))?,
++            token_usage: self.usage.clone(),
++            usage_metadata: None,
++            end_turn: Some(finish == "stop"),
++        });
++        Ok(events)
++    }
++}
++
++pub(crate) fn spawn(
++    stream: StreamResponse,
++    idle: Duration,
++    tools: BTreeMap<String, Tool>,
++    prior_ids: HashSet<String>,
++) -> ResponseStream {
++    let upstream_request_id = stream
++        .headers
++        .get("x-request-id")
++        .and_then(|v| v.to_str().ok())
++        .map(str::to_owned);
++    let (tx, rx_event) = mpsc::channel(1600);
++    tokio::spawn(async move {
++        let mut state = State::default();
++        let mut source = stream.bytes.eventsource();
++        let result:Result<(),ApiError>=async {
++            loop {
++                let event=tokio::select! {
++                    _=tx.closed()=>return Ok(()),
++                    next=tokio::time::timeout(idle,source.next())=>next.map_err(|_| state.held("stream idle timeout"))?.ok_or_else(|| state.held("stream ended before terminal marker"))?.map_err(|_| state.held("stream connection failed"))?,
++                };
++                if event.data=="[DONE]" {
++                    for e in state.complete(&tools,&prior_ids)? { if tx.send(Ok(e)).await.is_err() {return Ok(());} }
++                    return Ok(());
++                }
++                state.bytes=state.bytes.saturating_add(event.data.len());
++                if state.bytes>16*1024*1024 {return Err(state.held("stream exceeds bounded response size"));}
++                let chunk=serde_json::from_str(&event.data).map_err(|_| state.held("malformed stream JSON"))?;
++                for e in state.accept(chunk)? { if tx.send(Ok(e)).await.is_err() {return Ok(());} }
++            }
++        }.await;
++        if let Err(error) = result {
++            let _ = tx.send(Err(error)).await;
++        }
++    });
++    ResponseStream {
++        rx_event,
++        routing_affinity: None,
++        upstream_request_id,
++        interrupt: None,
++    }
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    fn chunk(delta: Value, finish: Value) -> Value {
++        json!({"id":"response-1","model":"grok-observed","choices":[{"index":0,"delta":delta,"finish_reason":finish}]})
++    }
++    fn tools() -> BTreeMap<String, Tool> {
++        BTreeMap::from([(
++            "tool".into(),
++            Tool {
++                name: "exec_command".into(),
++                namespace: None,
++                custom: false,
++            },
++        )])
++    }
++    #[test]
++    fn malformed_or_incomplete_calls_never_commit_and_cannot_retry() {
++        for (arguments, finish, name) in [
++            ("{", "tool_calls", "tool"),
++            ("{}", "length", "tool"),
++            ("{}", "stop", "tool"),
++            ("{}", "tool_calls", "unknown"),
++        ] {
++            let mut state = State::default();
++            assert!(state.accept(chunk(json!({"tool_calls":[{"index":0,"id":"call-1","type":"function","function":{"name":name,"arguments":arguments}}]}),json!(finish))).unwrap().iter().all(|e| !matches!(e,ResponseEvent::OutputItemDone(_))));
++            let error = state.complete(&tools(), &HashSet::new()).unwrap_err();
++            assert!(crate::map_api_error(error).retry_delay(0).is_none());
++        }
++    }
++    #[test]
++    fn reused_ids_identity_drift_and_missing_terminal_state_hold() {
++        let mut state = State::default();
++        state.accept(chunk(json!({"tool_calls":[{"index":0,"id":"prior","function":{"name":"tool","arguments":"{}"}}]}),json!("tool_calls"))).unwrap();
++        assert!(
++            state
++                .complete(&tools(), &HashSet::from(["prior".into()]))
++                .is_err()
++        );
++        let mut changed = chunk(json!({}), Value::Null);
++        changed["id"] = json!("other");
++        assert!(state.accept(changed).is_err());
++        assert!(
++            State::default()
++                .complete(&tools(), &HashSet::new())
++                .is_err()
++        );
++    }
++    #[tokio::test]
++    async fn eof_after_finish_is_unknown_without_success_or_tool_effects() {
++        use bytes::Bytes;
++        let body = format!(
++            "data: {}\n\n",
++            chunk(
++                json!({"tool_calls":[{"index":0,"id":"call-1","function":{"name":"tool","arguments":"{}"}}]}),
++                json!("tool_calls")
++            )
++        );
++        let response = StreamResponse {
++            status: http::StatusCode::OK,
++            headers: http::HeaderMap::new(),
++            bytes: Box::pin(futures::stream::iter(vec![Ok(Bytes::from(body))])),
++        };
++        let events = spawn(response, Duration::from_secs(1), tools(), HashSet::new())
++            .collect::<Vec<_>>()
++            .await;
++        assert!(events.iter().any(Result::is_err));
++        assert!(!events.iter().any(|e| matches!(
++            e,
++            Ok(ResponseEvent::OutputItemDone(_) | ResponseEvent::Completed { .. })
++        )));
++    }
++    #[test]
++    fn usage_is_reported_only_when_present_and_consistent() {
++        let mut state = State::default();
++        state
++            .accept(chunk(json!({"content":"done"}), json!("stop")))
++            .unwrap();
++        assert!(matches!(
++            state.complete(&tools(), &HashSet::new()).unwrap().last(),
++            Some(ResponseEvent::Completed {
++                token_usage: None,
++                ..
++            })
++        ));
++        state.accept(json!({"id":"response-1","model":"grok-observed","choices":[],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}})).unwrap();
++        assert!(matches!(
++            state.complete(&tools(), &HashSet::new()).unwrap().last(),
++            Some(ResponseEvent::Completed {
++                token_usage: Some(TokenUsage {
++                    total_tokens: 5,
++                    ..
++                }),
++                ..
++            })
++        ));
++    }
++}
+diff --git a/codex-rs/codex-api/src/sse/mod.rs b/codex-rs/codex-api/src/sse/mod.rs
+index b4872ba6ac66bf9ad6e2eb8b7348d702b6c9b26a..87b9538562e51afec4dc9de7459e98724d94dd69 100644
+--- a/codex-rs/codex-api/src/sse/mod.rs
++++ b/codex-rs/codex-api/src/sse/mod.rs
+@@ -0,0 +1 @@
++pub(crate) mod grok;
+diff --git a/codex-rs/codex-api/tests/clients.rs b/codex-rs/codex-api/tests/clients.rs
+index 664697da323ab6963d080b9e33f0558382b0cb0a..f1ebd524b5300f348f9aad97fee5dc8cb5b4746f 100644
+--- a/codex-rs/codex-api/tests/clients.rs
++++ b/codex-rs/codex-api/tests/clients.rs
+@@ -772,0 +773,170 @@ async fn async_auth_provider_rejects_sync_resolution_and_authenticates_requests(
++
++fn grok_request(input: Vec<ResponseItem>) -> ResponsesApiRequest {
++    ResponsesApiRequest {
++        model: "grok-build".into(), stream:true, service_tier:None, input,
++        tools:Some(Arc::<RawValue>::from(RawValue::from_string(r#"[{"type":"namespace","name":"functions","tools":[{"type":"function","name":"exec_command","description":"Run a command","parameters":{"type":"object","properties":{"cmd":{"type":"string"}},"required":["cmd"]}}]}]"#.into()).unwrap()).into()),
++        tool_choice:"auto".into(),parallel_tool_calls:false,reasoning:None,store:false,stream_options:None,include:vec![],prompt_cache_key:None,text:None,client_metadata:None,access_programs:None,
++    }
++}
++
++#[tokio::test]
++async fn grok_fragmented_calls_preserve_native_identity_and_tool_continuation() -> Result<()> {
++    use codex_api::GrokClient;
++    use codex_api::ResponseEvent;
++    use futures::StreamExt;
++    use wiremock::Mock;
++    use wiremock::MockServer;
++    use wiremock::ResponseTemplate;
++    use wiremock::matchers::method;
++    use wiremock::matchers::path;
++    let server = MockServer::start().await;
++    let chunks = [
++        serde_json::json!({"content":"Checking files"}),
++        serde_json::json!({"tool_calls":[{"index":0,"id":"call-native-1","type":"function","function":{"name":"codex_tool_0","arguments":"{\"cmd\":"}}]}),
++        serde_json::json!({"tool_calls":[{"index":0,"function":{"arguments":"\"pwd\"}"}}]}),
++    ];
++    let mut body = String::new();
++    for delta in chunks {
++        body.push_str(&format!("data: {}\n\n",serde_json::json!({"id":"grok-response-1","model":"grok-observed","choices":[{"index":0,"delta":delta,"finish_reason":null}]})));
++    }
++    body.push_str("data: {\"id\":\"grok-response-1\",\"model\":\"grok-observed\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"tool_calls\"}]}\n\ndata: [DONE]\n\n");
++    Mock::given(method("POST"))
++        .and(path("/v1/chat/completions"))
++        .respond_with(
++            ResponseTemplate::new(200)
++                .insert_header("content-type", "text/event-stream")
++                .set_body_string(body),
++        )
++        .mount(&server)
++        .await;
++    let mut p = provider("grok");
++    p.base_url = format!("{}/v1", server.uri());
++    p.headers.insert(
++        "ChatGPT-Account-ID",
++        HeaderValue::from_static("must-not-forward"),
++    );
++    let input: ResponseItem = serde_json::from_value(
++        serde_json::json!({"type":"message","role":"user","content":[{"type":"input_text","text":"Inspect the workspace"}]}),
++    )?;
++    let mut stream = GrokClient::new(
++        codex_client::ReqwestTransport::new(reqwest::Client::new()),
++        p.clone(),
++        Arc::new(StaticAuth::new("grok-session", "ambient-account")),
++    )
++    .stream_request(grok_request(vec![input.clone()]))
++    .await?;
++    let mut call = None;
++    let mut completed = false;
++    while let Some(event) = stream.next().await {
++        match event? {
++            ResponseEvent::OutputItemDone(item @ ResponseItem::FunctionCall { .. }) => {
++                call = Some(item)
++            }
++            ResponseEvent::Completed { token_usage, .. } => {
++                assert!(token_usage.is_none());
++                completed = true;
++            }
++            _ => {}
++        }
++    }
++    assert!(completed);
++    let call = call.expect("native call");
++    let value = serde_json::to_value(&call)?;
++    assert_eq!(value["call_id"], "call-native-1");
++    assert_eq!(value["name"], "exec_command");
++    assert_eq!(value["namespace"], "functions");
++    assert_eq!(value["arguments"], r#"{"cmd":"pwd"}"#);
++    let output = serde_json::from_value(
++        serde_json::json!({"type":"function_call_output","call_id":"call-native-1","output":"/workspace"}),
++    )?;
++    let _stream = GrokClient::new(
++        codex_client::ReqwestTransport::new(reqwest::Client::new()),
++        p,
++        Arc::new(StaticAuth::new("grok-session", "ambient-account")),
++    )
++    .stream_request(grok_request(vec![input, call, output]))
++    .await?;
++    let requests = server.received_requests().await.unwrap();
++    assert_eq!(requests.len(), 2);
++    for req in &requests {
++        assert_eq!(
++            req.headers.get("authorization").unwrap(),
++            "Bearer grok-session"
++        );
++        assert_eq!(req.headers.get("x-xai-token-auth").unwrap(), "xai-grok-cli");
++        assert_eq!(
++            req.headers.get("x-grok-model-override").unwrap(),
++            "grok-build"
++        );
++        assert!(req.headers.get("chatgpt-account-id").is_none());
++    }
++    let continuation: serde_json::Value = requests[1].body_json()?;
++    assert_eq!(continuation["messages"][2]["tool_call_id"], "call-native-1");
++    assert_eq!(continuation["messages"][2]["content"], "/workspace");
++    Ok(())
++}
++
++#[tokio::test]
++async fn grok_unknown_tool_result_and_untrusted_destination_never_send() -> Result<()> {
++    let state = RecordingState::default();
++    let mut p = provider("grok");
++    p.base_url = "https://cli-chat-proxy.grok.com/v1".into();
++    let output = serde_json::from_value(
++        serde_json::json!({"type":"function_call_output","call_id":"unknown","output":"do not replay"}),
++    )?;
++    let result = codex_api::GrokClient::new(
++        RecordingTransport::new(state.clone()),
++        p.clone(),
++        Arc::new(StaticAuth::new("secret", "account")),
++    )
++    .stream_request(grok_request(vec![output]))
++    .await;
++    assert!(result.is_err());
++    assert!(state.take_stream_requests().is_empty());
++    let mut tiered = grok_request(vec![]);
++    tiered.service_tier = Some("priority".into());
++    assert!(
++        codex_api::GrokClient::new(
++            RecordingTransport::new(state.clone()),
++            p.clone(),
++            Arc::new(StaticAuth::new("secret", "account"))
++        )
++        .stream_request(tiered)
++        .await
++        .is_err()
++    );
++    assert!(state.take_stream_requests().is_empty());
++    p.base_url = "https://example.com/v1".into();
++    assert!(
++        codex_api::GrokClient::new(
++            RecordingTransport::new(state.clone()),
++            p,
++            Arc::new(StaticAuth::new("secret", "account"))
++        )
++        .stream_request(grok_request(vec![]))
++        .await
++        .is_err()
++    );
++    assert!(state.take_stream_requests().is_empty());
++    Ok(())
++}
++
++#[tokio::test]
++async fn grok_post_failure_does_not_retry_an_unknown_inference() -> Result<()> {
++    let transport = FlakyTransport::new();
++    let mut p = provider("grok");
++    p.base_url = "https://cli-chat-proxy.grok.com/v1".into();
++    p.retry.max_attempts = 5;
++    let error = codex_api::GrokClient::new(
++        transport.clone(),
++        p,
++        Arc::new(StaticAuth::new("secret", "account")),
++    )
++    .stream_request(grok_request(vec![]))
++    .await
++    .err()
++    .expect("held failure");
++    assert_eq!(transport.attempts(), 1);
++    assert!(codex_api::map_api_error(error).retry_delay(0).is_none());
++    Ok(())
++}
+diff --git a/codex-rs/config/src/thread_config/proto/codex.thread_config.v1.proto b/codex-rs/config/src/thread_config/proto/codex.thread_config.v1.proto
+index 1e7d72bf33f8512696dacd6693139a2227883a2c..0ab56473e9c80c2f978a4b63375031d6e6127763 100644
+--- a/codex-rs/config/src/thread_config/proto/codex.thread_config.v1.proto
++++ b/codex-rs/config/src/thread_config/proto/codex.thread_config.v1.proto
+@@ -77,0 +78 @@ enum WireApi {
++  WIRE_API_GROK = 2;
+diff --git a/codex-rs/config/src/thread_config/proto/codex.thread_config.v1.rs b/codex-rs/config/src/thread_config/proto/codex.thread_config.v1.rs
+index c6e5b161960dfab0d894cb770324ae5fc3589616..53653660fb6a80189195ca3e9c94afbf0fd2ec0c 100644
+--- a/codex-rs/config/src/thread_config/proto/codex.thread_config.v1.rs
++++ b/codex-rs/config/src/thread_config/proto/codex.thread_config.v1.rs
+@@ -119,0 +120 @@ pub enum WireApi {
++    Grok = 2,
+@@ -129,0 +131 @@ impl WireApi {
++            Self::Grok => "WIRE_API_GROK",
+@@ -136,0 +139 @@ impl WireApi {
++            "WIRE_API_GROK" => Some(Self::Grok),
+diff --git a/codex-rs/config/src/thread_config/remote.rs b/codex-rs/config/src/thread_config/remote.rs
+index fd616daa271de69d8a56f23cd281120abd278314..d89b4dbe7c1246e7a5744f20961a94fe43a34915 100644
+--- a/codex-rs/config/src/thread_config/remote.rs
++++ b/codex-rs/config/src/thread_config/remote.rs
+@@ -163,0 +164 @@ fn model_provider_from_proto(
++        Ok(proto::WireApi::Grok) => WireApi::Grok,
+@@ -334,0 +336 @@ fn proto_wire_api(wire_api: WireApi) -> proto::WireApi {
++        WireApi::Grok => proto::WireApi::Grok,
+@@ -643,0 +646,19 @@ mod tests {
++
++#[cfg(test)]
++#[test]
++fn grok_wire_survives_remote_provider_roundtrip() {
++    let wire = proto_wire_api(WireApi::Grok);
++    assert_eq!(wire as i32, 2);
++    let (_, info) = model_provider_from_proto(proto::ModelProvider {
++        id: "grok".into(),
++        name: "grok".into(),
++        wire_api: wire.into(),
++        ..Default::default()
++    })
++    .unwrap();
++    assert_eq!(info.wire_api, WireApi::Grok);
++    assert_eq!(
++        proto::WireApi::from_str_name("WIRE_API_GROK"),
++        Some(proto::WireApi::Grok)
++    );
++}
+diff --git a/codex-rs/core/config.schema.json b/codex-rs/core/config.schema.json
+index f5149c6efdf7ab9f1550aa0639dd5f2401205f25..92d8239b9c17163743dc35f16bd12234d632c1e0 100644
+--- a/codex-rs/core/config.schema.json
++++ b/codex-rs/core/config.schema.json
+@@ -7362,0 +7363,7 @@
++        },
++        {
++          "description": "Grok CLI session proxy; not the removed generic Chat Completions API.",
++          "enum": [
++            "grok"
++          ],
++          "type": "string"
+diff --git a/codex-rs/core/src/client.rs b/codex-rs/core/src/client.rs
+index 889a62680f58370efe3518bd72af035ffcd4b3fd..494254eaa5bb01f5f6efaebbdb0fd1f079fcffcf 100644
+--- a/codex-rs/core/src/client.rs
++++ b/codex-rs/core/src/client.rs
+@@ -1191 +1191,2 @@ impl ModelClient {
+-        if !self.state.provider.info().supports_websockets
++        if self.state.provider.info().wire_api == WireApi::Grok
++            || !self.state.provider.info().supports_websockets
+@@ -1899 +1900 @@ impl ResponsesHttpExecutor<'_> {
+-            transport = "responses_http",
++            transport = tracing::field::Empty,
+@@ -1926,4 +1927,43 @@ impl ResponsesHttpExecutor<'_> {
+-            let client_setup = self
+-                .client
+-                .current_client_setup(ClientRouting::Workspace)
+-                .await?;
++            let grok = self.client.state.provider.info().wire_api == WireApi::Grok;
++            tracing::Span::current().record(
++                "transport",
++                if grok { "grok_http" } else { "responses_http" },
++            );
++            if grok {
++                self.client
++                    .state
++                    .provider
++                    .info()
++                    .validate()
++                    .map_err(CodexErr::InvalidRequest)?;
++                codex_api::validate_grok_base_url(
++                    self.client
++                        .state
++                        .provider
++                        .info()
++                        .base_url
++                        .as_deref()
++                        .unwrap_or_default(),
++                )
++                .map_err(|error| self.client.state.provider.map_api_error(error))?;
++                if model_info.use_responses_lite {
++                    return Err(CodexErr::InvalidRequest(
++                        "Grok does not support Responses Lite".into(),
++                    ));
++                }
++            }
++            let mut client_setup = if grok {
++                self.client
++                    .provider_client_setup(
++                        ClientRouting::ConfiguredProvider,
++                        &self.client.state.provider,
++                    )
++                    .await?
++            } else {
++                self.client
++                    .current_client_setup(ClientRouting::Workspace)
++                    .await?
++            };
++            if grok {
++                client_setup.redirect_policy = ClientRedirectPolicy::Reject;
++            }
+@@ -1944,2 +1984,7 @@ impl ResponsesHttpExecutor<'_> {
+-            tracing::Span::current().record("api.path", "/responses");
+-            let transport = client_setup.build_api_transport("/responses")?;
++            let endpoint = if grok {
++                "/chat/completions"
++            } else {
++                "/responses"
++            };
++            tracing::Span::current().record("api.path", endpoint);
++            let transport = client_setup.build_api_transport(endpoint)?;
+@@ -1956 +2001 @@ impl ResponsesHttpExecutor<'_> {
+-                RequestRouteTelemetry::for_endpoint("/responses"),
++                RequestRouteTelemetry::for_endpoint(endpoint),
+@@ -2023,7 +2068,18 @@ impl ResponsesHttpExecutor<'_> {
+-            let client = ApiResponsesClient::new(
+-                transport,
+-                client_setup.api_provider,
+-                client_setup.api_auth,
+-            )
+-            .with_telemetry(Some(request_telemetry), Some(sse_telemetry));
+-            let stream_result = client.stream_request(request, options).await;
++            let stream_result = if grok {
++                codex_api::GrokClient::new(
++                    transport,
++                    client_setup.api_provider,
++                    client_setup.api_auth,
++                )
++                .with_telemetry(Some(request_telemetry))
++                .stream_request(request)
++                .await
++            } else {
++                let client = ApiResponsesClient::new(
++                    transport,
++                    client_setup.api_provider,
++                    client_setup.api_auth,
++                )
++                .with_telemetry(Some(request_telemetry), Some(sse_telemetry));
++                client.stream_request(request, options).await
++            };
+@@ -2512 +2568 @@ impl ModelClientSession {
+-            WireApi::Responses => {
++            WireApi::Responses | WireApi::Grok => {
+diff --git a/codex-rs/core/tests/suite/rmcp_client.rs b/codex-rs/core/tests/suite/rmcp_client.rs
+index 64900ec0224a3e33be57a4b069a8e6bafc501bac..13ef7327efb658dc8667e86c0f0f4cc621116a18 100644
+--- a/codex-rs/core/tests/suite/rmcp_client.rs
++++ b/codex-rs/core/tests/suite/rmcp_client.rs
+@@ -5418,0 +5419,105 @@ impl Drop for EnvVarGuard {
++
++/// The real Codex loop executes terminal, file-edit and MCP calls from fragmented Grok
++/// chunks, then sends their attributable results back before a final assistant answer.
++#[cfg(not(target_os = "windows"))]
++#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
++async fn grok_native_terminal_patch_mcp_and_final_continuation() -> anyhow::Result<()> {
++    use codex_model_provider_info::ModelProviderInfo;
++    use codex_model_provider_info::WireApi;
++    use codex_protocol::openai_models::ApplyPatchToolType;
++    use std::sync::atomic::AtomicUsize;
++    use std::sync::atomic::Ordering;
++    use wiremock::Mock;
++    use wiremock::ResponseTemplate;
++    use wiremock::matchers::method;
++    use wiremock::matchers::path;
++    let server = MockServer::start().await;
++    let step = Arc::new(AtomicUsize::new(0));
++    let observed = step.clone();
++    Mock::given(method("POST")).and(path("/v1/chat/completions")).respond_with(move |request:&wiremock::Request| {
++        let body:serde_json::Value=request.body_json().unwrap();
++        assert_eq!(request.headers.get("authorization").unwrap(),"Bearer grok-test-session");
++        assert_eq!(request.headers.get("x-grok-model-override").unwrap(),"grok-build");
++        assert_eq!(request.headers.get("x-xai-token-auth").unwrap(),"xai-grok-cli");
++        assert!(request.headers.get("chatgpt-account-id").is_none());
++        assert_eq!(body["model"],"grok-build");
++        let n=observed.fetch_add(1,Ordering::SeqCst);
++        let chunk=|delta:serde_json::Value,finish:serde_json::Value| format!("data: {}\n\n",json!({"id":format!("grok-{n}"),"model":"grok-observed","choices":[{"index":0,"delta":delta,"finish_reason":finish}]}));
++        if n==3 {
++            let messages=body["messages"].as_array().unwrap();
++            for (id,needle) in [("grok-native-0","terminal-ok"),("grok-native-1","Success"),("grok-native-2","hello-from-grok")] {
++                assert!(messages.iter().any(|m| m["tool_call_id"]==id && m["content"].as_str().unwrap_or_default().contains(needle)),"missing result {id}: {messages:?}");
++            }
++            return ResponseTemplate::new(200).insert_header("content-type","text/event-stream").set_body_string(format!("{}{}data: [DONE]\n\n",chunk(json!({"content":"Native tools completed."}),json!(null)),chunk(json!({}),json!("stop"))));
++        }
++        assert!(n<3,"unexpected inference replay");
++        let (tool_name,args)=match n {
++            0=>("exec_command",json!({"cmd":"printf terminal-ok","max_output_tokens":100})),
++            1=>("apply_patch",json!({"input":"*** Begin Patch\n*** Add File: grok-native.txt\n+native patch\n*** End Patch\n"})),
++            _=>("echo",json!({"message":"hello-from-grok"})),
++        };
++        let function=body["tools"].as_array().unwrap().iter().map(|t| &t["function"]).find(|f| {
++            let description=f["description"].as_str().unwrap_or_default();
++            if n==2 {description.starts_with("mcp__grok_fixture.echo:")} else {description.starts_with(&format!("{tool_name}:")) || description.starts_with(&format!("functions.{tool_name}:"))}
++        }).expect("existing native tool is advertised");
++        let args=args.to_string();let split=args.len()/2;
++        let first=json!({"tool_calls":[{"index":0,"id":format!("grok-native-{n}"),"type":"function","function":{"name":function["name"],"arguments":&args[..split]}}]});
++        let second=json!({"tool_calls":[{"index":0,"function":{"arguments":&args[split..]}}]});
++        ResponseTemplate::new(200).insert_header("content-type","text/event-stream").set_body_string(format!("{}{}{}{}data: [DONE]\n\n",chunk(json!({"content":"Working."}),json!(null)),chunk(first,json!(null)),chunk(second,json!(null)),chunk(json!({}),json!("tool_calls"))))
++    }).mount(&server).await;
++    let auth = crate::suite::client::ProviderAuthCommandFixture::new(&["grok-test-session"])?;
++    let command = stdio_server_bin()?;
++    let base_url = format!("{}/v1", server.uri());
++    let auth_info = auth.auth();
++    let fixture = test_codex()
++        .with_model_info_override("gpt-5.4", |model| {
++            model.slug = "grok-build".into();
++            model.use_responses_lite = false;
++            model.supports_search_tool = false;
++            model.shell_type = ConfigShellToolType::UnifiedExec;
++            model.apply_patch_tool_type = Some(ApplyPatchToolType::Freeform);
++            model.tool_mode = Some(ToolMode::Direct);
++        })
++        .with_config(move |config| {
++            config.model = Some("grok-build".into());
++            config.model_provider_id = "grok".into();
++            config.model_provider = ModelProviderInfo {
++                name: "grok".into(),
++                wire_api: WireApi::Grok,
++                base_url: Some(base_url),
++                auth: Some(auth_info),
++                ..Default::default()
++            };
++            for feature in [
++                Feature::CodeMode,
++                Feature::CodeModeOnly,
++                Feature::CodeModeToolSearch,
++                Feature::CodeModeHost,
++                Feature::ToolSearch,
++                Feature::ToolSearchAlwaysDeferMcpTools,
++            ] {
++                config
++                    .features
++                    .disable(feature)
++                    .expect("disable unqualified fixture feature");
++            }
++            insert_mcp_server(
++                config,
++                "grok_fixture",
++                stdio_transport(command, None, Vec::new()),
++                TestMcpServerOptions::default(),
++            );
++        })
++        .build(&server)
++        .await?;
++    wait_for_mcp_server(&fixture.codex, "grok_fixture").await?;
++    fixture
++        .submit_turn("Run the terminal check, create the file, and call MCP echo.")
++        .await?;
++    assert_eq!(step.load(Ordering::SeqCst), 4);
++    assert_eq!(
++        std::fs::read_to_string(fixture.cwd_path().join("grok-native.txt"))?,
++        "native patch\n"
++    );
++    Ok(())
++}
+diff --git a/codex-rs/model-provider-info/src/lib.rs b/codex-rs/model-provider-info/src/lib.rs
+index 96408491631e40298676bb79a6766b79a5abefad..3aa844c7af4315ba22ac5e02b824dd804b4ca245 100644
+--- a/codex-rs/model-provider-info/src/lib.rs
++++ b/codex-rs/model-provider-info/src/lib.rs
+@@ -119,0 +120,2 @@ pub enum WireApi {
++    /// Grok CLI session proxy; not the removed generic Chat Completions API.
++    Grok,
+@@ -125,0 +128 @@ impl fmt::Display for WireApi {
++            Self::Grok => "grok",
+@@ -138,0 +142 @@ impl<'de> Deserialize<'de> for WireApi {
++            "grok" => Ok(Self::Grok),
+@@ -140 +144,4 @@ impl<'de> Deserialize<'de> for WireApi {
+-            _ => Err(serde::de::Error::unknown_variant(&value, &["responses"])),
++            _ => Err(serde::de::Error::unknown_variant(
++                &value,
++                &["responses", "grok"],
++            )),
+@@ -337,0 +345,19 @@ other non-default provider fields are not supported"
++        if self.wire_api == WireApi::Grok {
++            if self.auth.is_none()
++                || self.is_openai()
++                || self.requires_openai_auth
++                || self.env_key.is_some()
++                || self.experimental_bearer_token.is_some()
++                || self.gateway_oauth.is_some()
++                || self.aws.is_some()
++                || self.supports_websockets
++                || self.supports_standalone_web_search
++            {
++                return Err("Grok session transport requires private command auth and forbids ambient/API-key auth, gateway auth, WebSockets and standalone search".into());
++            }
++            if self.base_url.is_none() {
++                return Err(
++                    "Grok session transport requires an explicit session proxy base_url".into(),
++                );
++            }
++        }
+diff --git a/codex-rs/model-provider-info/src/model_provider_info_tests.rs b/codex-rs/model-provider-info/src/model_provider_info_tests.rs
+index 68b48aadc58475a4fa8c15a04aa651947f87648a..18199c96671511f2ea3cca5afc0082d96a2f6f50 100644
+--- a/codex-rs/model-provider-info/src/model_provider_info_tests.rs
++++ b/codex-rs/model-provider-info/src/model_provider_info_tests.rs
+@@ -1111,0 +1112,26 @@ fn cyber_access_program_capability_uses_provider_identity_and_explicit_overrides
++
++#[test]
++fn grok_wire_is_explicit_and_generic_chat_stays_removed() {
++    let info: ModelProviderInfo =
++        toml::from_str("name = \"Grok\"\nwire_api = \"grok\"").expect("native Grok wire");
++    assert_eq!(info.wire_api.to_string(), "grok");
++    let saved = toml::to_string(&info).unwrap();
++    assert_eq!(toml::from_str::<ModelProviderInfo>(&saved).unwrap(), info);
++    assert!(toml::from_str::<ModelProviderInfo>("name = \"legacy\"\nwire_api = \"chat\"").is_err());
++}
++
++#[test]
++fn grok_session_transport_cannot_select_ambient_or_api_key_auth() {
++    let mut info = ModelProviderInfo {
++        name: "grok".into(),
++        wire_api: WireApi::Grok,
++        base_url: Some("https://cli-chat-proxy.grok.com/v1".into()),
++        ..Default::default()
++    };
++    assert!(info.validate().is_err());
++    info.requires_openai_auth = true;
++    assert!(info.validate().is_err());
++    info.requires_openai_auth = false;
++    info.env_key = Some("XAI_API_KEY".into());
++    assert!(info.validate().is_err());
++}
+diff --git a/codex-rs/model-provider/src/capabilities.rs b/codex-rs/model-provider/src/capabilities.rs
+index 311a83fe459c2e15e7e9d2690dd78f45cd062af0..2acf67d0c91a6f38a746168bfe9eddd863fe1128 100644
+--- a/codex-rs/model-provider/src/capabilities.rs
++++ b/codex-rs/model-provider/src/capabilities.rs
+@@ -34,0 +35,9 @@ impl ProviderCapabilities {
++        if info.wire_api == codex_model_provider_info::WireApi::Grok {
++            return Self {
++                reasoning_summaries: false,
++                image_generation: false,
++                web_search: false,
++                external_web_access: false,
++                remote_compaction: RemoteCompactionSupport::Unsupported,
++            };
++        }
+diff --git a/docs/grok-provider.md b/docs/grok-provider.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..50464db6efd151e1779354dd188f424f7eb393f7
+--- /dev/null
++++ b/docs/grok-provider.md
+@@ -0,0 +1,58 @@
++# Native Grok session transport
++
++The modded native harness supports an explicit `wire_api = "grok"` transport for
++Grok's documented CLI session proxy. This uses the existing Codex turn and tool
++loop. The removed generic `wire_api = "chat"` remains unsupported.
++
++Configure a trusted account-pinned command using the existing provider-auth
++contract. Its private stdout contains only the bearer token. Public status and login controls
++must not return credentials. For example, after account registration in Wake:
++
++```toml
++[model_providers.grok]
++name = "grok"
++wire_api = "grok"
++base_url = "https://cli-chat-proxy.grok.com/v1"
++
++[model_providers.grok.auth]
++command = "codex-wake"
++args = ["--wake-root", "/absolute/private/wake-root", "grok", "auth", "token", "registered-account"]
++cwd = "/absolute/trusted/directory"
++timeout_ms = 5000
++refresh_interval_ms = 60000
++```
++
++The transport requires command authentication and rejects ambient OpenAI auth,
++API-key/environment fallback, gateway auth, WebSockets and standalone search.
++The command arguments select the registered account; credentials are resolved
++once per HTTP request and only its bearer header is forwarded. The request's
++model is also bound to `x-grok-model-override`, alongside the documented native
++session-auth header. Production requests admit only the HTTPS CLI session proxy;
++loopback destinations support local fixtures. Core rejects inference redirects.
++
++A qualified catalog entry must select direct tools, UnifiedExec and the supported
++freeform apply-patch tool, disable Responses Lite and tool search, and advertise
++only qualified capabilities. Eager MCP function namespaces use existing native
++MCP dispatch. This transport alone does not qualify a catalog, account entitlement
++or any model for operator use. Current OpenAI defaults remain unchanged.
++
++The adapter accepts text messages, native function/custom calls and their known
++text results. It wraps a custom tool's input in a JSON `input` argument and restores
++the original native tool name, namespace and call ID. Opaque reasoning is excluded
++from requests. Unsupported history/content is held for an explicit portable
++continuation rather than silently discarded.
++
++Text streams immediately. Function arguments may arrive fragmented and are
++validated before any completed native tool call is emitted. The `[DONE]` marker,
++consistent finish reason, stable response identity, known tool and unique call ID
++are required before committing calls. Missing usage remains unknown. Malformed or
++incomplete streams and unknown results do not become success. An uncertain POST
++or stream failure is non-retryable; reassignment/recovery requires explicit action.
++Local interruption closes the owned stream and does not assert provider-side
++cancellation or zero billing.
++
++Protocol provenance: the official Grok shell documents session-proxy access at
++[Using auth.json for API access](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-shell/README.md#using-authjson-for-api-access).
++The source fixture checks prove local protocol/tool-loop behavior; real sign-in,
++entitlement, exact package qualification and working-profile activation are separate
++gates.

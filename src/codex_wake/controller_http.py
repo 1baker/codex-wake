@@ -26,6 +26,14 @@ TOOLS = {
 }
 
 
+from .grok_provider_auth import tool_specs as grok_auth_specs
+for name, spec in grok_auth_specs().items():
+    TOOLS[name] = (spec[1], dict(type='object', properties=spec[3], required=spec[4], additionalProperties=False))
+
+from .grok_model_catalog import tool_specs as grok_model_specs
+for name, spec in grok_model_specs().items():
+    TOOLS[name] = (spec[1], dict(type='object', properties=spec[3], required=spec[4], additionalProperties=False))
+
 from .account_observation import tool_specs as account_observation_specs
 for name, spec in account_observation_specs().items():
     TOOLS[name] = (spec[1], {'type': 'object', 'properties': spec[3], 'required': spec[4], 'additionalProperties': False})
@@ -158,6 +166,10 @@ class ProtectedOperations:
     # Account/config reads require their own capabilities and an exact account
     # identity grant; inventory observe never authorizes reading native config.
     READ_POLICIES = {
+        'grok_auth.status': ('account.observe', None, None),
+        'grok_auth.revoke': ('account.revoke', None, None),
+        'grok_models.list': ('account.observe', None, None),
+        'grok_models.resolve': ('account.observe', None, None),
         **{'sessions.' + verb: ('observe' if verb in ('capabilities','wait','checkpoint') else 'control', None, None)
             for verb in ('capabilities','create','prompt','wait','cancel','checkpoint','fork')},
         'health.observe': ('observe', None, None),
@@ -259,6 +271,18 @@ class ProtectedOperations:
                 raise InventoryError('configuration_unavailable', 'host account owner unavailable')
             result = execute(self.operations.inventory.root, operation, arguments,
                 accounts=self.operations.accounts, actor=actor,
+                authorize=lambda: self.authority.authenticate(token))
+        elif operation in ('grok_auth.status', 'grok_auth.revoke'):
+            from .grok_provider_auth import observe
+            if self.operations.inventory is None:
+                raise InventoryError('configuration_unavailable', 'Host Grok account owner unavailable.')
+            result = observe(self.operations.inventory.root, arguments, actor=actor,
+                authorize=lambda: self.authority.authenticate(token), operation=operation)
+        elif operation.startswith('grok_models.'):
+            from .grok_model_catalog import observe
+            if self.operations.inventory is None:
+                raise InventoryError('configuration_unavailable', 'Host Grok account owner unavailable.')
+            result = observe(self.operations.inventory.root, operation, arguments, actor=actor,
                 authorize=lambda: self.authority.authenticate(token))
         elif operation.startswith('grok.'):
             from .controller_grok import ControllerGrok

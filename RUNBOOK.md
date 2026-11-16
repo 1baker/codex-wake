@@ -9830,6 +9830,56 @@ normal reconnect. Exact proof/limits: [deployment](docs/dev/plans/0173-agent-har
 Owned integration checkout retires after verified closeout remote custody; unrelated
 worktrees preserved. Memory forbidden, zero writes.
 
+## 2026-11-15 | P233 T5 mixed workers source acceptance
+
+Normal mixed worker controls and pinned account/model inheritance are validated.
+Actual disposable native histories qualify in Wake at45 tokens across parent and
+child; missing child usage holds unknown. Native source45169bbc is preserved by
+exact patch/tree/hash custody; focused worker5, allowance/role12 and schema4 checks
+pass. Earlier fixture failures remain classified and retained. Evidence:
+[acceptance](docs/dev/evidence/plan0233/t5-mixed-workers-acceptance.md).
+T5 tracker closure follows published source readback. Parent628 remains open;
+T6 is next, review0/remediation0, no native installation or live provider calls.
+
+## 2026-11-15 | P233 T6 provider continuation acceptance
+
+Worker native977af9d6 and Wake9051270a accepted after independent exact source,
+patch/tree/bundle and terminal-receipt verification. Safe-boundary native handoff,
+portable context, original active/pending authority and cumulative90 are qualified
+through public native/UI and existing Wake accounting seams. Existing adverse
+missing usage remains unknown. Source integrated;636 closes after published
+readback,637 becomes ready. Parent628 stays open, review0/remediation0; no native
+installation or real-account qualification. Evidence:
+[T6 acceptance](docs/dev/evidence/plan0233/t6-provider-continuations-acceptance.md).
+
+## 2026-11-15 | P233 T7 source acceptance
+
+Nativeabc2ce28/Wake6e6de81c accepted after primary exact source/patch/tree/bundle
+and native13 receipt verification. Repeated Wake auth12/catalog1/usage16 and all
+actual canonical captures: known8/90 and seven unknown/null adverse outcomes.
+Cold strict spending stays held without original live allowance authority;
+provider cancellation/logout is unconfirmed. T7 closes after published readback,
+T8 exact isolated package and real-account qualification next. Parent628 open,
+review0/remediation0. Evidence:
+[T7 acceptance](docs/dev/evidence/plan0233/t7-provider-safety-acceptance.md).
+
+## 2026-11-15 | P233 T8 isolated package accepted; real-account gate remains
+
+Native sourceabc2ce28 unchanged. Complete package entrya54f0739 and all six files
+verified in original and UID1017 copies. Supported upgrade/rollback/history,
+multiclient/reconnect/private ownership and actual failed-start recovery pass;
+installed Wake checks pass. Primary verified worker source2d8a4a39 and receipts.
+T8 remains OPEN because real account sign-in/entitlement/coding proof has not run.
+Fresh Grok status native_auth_missing; prior failed device flow requires operator
+participation before another flow. Corrected gate CLI argument/order documentation.
+No deployment, login retry or real-provider request; review0/remediation0.
+
+
+## 2026-11-15 | P233 eight children closed; single review/remediation complete
+
+T8#639 closed from exact isolated native1a2fb1/e8eb package and real official-account/coding/MCP/mixed-worker/linked-handoff/local-Stop proof. Wakebc7a9 observer fix follows continuation journals as locators and validates canonical lineage; actual interrupted tree now unknown/null rather than qualified zero. Isolated updated wheel1ed42101 has336 matching installed files and75 selected checks covered; source62PASS. Missing test-helper and sudo umask fixture failures are retained, final affected8PASS with private umask077. No private histories/credentials copied into UID1017 fixtures.
+
+Exactly one broad Standards/Spec review and one bounded TDD remediation completed after all8 children closed. One documentation contract mismatch corrected in native7cdb5404; no confirmed Spec blocker. Documentation-only delta does not invalidate qualified binaries/wheel; no rebuild/provider retry issued. Parent628 remains OPEN; no working-profile activation/deployment. Existing two source lanes retained primary-owned for subsequent integration/activation, next review at that stage; current registered inventories Wake124/native21, no new checkout created by this slice. Memoryforbidden, no explicit memory-write request. See [final qualification](docs/dev/evidence/plan0233/t8-final-qualification.md) and [review/remediation](docs/dev/evidence/plan0233/review-and-remediation.md).
 ## Turn | 2026-11-14 | Unified connector control implementation begins
 
 Operator approved Plan0234, public operation seam, eleven-ticket graph and fixed

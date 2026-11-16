@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
-SCOPES = frozenset({'observe', 'control', 'recovery', 'admin', 'account.observe', 'configuration.observe', 'history.observe', 'history.resume', 'migration.observe', 'content.observe', 'terminal.input'})
+SCOPES = frozenset({'history.resume', 'observe', 'recovery', 'history.observe', 'content.observe', 'terminal.input', 'migration.observe', 'account.observe', 'account.revoke', 'control', 'admin', 'configuration.observe'})
 
 
 class AuthError(ValueError):

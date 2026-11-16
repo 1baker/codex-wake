@@ -1,0 +1,52 @@
+diff --git a/codex-rs/codex-api/src/endpoint/grok.rs b/codex-rs/codex-api/src/endpoint/grok.rs
+index 0e3a06eac3917cfd450f5408213bd220094cd258..dbb99e21b91a106b85e28cc5dd9704a7722f554a 100644
+--- a/codex-rs/codex-api/src/endpoint/grok.rs
++++ b/codex-rs/codex-api/src/endpoint/grok.rs
+@@ -123,0 +124,8 @@ impl<T: HttpTransport> GrokClient<T> {
++                ApiError::Transport(codex_client::TransportError::Http { status, .. }) => {
++                    // Keep only the numeric status; provider bodies/headers can contain secrets.
++                    // A failed POST still does not establish final inference usage or safe replay.
++                    invalid(&format!(
++                        "inference HTTP {}; outcome unknown; automatic replay withheld",
++                        status.as_u16()
++                    ))
++                }
+diff --git a/codex-rs/codex-api/tests/clients.rs b/codex-rs/codex-api/tests/clients.rs
+index f1ebd524b5300f348f9aad97fee5dc8cb5b4746f..b67de9f07deaba9c861f6d48e577c5efc3880268 100644
+--- a/codex-rs/codex-api/tests/clients.rs
++++ b/codex-rs/codex-api/tests/clients.rs
+@@ -942,0 +943,34 @@ async fn grok_post_failure_does_not_retry_an_unknown_inference() -> Result<()> {
++
++#[tokio::test]
++async fn grok_http_failure_retains_only_status_without_replay() -> Result<()> {
++    use wiremock::matchers::{method, path};
++    use wiremock::{Mock, MockServer, ResponseTemplate};
++    for status in [400_u16, 503] {
++        let server = MockServer::start().await;
++        Mock::given(method("POST"))
++            .and(path("/v1/chat/completions"))
++            .respond_with(ResponseTemplate::new(status).set_body_string("private-provider-body"))
++            .expect(1)
++            .mount(&server)
++            .await;
++        let mut p = provider("grok");
++        p.base_url = format!("{}/v1", server.uri());
++        p.retry.max_attempts = 5;
++        let error = codex_api::GrokClient::new(
++            codex_client::ReqwestTransport::new(reqwest::Client::new()),
++            p,
++            Arc::new(StaticAuth::new("secret", "account")),
++        )
++        .stream_request(grok_request(vec![]))
++        .await
++        .err()
++        .expect("held HTTP failure");
++        let text = error.to_string();
++        assert!(text.contains(&format!("HTTP {status}")), "{text}");
++        assert!(!text.contains("private-provider-body"));
++        assert!(!text.contains("secret"));
++        assert!(codex_api::map_api_error(error).retry_delay(0).is_none());
++        server.verify().await;
++    }
++    Ok(())
++}

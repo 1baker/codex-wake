@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T7",
+  "issue": 637,
+  "phase": "source_acceptance_pending_primary_custody",
+  "native_base": "977af9d6c5bf2c5d59de1a46009ffa9a34f00b22",
+  "native_commit": "abc2ce28469ca57e584ef33cf71b4ad172f8bb26",
+  "native_tree": "16c26eb541990a1fb57edf7dc2b3346bff1e6dc0",
+  "reconstructed_tree": "16c26eb541990a1fb57edf7dc2b3346bff1e6dc0",
+  "wake_worker_base": "592c97d13b98b784a8067a26fc5c71f85e5caeac",
+  "patch": "t7-provider-safety.patch",
+  "patch_sha256": "16028b811a6e4a118800e69c2945f445dbd3bd4c478c2a316ffa00f099157af4",
+  "apply_flags": [
+    "--unidiff-zero"
+  ],
+  "native_files": {
+    "codex-rs/core/src/agent/control/runtime.rs": "732dd088457a6035863acb18fedab69c6c4e92b28d278c8ade6bf86746b4361f",
+    "codex-rs/core/src/compact.rs": "734d19bec9b107fcadb5c2c10a829a5467199a87e554eb43f5d6e0005a6d808a",
+    "codex-rs/core/src/inference_selection.rs": "a9b5508bae188515e3db953a89208071b71d6143d9c79eec8e644cf9f46e5dc8",
+    "codex-rs/core/src/rollout_budget.rs": "0fca7df5f4f78e09e2d538290e37b8db9bef8994574434e11fc92549d4098910",
+    "codex-rs/core/src/session/handlers.rs": "a56804c4fea2afbe639e16b3250385b092882d5df66b4ce225d519a5ce2b164e",
+    "codex-rs/core/src/session/mod.rs": "cbd22810d78ad953906a7fde6bc3540d854f0003e731e9087917807df721616f",
+    "codex-rs/core/src/session/provider_safety.rs": "680431480a903c7ca91404c66335298b8c2836a29c53b3a0ab0a9f2ce1e7dda7",
+    "codex-rs/core/src/session/turn.rs": "3935b93c58b33e1d202e9e284abbd524b1590f6ffa08f529df261271343315c2",
+    "codex-rs/core/src/session/turn_input.rs": "d6fad80f474eeb66b20f267c3627661e7974f01b1fbf8cdce9ea89bca4aced01",
+    "codex-rs/core/src/tasks/mod.rs": "054d1f1deda9da768426d22860179272f9d2493bcdceed826e9d9aa61a9bec4d",
+    "codex-rs/core/src/thread_manager/provider_continuation.rs": "0b1fb655983eda7f5249c6e9498835c56d112f9704dc7a2e301dcb57d2c2381c",
+    "codex-rs/core/src/tools/parallel.rs": "7e3f5a9026bde31a41c483b7236c1ed925e297d56c74d2c0d2561b9aa3ba94d7",
+    "codex-rs/core/tests/suite/abort_tasks.rs": "a13d4b7bc14e2838260e3330c4edeb6c61b3f704ec1b5b5423e0cb72821726e6"
+  },
+  "private_bundle_sha256": "88851a22d34ccdf337f4ada24f3c62530ad94a532b94028158d2f579a005fe66",
+  "runtime_effects": "source mock/disposable loopback only; no install/restart/live provider/login/logout; prior historical unpinned WebSocket attempt remains documented",
+  "validation": {
+    "native_public_safety": {
+      "job": "job-20261115T120703Z-2cd94dcfa3fb",
+      "receipt": "20261115T120704Z-47353e2a7327/receipt.json",
+      "result": "PASS",
+      "cases": 13,
+      "duration_seconds": 551.766,
+      "stack_bytes": 8388608
+    },
+    "canonical_usage": {
+      "result": "PASS",
+      "receipt": "canonical-safety-usage.json",
+      "known_source_tokens": 8,
+      "known_mixed_tree_tokens": 90,
+      "uncertain_captures": 7,
+      "uncertain_usage": "unknown/null"
+    },
+    "wake_auth": {
+      "result": "PASS",
+      "cases": 12,
+      "receipt": "wake-auth-green.log"
+    },
+    "wake_catalog": {
+      "result": "PASS",
+      "cases": 1,
+      "receipt": "wake-catalog-revocation-green.log"
+    },
+    "wake_usage": {
+      "result": "PASS",
+      "cases": 16,
+      "receipt": "wake-failed-usage-green.log"
+    },
+    "format": {
+      "result": "PASS",
+      "files": 13,
+      "receipt": "changed-rustfmt-check.txt"
+    },
+    "public_schemas": {
+      "result": "UNCHANGED",
+      "base": "977af9d6c5bf2c5d59de1a46009ffa9a34f00b22",
+      "receipt": "public-schema-causal-diff.txt",
+      "scope": "codex-rs/protocol, codex-rs/app-server-protocol, sdk; no generation or unchanged TUI rebuild"
+    }
+  },
+  "limitations": [
+    "Strict cold Grok history may be read, but new spending holds without its original live cumulative allowance authority; no numeric reconstruction/reset.",
+    "Local revocation is an account registration fence, not provider logout/cancellation confirmation; installed real-account proof belongs T8.",
+    "No full isolated package/upgrade/rollback/UID1017 or working-profile qualification is claimed."
+  ],
+  "review_runs": 0,
+  "remediation_runs": 0
+}

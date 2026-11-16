@@ -1,0 +1,71 @@
+{
+  "status": "isolated_package_qualified_live_gate_held",
+  "t8_complete": false,
+  "native_source": "b77a743f7e07edbc5e2f7c30d4e20a56ea4f3df8",
+  "native_tree": "a608795ec6258fed0aa1392d11f81a8e863c2c71",
+  "wake_runtime_source": "a8a9e0c65cc7ab1c456ec787484b0467921eb8f1",
+  "installed_wake_wheel_sha256": "5d94731b6e5d00d8b69e41db12ca88f2b090996c1c546c4bc323922bf7d0ddc9",
+  "files": {
+    "codex-package.json": "64a6c8f7bc146a94e9af84915c6a08d5457d58b5936f825894bbb8e6b1be8133",
+    "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+    "codex-resources/bwrap": "eb495040c5e8c3bc9c7bdec039166d36425314d8ac092083cfac192ff9c6b4d0",
+    "bin/codex-code-mode-host": "664caa8b7b5dba41ad83c70453bc03d14e1a2ae0190e5f6cb783ce70510e5cea",
+    "bin/codex-exec-server": "dfeca3d47ceb6f3ebe1bad27a21d795017f8ae8608bc8528e779ea4f1c3b6d66",
+    "bin/codex": "fc9439b45efc5e1005911d54260b0bc47e0e7b4842ba8bfcecf07d15a0a65f74"
+  },
+  "package_content_sha256": "cdd772c6ace5f248452530b1ad3454d0abb3c956eaa25da112b74e9340715174",
+  "process_census": {
+    "owned": 0,
+    "protected_preexisting": 13,
+    "other_unattributed": 0
+  },
+  "old_packages_a54_e69_preserved": true,
+  "rollback_4712_all6_preserved": true,
+  "review_counter": 0,
+  "remediation_counter": 0,
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "primary_verified": true,
+  "entrypoint_sha256": "fc9439b45efc5e1005911d54260b0bc47e0e7b4842ba8bfcecf07d15a0a65f74",
+  "primary_uid_hash_checks": 34,
+  "jobs": [
+    {
+      "job": "job-20261115T203515Z-b687f373caa6",
+      "result": "PASS",
+      "seconds": 881.851,
+      "receipt_sha256": "3bd2a377d1bb766900d3a134a3cdb1a45815e60111bd2fe8286e8a44084408d3"
+    },
+    {
+      "job": "job-20261115T204928Z-51ef56221ff6",
+      "result": "PASS",
+      "seconds": 20.362,
+      "receipt_sha256": "6847906498fc30e23ca16dffb8028e58e6dfd40722f4d1827095801964db8843"
+    },
+    {
+      "job": "job-20261115T204928Z-599f5b95dcc7",
+      "result": "PASS",
+      "seconds": 108.029,
+      "receipt_sha256": "c5d9252a77811ee5d44e6519d18becbd7b7b892bb42fa5fbcb21c72f9e1173e8"
+    },
+    {
+      "job": "job-20261115T204928Z-a47b4c9e1e11",
+      "result": "PASS",
+      "seconds": 107.393,
+      "receipt_sha256": "bb9238bc1154ba6d27a56fa792d546ccbc67c62bda934ba5048d87b680ab586c"
+    },
+    {
+      "job": "job-20261115T204928Z-e887083fa7a8",
+      "result": "PASS",
+      "seconds": 8.257,
+      "receipt_sha256": "bb3f02eadeaa5277a8c42dc9daa4aea5a042e54ea8d08e6dcf57115e0e995273"
+    }
+  ],
+  "limitations": [
+    "Shared WSL kernel; real isolated Linux UID1017, local fixtures only.",
+    "Header construction and package qualified; live HTTP426 resolution unproven.",
+    "Previous held histories and unknown usage retained; no replay or additional live authority.",
+    "No working profile installation, restart or deployment."
+  ]
+}

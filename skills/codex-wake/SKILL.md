@@ -11,6 +11,7 @@ registration, delivery, enforcement or refresh.
 
 | Request | Required reference |
 | --- | --- |
+| Grok inference or workers inside Codex | [Native Grok provider status](references/grok-native-provider.md) |
 | Token/time allowance for the existing native `/goal`; enrollment or held enforcement | [Existing goal limits](references/existing-goal-limits.md) |
 | Controller maintenance or real-agent acceptance | [Operator maintenance and acceptance](references/controller-maintenance.md) |
 | Memory, swap, CPU or task controls in a dedicated executor | [Resource limits](references/resource-limits.md) |

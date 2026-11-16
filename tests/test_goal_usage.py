@@ -47,6 +47,51 @@ class GoalUsageTests(unittest.TestCase):
         self.addCleanup(scratch.cleanup)
         self.home = Path(scratch.name)
 
+    def test_interrupted_grok_session_keeps_unobserved_usage_unknown(self):
+        from codex_wake.goal_usage import observe_session_usage
+        for prior_usage in (False, True):
+            rows = []
+            if prior_usage:
+                rows += [event('task_started', turn_id='before'),
+                         response('root', 'before', 'known', 40),
+                         event('task_complete', turn_id='before')]
+            rows += [event('task_started', turn_id='uncertain'),
+                     event('turn_aborted', turn_id='uncertain', reason='interrupted')]
+            rollout(self.home, 'root', rows, model_provider='grok__personal')
+            result = observe_session_usage(self.home, 'root', token_accounting='cache_inclusive')
+            self.assertEqual(result['state'], 'unknown', result)
+            self.assertIsNone(result['used_tokens'])
+            self.assertEqual(result['reason'], 'provider_completion_unconfirmed')
+
+    def test_failed_grok_request_keeps_unobserved_usage_unknown(self):
+        from codex_wake.goal_usage import observe_session_usage
+        for prior_usage in (False, True):
+            rows = []
+            if prior_usage:
+                rows += [event('task_started', turn_id='before'),
+                         response('root', 'before', 'known', 40),
+                         event('task_complete', turn_id='before')]
+            rows += [event('task_started', turn_id='uncertain'),
+                     event('task_complete', turn_id='uncertain', error={
+                         'message': 'Grok work held: request completion unobserved',
+                         'codex_error_info': 'other'})]
+            rollout(self.home, 'root', rows, model_provider='grok__personal')
+            result = observe_session_usage(self.home, 'root', token_accounting='cache_inclusive')
+            self.assertEqual(result['state'], 'unknown', result)
+            self.assertIsNone(result['used_tokens'])
+            self.assertEqual(result['reason'], 'provider_completion_unconfirmed')
+
+    def test_observed_grok_budget_hold_retains_known_charge(self):
+        from codex_wake.goal_usage import observe_session_usage
+        rollout(self.home, 'root', [event('task_started', turn_id='known'),
+                response('root', 'known', 'charged', 40),
+                event('task_complete', turn_id='known', error={
+                    'message': 'shared rollout token budget exhausted',
+                    'codex_error_info': 'session_budget_exceeded'})], model_provider='grok__personal')
+        result = observe_session_usage(self.home, 'root', token_accounting='cache_inclusive')
+        self.assertEqual(result['state'], 'qualified', result)
+        self.assertEqual(result['used_tokens'], 40)
+
     def test_tool_payload_volume_does_not_exhaust_accounting_evidence_budget(self):
         rollout(self.home,'root',[goal(),event('task_started',turn_id='work'),
             row('response_item',dict(type='message',content='x'*12000)),
@@ -170,6 +215,79 @@ class GoalUsageTests(unittest.TestCase):
             stream.write('not-json-unrelated-history\n' * 800000)
         assert observe_usage(tmp_path,'root',CREATED)['used_tokens']==40
 
+
+    def test_indexed_provider_continuation_stop_is_not_free_work(self):
+        root = rollout(self.home, 'root', [], model_provider='grok__personal', timestamp=START)
+        middle = rollout(self.home, 'openai-route', [], parent_thread_id='root',
+                         forked_from_id='root', model_provider='openai')
+        stopped = rollout(self.home, 'grok-return', [
+            event('task_started', turn_id='stopped'),
+            event('turn_aborted', turn_id='stopped', reason='interrupted')],
+            parent_thread_id='openai-route', forked_from_id='openai-route',
+            model_provider='grok__personal')
+        connection = sqlite3.connect(self.home/'state_5.sqlite')
+        self.addCleanup(connection.close)
+        connection.execute('CREATE TABLE threads (id TEXT PRIMARY KEY, rollout_path TEXT, source TEXT)')
+        connection.executemany('INSERT INTO threads VALUES(?,?,?)', [
+            ('root', str(root), 'cli'), ('openai-route', str(middle), 'cli'),
+            ('grok-return', str(stopped), 'cli')])
+        connection.commit()
+        directory = self.home/'provider_continuations'; directory.mkdir(mode=0o700)
+        for source, successor in [('root', 'openai-route'), ('openai-route', 'grok-return')]:
+            journal = directory/(source+'.json')
+            journal.write_text(json.dumps(dict(version=1, source=source, successor=successor,
+                session_id='root', state='ready', authority_revision='a'*64, context_revision='b'*64)))
+            journal.chmod(0o600)
+        result = observe_usage(self.home, 'root', 0, session_scope=True,
+                               token_accounting='cache_inclusive')
+        self.assertEqual(result['state'], 'unknown', result)
+        self.assertIsNone(result['used_tokens'])
+        self.assertEqual(result['reason'], 'provider_completion_unconfirmed')
+
+        rollout(self.home, 'grok-return', [event('task_started', turn_id='settled'),
+            response('grok-return', 'settled', 'actual-charge', 20),
+            event('task_complete', turn_id='settled')], parent_thread_id='openai-route',
+            forked_from_id='openai-route', model_provider='grok__personal')
+        settled = observe_usage(self.home, 'root', 0, session_scope=True,
+                                token_accounting='cache_inclusive')
+        self.assertEqual(settled['state'], 'qualified', settled)
+        self.assertEqual(settled['used_tokens'], 20)
+        self.assertEqual(set(settled['thread_ids']), {'root', 'openai-route', 'grok-return'})
+        journal = directory/'openai-route.json'; good = json.loads(journal.read_text())
+        for change in ({'state': 'held'}, {'session_id': 'foreign-session'}):
+            with self.subTest(invalid_journal=change):
+                journal.write_text(json.dumps(dict(good, **change)))
+                held = observe_usage(self.home, 'root', 0, session_scope=True)
+                self.assertEqual(held['state'], 'unknown', held)
+                self.assertIsNone(held['used_tokens'])
+        journal.write_text(json.dumps(good))
+        connection.execute("DELETE FROM threads WHERE id='grok-return'"); connection.commit()
+        missing = observe_usage(self.home, 'root', 0, session_scope=True)
+        self.assertEqual(missing['state'], 'unknown', missing)
+        self.assertIsNone(missing['used_tokens'])
+
+    def test_staged_continuation_keeps_current_source_accounting(self):
+        root = rollout(self.home, 'root', [event('task_started', turn_id='work'),
+            response('root', 'work', 'settled', 40)], timestamp=START)
+        connection = sqlite3.connect(self.home/'state_5.sqlite')
+        self.addCleanup(connection.close)
+        connection.execute('CREATE TABLE threads (id TEXT PRIMARY KEY, rollout_path TEXT, source TEXT)')
+        connection.execute('INSERT INTO threads VALUES(?,?,?)', ('root', str(root), 'cli'))
+        connection.commit()
+        directory = self.home/'provider_continuations'; directory.mkdir(mode=0o700)
+        journal = directory/'root.json'
+        for state in ('staged', 'preparing', 'ready'):
+            journal.write_text(json.dumps(dict(version=1, source='root', successor='not-created',
+                session_id='root', state=state, authority_revision='a'*64, context_revision='b'*64)))
+            journal.chmod(0o600)
+            result = observe_usage(self.home, 'root', 0, session_scope=True,
+                                   token_accounting='cache_inclusive')
+            if state == 'ready':
+                self.assertEqual(result['state'], 'unknown', result)
+                self.assertIsNone(result['used_tokens'])
+            else:
+                self.assertEqual(result['state'], 'qualified', result)
+                self.assertEqual(result['used_tokens'], 40)
 
     def test_indexed_shared_home_excludes_thousands_of_unrelated_rollouts(self):
         root=rollout(self.home,'root',[goal(),event('task_started',turn_id='work'),

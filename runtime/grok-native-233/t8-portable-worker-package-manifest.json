@@ -1,0 +1,73 @@
+{
+  "native_source": "1a2fb1df4cefdef9782cd82d8cceef8c70e1c05c",
+  "native_tree": "fc3e28d007f1b9925b3f768d3e6d894f491d2ec3",
+  "files": {
+    "codex-package.json": "64a6c8f7bc146a94e9af84915c6a08d5457d58b5936f825894bbb8e6b1be8133",
+    "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+    "codex-resources/bwrap": "eb495040c5e8c3bc9c7bdec039166d36425314d8ac092083cfac192ff9c6b4d0",
+    "bin/codex-code-mode-host": "0f473d0f4ff857712c350b036567b8f9b013c61c816936860b3375173633f6d3",
+    "bin/codex-exec-server": "c89e252c64ace942c64793abde6d3d826fa2d2c0afb0ec466d92dcc523befceb",
+    "bin/codex": "e8eb511af74de41d0d336a0afc6715df15cbd15583977996eb661981de3aea1d"
+  },
+  "package_content_sha256": "8ddc6ca9a11dcc1c9feeac31413f8d7f48f2265690ef3dc52e3a8bf008fd2c5a",
+  "process_census": {
+    "owned": 0,
+    "protected_preexisting": 0,
+    "protected_expected": 0,
+    "same_boot_verified": true,
+    "other_unattributed": 0
+  },
+  "all_six_prior_packages_preserved": true,
+  "rollback_4712_all6_preserved": true,
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "status": "implementation_qualified",
+  "t8_complete": true,
+  "primary_verified": true,
+  "entrypoint_sha256": "e8eb511af74de41d0d336a0afc6715df15cbd15583977996eb661981de3aea1d",
+  "primary_source_file_hash_checks": 6,
+  "primary_uid_file_hash_checks": 30,
+  "primary_uid_runtime_receipt_hash_checks": 2,
+  "jobs": [
+    {
+      "job": "job-20261116T033647Z-c056ce82ffde",
+      "result": "PASS",
+      "seconds": 418.61,
+      "receipt_sha256": "9164104e3534798d1d91e849864a0ac75611565ede6651fcd1643cdd750ee7b3"
+    },
+    {
+      "job": "job-20261116T034440Z-0bf959f619a5",
+      "result": "PASS",
+      "seconds": 10.207,
+      "receipt_sha256": "76f73f962173c8ad66b767d738c997ddd8a67c959b0c600d004181fac4386020"
+    },
+    {
+      "job": "job-20261116T034440Z-48bc1e9a62d5",
+      "result": "PASS",
+      "seconds": 18.384,
+      "receipt_sha256": "bf6ae721d192c562bd70ac595a7b8dbfd7bc87572e588276ccaf5c112b8fdca0"
+    },
+    {
+      "job": "job-20261116T034440Z-fd05a73f507c",
+      "result": "PASS",
+      "seconds": 70.339,
+      "receipt_sha256": "632ef74f9e53684d5d297a5d27cc13db5999ff0cc2356a9fd5ae577bd5a0eb03"
+    },
+    {
+      "job": "job-20261116T034440Z-fea96e1172f8",
+      "result": "PASS",
+      "seconds": 70.397,
+      "receipt_sha256": "c6370b4e706e42d1bb71ebcb29c26114cfaad04ed5a81d2da25debd0694741c7"
+    }
+  ],
+  "review_counter": 0,
+  "remediation_counter": 0,
+  "wake_runtime_source": "bc7a9e110db41ed20c30e7c944b6c86b7b988508",
+  "installed_wake_wheel_sha256": "1ed42101dff3679c18331b88cd4499afe22499d7bc80647370b3d3922c9d53ba",
+  "installed_wake_files": 336,
+  "installed_selected_checks": 75,
+  "review_runs": 0,
+  "remediation_runs": 0
+}

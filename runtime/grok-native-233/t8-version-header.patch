@@ -1,0 +1,34 @@
+diff --git a/codex-rs/codex-api/src/endpoint/grok.rs b/codex-rs/codex-api/src/endpoint/grok.rs
+index dbb99e21b91a106b85e28cc5dd9704a7722f554a..d06b4b9144e4973f3ae73eb8297df1e54135fe35 100644
+--- a/codex-rs/codex-api/src/endpoint/grok.rs
++++ b/codex-rs/codex-api/src/endpoint/grok.rs
+@@ -17,0 +18,5 @@ use std::sync::Arc;
++// Explicit reviewed Grok Build wire-compatibility profile, not the Codex product version.
++// Matches the pinned official 1.0.77 auth client used for P233 qualification.
++// Profile changes require renewed protocol/package/real-account qualification.
++const GROK_WIRE_COMPATIBILITY_VERSION: &str = "1.0.77";
++
+@@ -94,0 +100,10 @@ impl<T: HttpTransport> GrokClient<T> {
++        // The official sampler uses this header for proxy version gating.
++        // Keep our product identity explicit rather than claiming to run Grok CLI.
++        headers.insert(
++            "x-grok-client-version",
++            HeaderValue::from_static(GROK_WIRE_COMPATIBILITY_VERSION),
++        );
++        headers.insert(
++            "x-grok-client-identifier",
++            HeaderValue::from_static("codex-wake-native"),
++        );
+diff --git a/codex-rs/codex-api/tests/clients.rs b/codex-rs/codex-api/tests/clients.rs
+index b67de9f07deaba9c861f6d48e577c5efc3880268..10774c64d3f6b7ccb6e8bb57fb4eee3273d494b7 100644
+--- a/codex-rs/codex-api/tests/clients.rs
++++ b/codex-rs/codex-api/tests/clients.rs
+@@ -866,0 +867,8 @@ async fn grok_fragmented_calls_preserve_native_identity_and_tool_continuation()
++        assert_eq!(
++            req.headers.get("x-grok-client-version").map(|v| v.to_str().unwrap()),
++            Some("1.0.77"),
++        );
++        assert_eq!(
++            req.headers.get("x-grok-client-identifier").map(|v| v.to_str().unwrap()),
++            Some("codex-wake-native"),
++        );

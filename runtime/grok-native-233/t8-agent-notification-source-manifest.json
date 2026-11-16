@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "program": "P233",
+  "ticket": "T8",
+  "issue": 639,
+  "phase": "agent_notification_source_validated_package_pending",
+  "native_base": "23bc20474a24e7afbb59a02e0e070017ef58080a",
+  "native_commit": "ee0e0b82ff88a3060d035782229931e8f9484ee9",
+  "native_tree": "034e4da995a9e0b062d09f89a58d8a8243ac49b7",
+  "reconstructed_tree": "034e4da995a9e0b062d09f89a58d8a8243ac49b7",
+  "patch": "t8-agent-notification.patch",
+  "patch_sha256": "36eab71cb9d3102f672d246b0528b1069d2939fb443e4e3717cdf058e70b740e",
+  "apply_flags": [
+    "--unidiff-zero"
+  ],
+  "native_files": {
+    "codex-rs/codex-api/src/grok.rs": "f7ac9ab6cef74f8f3a37011e1b2711de7c3093d3c29e441b5989abd9262b3444",
+    "codex-rs/codex-api/tests/clients.rs": "228ecb8579ddd3be41a02df4a979105b4b4e00953b56f3fdaea4cb68fa5cdc4f"
+  },
+  "private_bundle_sha256": "ff38b1be6a3d53bdf491f6c1b4875452ec0ac0f83ccf09a82ac452e064e5818b",
+  "public_schema_changes": false,
+  "validation": {
+    "red_job": "job-20261116T023456Z-f9a33f3ceba9",
+    "red": "compiled; public native client rejects actual plaintext AgentMessage as unsupported history before HTTP",
+    "green_job": "job-20261116T023855Z-e409c6803175",
+    "green_api_clients": 5,
+    "green_existing_sse_units": 4,
+    "green_seconds": 40.594,
+    "green_client_execution_seconds": 0.38,
+    "adverse": "mixed plaintext/ciphertext AgentMessage rejected without any HTTP dispatch",
+    "unchanged_core_reused": "12 focused worker/OpenAI safety checks passed at23bc; this delta only Grok request converter+public client assertions, no Core/schema modifications"
+  },
+  "live_status": "actual real OpenAI child completed; old Grok parent held on notification conversion. Histories retained; fixed package pending; no replay.",
+  "review_runs": 0,
+  "remediation_runs": 0
+}

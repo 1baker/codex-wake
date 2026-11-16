@@ -1,0 +1,23 @@
+diff --git a/docs/grok-provider.md b/docs/grok-provider.md
+index 50464db6efd151e1779354dd188f424f7eb393f7..4b091f5b2cff5c2cdcad3737211b4b1bf0f03c7c 100644
+--- a/docs/grok-provider.md
++++ b/docs/grok-provider.md
+@@ -12 +12 @@ must not return credentials. For example, after account registration in Wake:
+-[model_providers.grok]
++[model_providers.grok__registered-account]
+@@ -17,3 +17,3 @@ base_url = "https://cli-chat-proxy.grok.com/v1"
+-[model_providers.grok.auth]
+-command = "codex-wake"
+-args = ["--wake-root", "/absolute/private/wake-root", "grok", "auth", "token", "registered-account"]
++[model_providers.grok__registered-account.auth]
++command = "/absolute/path/to/codex-wake"
++args = ["--wake-root", "/absolute/private/wake-root", "grok", "auth", "token", "registered-account", "--expected-account-revision", "account-revision-from-qualified-selection"]
+@@ -22 +22 @@ timeout_ms = 5000
+-refresh_interval_ms = 60000
++refresh_interval_ms = 0
+@@ -27 +27,4 @@ API-key/environment fallback, gateway auth, WebSockets and standalone search.
+-The command arguments select the registered account; credentials are resolved
++Use the absolute executable path and account revision from the qualified Wake
++catalog; these placeholders must match the accepted selection. The zero refresh
++interval prevents bearer reuse across requests. The command arguments pin the
++registered account revision; credentials are resolved
