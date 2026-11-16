@@ -1,17 +1,23 @@
 # 0249 — Stable Time monitor clock release (#702)
 
-State: OPEN
+State: CLOSED
 Owner root/ecochran76; WIP1. Branch fix/monitor-clock-release-702.
 Parent diagnostic: MONITOR-CLOCK-01, independent of unfinished native expiry #695.
 
 ## Current State
 
-Clock repair carried forward from9a670307 onto current main, retaining the Grok
-release. One bounded two-axis source review reports Standards0/Spec0 findings.
-Clock source previously passed44 affected Python3.11 and16 selected Python3.12
-checks and real configured-clock private-owner acceptance. Clock-only release validation covers66 affected checks on both supported Python
-versions, with original failures and focused corrections retained. PR704 merge
-and exact installed-wheel qualification remain pending.
+PR704 merged as a4b2a977. Exact dev40 wheel e9b746afc899 passed UID1017
+installed16 checks and341 module-file hashes. The working immutable prefix
+preserves31 dependency versions, selects all9 launchers, and refreshes the
+controller/connector readers. Actual installed CLI monitor start/read/stop proves
+stable_time_counter freshness; its owned process is gone. OAuth metadata200 and
+anonymous protected requests401 preserve access boundaries. Dev39 rollback remains.
+No native restart was issued; working daemon1879 is unchanged. Of23 captured
+native process generations,22 remain and one exited with cause unestablished.
+No blanket native-process preservation claim. #702 outcome complete; #695 remains
+OPEN with separate native/time qualification. See deployment.json and review.md
+under docs/dev/evidence/issue0702. Source review0/0, all observed selected failures
+have focused corrections; no full-suite-green or paid-hosted-CI claim.
 
 ## Scope and acceptance
 

@@ -1,0 +1,40 @@
+{
+  "source": "a4b2a977bed16a051fb267ae8ef29c990860a76c",
+  "pr": 704,
+  "version": "0.22.0.dev40",
+  "wheel_sha256": "e9b746afc899012537aa70e9f903ecf499d39b9317c842a5b5c038550e501dd8",
+  "module_files_verified": 341,
+  "dependency_versions_preserved": 31,
+  "uid1017": {
+    "python": "3.12.3",
+    "installed_tests": 16,
+    "seconds": 12.293810785995447,
+    "owned_processes_remaining": 0,
+    "production_credentials_copied": false
+  },
+  "working": {
+    "python": "3.12.13",
+    "launchers": 9,
+    "services_refreshed": [
+      "codex-wake-controller.service",
+      "codex-wake-connector.service"
+    ],
+    "private_cli_monitor": "passed",
+    "freshness": "fresh",
+    "freshness_basis": "stable_time_counter",
+    "age_upper_seconds": 0.2794571859296483,
+    "owned_monitor_remaining": 0,
+    "metadata_http": 200,
+    "anonymous_mcp_http": 401,
+    "anonymous_controller_http": 401
+  },
+  "rollback_retained": true,
+  "native_restart_issued": false,
+  "native_baseline_generations": 23,
+  "native_generations_preserved": 22,
+  "native_exit_cause_unestablished": true,
+  "working_native_daemon_pid1879_hash_preserved": true,
+  "hosted_ci": "skipped per operator cost policy",
+  "full_suite_green": false,
+  "parent695": "OPEN"
+}

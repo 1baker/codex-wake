@@ -8,12 +8,12 @@ lanes:
     plan: docs/dev/plans/0249-2026-11-16-monitor-clock-release.md
     branch: fix/monitor-clock-release-702
     target: origin/main
-    plan_state: OPEN
-    custody_state: ACTIVE_WORKTREE
+    plan_state: CLOSED
+    custody_state: INTEGRATED
     dependencies: []
     overlaps: [native-expiry-695]
     updated_at: 2026-11-16
-    disposition: Clock-only carry-forward; native expiry695 remains separate and unqualified
+    disposition: PR704 merged and dev40 deployed; exact wheel and real-clock CLI qualified; temporary checkout retiring after evidence custody. Native expiry695 remains open.
   - id: P233
     owner: primary / ecochran76
     objective: Use native Grok models inside the modded Codex tool and worker loop
