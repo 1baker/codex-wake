@@ -1,6 +1,21 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: P250
+    owner: primary / ecochran76
+    objective: Upgrade retained native Wake governor and Grok mods to upstream0.169.0
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/707]
+    plan: docs/dev/plans/0250-2026-11-16-native-0169-upgrade.md
+    branch: feat/native-0169-upgrade
+    worker_branches: [feat/native-0169-upgrade]
+    target: origin/main
+    plan_state: IN_PROGRESS
+    custody_state: CHECKPOINTED
+    dependencies: []
+    overlaps: [P233, native-expiry-695]
+    updated_at: 2026-11-16
+    disposition: Retained native checkout reused;25 source conflicts resolved, schemas generating before native carry regression and exact package qualification. Working0.167 untouched; frontenddev41 preserved. No native push, paid CI or live inference.
+
   - id: monitor-clock-702
     owner: root / ecochran76
     objective: Release qualified Stable Time monitor freshness

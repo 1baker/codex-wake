@@ -1,0 +1,18 @@
+{
+  "native_commit": "a5806e371bf306feb4513c7ef4ac2e77e1a3c5f2",
+  "native_tree": "af926e88d48417af3dbd60ebba8d1555ea5f8e50",
+  "upstream_commit": "d32063f96c2dff1dc96af839b3952abb6acfeda4",
+  "reconstructed_tree_verified": true,
+  "package_hashes": {
+    "codex-package.json": "dd2023289d052ab244c5ccf2c38c19e5812d445be8547f3c8bef5f8bc2ae1ff7",
+    "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+    "codex-resources/bwrap": "7d89611fdd76f7771021bea727185ca400175141c13c8880cd811d4baacf9f8c",
+    "bin/codex-code-mode-host": "fdcd51217542d5b0c31d6f1f56b16721373085b46924509e87c5ed0258336cb5",
+    "bin/codex-exec-server": "8be4da6f5f556d95214e361967e71cec132f823757af9b9037b63c17ce27ddff",
+    "bin/codex": "f32139874cb8e345b0e9ad9980a645df80025e6db57fe423ef7e3143e16e3067"
+  },
+  "package_build_seconds": 1846.212,
+  "runtime_qualification": "pending_worker",
+  "bundle_sha256": "5e2c6d5e95461ddf10dbe40be458209a4c730a3fc5cec5b9ad1d2aa1c742bb0e",
+  "patch_sha256": "d1295082502660ac17f71c2839f8b1e82044eb08a594fdf330ac4426c14cc796"
+}
