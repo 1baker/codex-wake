@@ -1,0 +1,20 @@
+{
+  "state": "deployed_verified",
+  "pid": 60795,
+  "native_version": "0.169.0",
+  "native_commit": "a5806e371bf306feb4513c7ef4ac2e77e1a3c5f2",
+  "package_hashes": {
+    "codex-package.json": "dd2023289d052ab244c5ccf2c38c19e5812d445be8547f3c8bef5f8bc2ae1ff7",
+    "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+    "codex-resources/bwrap": "7d89611fdd76f7771021bea727185ca400175141c13c8880cd811d4baacf9f8c",
+    "bin/codex-code-mode-host": "fdcd51217542d5b0c31d6f1f56b16721373085b46924509e87c5ed0258336cb5",
+    "bin/codex-exec-server": "8be4da6f5f556d95214e361967e71cec132f823757af9b9037b63c17ce27ddff",
+    "bin/codex": "f32139874cb8e345b0e9ad9980a645df80025e6db57fe423ef7e3143e16e3067"
+  },
+  "all6_actual_installed_verified": true,
+  "proc_executable_hash_verified": true,
+  "configuration_revision": "c2a09095e731699b11e5534be96eecd7b3aa0a9d7e126811e66b596496a13631",
+  "pr": 708,
+  "merge_commit": "ea4781441de3365f32631821ac1157fe0fcaf524",
+  "coverage_limit": "separate concurrent local-tool Stop race not independently qualified"
+}
