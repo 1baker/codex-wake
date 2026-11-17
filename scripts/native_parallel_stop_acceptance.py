@@ -167,6 +167,19 @@ def main():
             "unix://" + str(sock.resolve(strict=True)), str(binary), method, params, 10
         )
 
+    def process_state(pid):
+        try:
+            return (
+                (Path("/proc") / str(pid) / "stat")
+                .read_text()
+                .rsplit(")", 1)[1]
+                .split()[0]
+            )
+        except (FileNotFoundError, ProcessLookupError):
+            return "absent"
+        except PermissionError:
+            return "unknown"
+
     def wait(fn, label, seconds=15):
         until = time.monotonic() + seconds
         while time.monotonic() < until:
@@ -227,8 +240,7 @@ def main():
         (work / "release").touch()
 
         def dead(pid):
-            p = Path("/proc") / str(pid) / "stat"
-            return not p.exists() or p.read_text().rsplit(")", 1)[1].split()[0] == "Z"
+            return process_state(pid) in ("absent", "Z")
 
         wait(lambda: all(dead(p) for p in pids), "both owned tools terminated", 5)
         assert not any((work / ("late" + str(n))).exists() for n in range(2)), (
@@ -258,16 +270,14 @@ def main():
             time.monotonic() - report.pop("started_monotonic"), 3
         )
         report["post_cleanup_tool_states"] = {
-            str(pid): (
-                "absent"
-                if not (Path("/proc") / str(pid) / "stat").exists()
-                else (Path("/proc") / str(pid) / "stat")
-                .read_text()
-                .rsplit(")", 1)[1]
-                .split()[0]
-            )
-            for pid in report.get("tool_pids", [])
+            str(pid): process_state(pid) for pid in report.get("tool_pids", [])
         }
+        if any(
+            state not in ("absent", "Z")
+            for state in report["post_cleanup_tool_states"].values()
+        ):
+            report["state"] = "failed"
+            report["error"] = "owned_tool_cleanup_unconfirmed"
         (base / "result.json").write_text(json.dumps(report, indent=2) + "\n")
         print(json.dumps(report))
     return 0 if report["state"] == "passed" else 1
