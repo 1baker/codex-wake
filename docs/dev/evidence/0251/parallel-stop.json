@@ -1,0 +1,38 @@
+{
+  "work_item": "LOCAL-P251",
+  "script_sha256": "1e2d6f5db1e4868cd86902135031247df7f964deb6151ecf875d143a2efc48b4",
+  "native_sha256": "f32139874cb8e345b0e9ad9980a645df80025e6db57fe423ef7e3143e16e3067",
+  "positive": {
+    "state": "passed",
+    "calls": 1,
+    "both_tools_dead": true,
+    "no_post_stop_tool_marker": true,
+    "native_reaped": true,
+    "elapsed_seconds": 2.73
+  },
+  "negative_control": {
+    "state": "failed",
+    "calls": 2,
+    "error": "tool_continued_after_stop",
+    "native_reaped": true,
+    "elapsed_seconds": 3.452
+  },
+  "positive_tool_states": [
+    "absent",
+    "absent"
+  ],
+  "negative_tool_states": [
+    "absent",
+    "absent"
+  ],
+  "remaining_owned_probe_processes": [],
+  "guards": [
+    "working UID rejected",
+    "mismatched package hash rejected",
+    "existing output directory rejected"
+  ],
+  "coverage_limit": "two already-active tools; no exhaustive/queued/scheduler-boundary claim",
+  "external_provider_calls": 0,
+  "native_rebuild": false,
+  "working_profile_changed": false
+}
