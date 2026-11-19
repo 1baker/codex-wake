@@ -52,7 +52,8 @@ def _request(args, root):
         target = dict(args._schedule_target)
     else:
         bind_mode(args, root, target)
-    content = {"root": str(root), "cwd": str(Path.cwd().resolve()), "target": target,
+    cwd = args._registration_cwd if hasattr(args, "_registration_cwd") else Path.cwd().resolve()
+    content = {"root": str(root), "cwd": str(cwd), "target": target,
                "schedule": schedule, "ttl_seconds": ttl, "prompt": prompt,
                "tolerance_seconds": tolerance, "stop_at": stop}
     from .wake_policy import request_policy

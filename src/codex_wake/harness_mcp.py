@@ -236,11 +236,21 @@ def call(runner, group, verb, arguments, native_context):
             elif name in arguments:
                 argv += ['--' + name.replace('_', '-'), arguments[name]]
         argv += [caller, arguments['trigger'], '--', arguments['prompt']]
+        # A long-lived MCP process can retain a detached mount as its cwd.
+        # Recover only from the already verified native caller, never tool input.
+        registration_cwd = None
+        try:
+            Path.cwd().resolve()
+        except OSError:
+            registration_cwd = native_workspace(runner, caller)
+            if not registration_cwd.is_dir():
+                raise WakeError('native_workspace_unavailable')
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             from .session_permissions import Principal
             tasks=controller_tasks(runner,caller)
-            code = run(argv,permission_principal=Principal(caller,'controller' if tasks else 'session',tasks=tuple(tasks)))
+            code = run(argv,permission_principal=Principal(caller,'controller' if tasks else 'session',tasks=tuple(tasks)),
+                       registration_cwd=registration_cwd)
         if code:
             raise WakeError('wake_registration_not_ready')
         return json.loads(output.getvalue())

@@ -165,6 +165,33 @@ class HarnessCallerTests(unittest.TestCase):
             self.assertEqual(record['wake_policy']['startup'], 'background_saved')
             self.assertEqual(record['target']['resume_policy'], 'same_thread')
 
+    def test_native_registration_survives_detached_mcp_cwd_without_duplicate_wakes(self):
+        import errno
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root / 'native-workspace'
+            workspace.mkdir()
+            runner = CommandRunner(wake_root=root / 'wake', app_server='unix:///fixture.sock')
+            body = dict(caller_thread_id=THREAD, trigger='1m', prompt='Read-only check',
+                idempotency_key='detached-cwd', session_mode='background',
+                wake_lifetime='persistent', recipient_startup='background_saved')
+            with patch('os.getcwd', side_effect=OSError(errno.ENODEV, 'No such device')), patch(
+                    'codex_wake.shared_app_server.SharedAppServerReader.read_thread',
+                    return_value=dict(id=THREAD, cwd=str(workspace))), patch(
+                    'codex_wake.shared_app_server.SharedAppServerReader.__enter__', lambda reader: reader), patch(
+                    'codex_wake.shared_app_server.SharedAppServerReader.__exit__', return_value=None), patch(
+                    'codex_wake.sessions.observe', return_value={'complete': False, 'sessions': []}), patch(
+                    'codex_wake.app_server.resolve_codex_cmd', return_value=sys.executable), patch(
+                    'codex_wake.native_clock.snapshot', return_value={'utc': None, 'counter': None}):
+                first, failed = runner.call('wake_native_after', body, native_context=META)
+                self.assertFalse(failed, first)
+                same, failed = runner.call('wake_native_after', body, native_context=META)
+                self.assertFalse(failed, same)
+                self.assertEqual(same['id'], first['id'])
+                self.assertTrue(same['deduplicated'])
+                denied, failed = runner.call('wake_native_after', body, native_context=None)
+                self.assertTrue(failed, denied)
+
     def test_future_wakes_expose_original_due_and_delivery_window_without_claiming_monitoring(self):
         from datetime import datetime, UTC, timedelta
         origin = datetime(2030, 1, 1, tzinfo=UTC)
@@ -201,7 +228,9 @@ class HarnessCallerTests(unittest.TestCase):
                 idempotency_key='future-monitor-fixture', session_mode='background', wake_lifetime='persistent')
             write_monitor_health(wake_root=root, source='qualification-fixture', mode='once')
             with patch('codex_wake.sessions.observe', return_value={'complete':False,'sessions':[]}), patch('codex_wake.app_server.resolve_codex_cmd', return_value=sys.executable), patch(
-                    'codex_wake.native_clock.snapshot', return_value=clock):
+                    'codex_wake.native_clock.snapshot', return_value=clock), patch(
+                    'codex_wake.native_protocol.native_request', return_value={
+                        'thread': {'id': THREAD, 'status': {'type': 'idle'}}}):
                 first, failed = runner.call('wake_native_after', body, native_context=META)
                 self.assertFalse(failed, first)
                 self.assertFalse(first['armed'], 'a one-shot observation is not durable monitor ownership')

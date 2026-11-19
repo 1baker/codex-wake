@@ -2825,7 +2825,7 @@ def product_readiness_command(args: argparse.Namespace, root: Path) -> int:
     return 0
 
 
-def run(argv: list[str] | None = None, *, permission_principal=None) -> int:
+def run(argv: list[str] | None = None, *, permission_principal=None, registration_cwd=None) -> int:
     from .unified_contract import expand_cli, metadata
     parser = build_parser()
     argv, discover = expand_cli(argv, parser)
@@ -2833,6 +2833,10 @@ def run(argv: list[str] | None = None, *, permission_principal=None) -> int:
         print(json.dumps(metadata(), sort_keys=True))
         return 0
     args = parser.parse_args(argv)
+    if registration_cwd is not None:
+        if permission_principal is None or not Path(registration_cwd).is_absolute():
+            raise WakeError('verified_registration_workspace_required')
+        args._registration_cwd = Path(registration_cwd)
     if getattr(args, '_external_connector', False):
         if args.wake_root is not None:
             raise WakeError('The external connector uses the Wake root in its private config; remove --wake-root.')
