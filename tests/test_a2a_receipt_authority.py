@@ -47,7 +47,20 @@ class ConfiguredReceiptTests(unittest.TestCase):
         armed = self.arm()
         self.reply()
         executable = os.environ.get('CODEX_WAKE_RECEIPT_DAEMON')
-        command = ([executable] if executable else [sys.executable, '-m', 'codex_wake.daemon'])
+        # Explicit fixture time crosses the process seam, as in shared-refresh
+        # acceptance; production receives no test clock flag or fallback.
+        bootstrap = """import runpy, sys
+from codex_wake import measurements
+measurements.utc_bounds = lambda: (1000., 1000.)
+executable = sys.argv.pop(1)
+if executable:
+    sys.argv[0] = executable
+    runpy.run_path(executable, run_name='__main__')
+else:
+    from codex_wake.daemon import main
+    raise SystemExit(main())
+"""
+        command = [sys.executable, '-c', bootstrap, executable or '']
         command += ['--once', '--no-dispatch', '--wake-root', str(self.wake_root)]
         before = self.mailbox_counts()
         def run(extra=()):

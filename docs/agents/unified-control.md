@@ -139,3 +139,26 @@ are preserved. Exact historical-reader qualification is tested against the recor
 Git baseline, with code exchange, access authentication and refresh all refusing.
 
 Delegated program-definition reads and run-state returns require `content.observe` in addition to their base observe/control scope, because definitions and run snapshots contain literal prompts, inputs and child results. This applies equally to compatibility routes; discovery lists `delegated_required_scopes`. Metadata-only bulk status remains redacted.
+
+## Protective local stop and revocation metadata
+
+Remote controller actors require qualified Stable Time UTC for expiry admission.
+A missing clock does not extend a grant or authorize a retry. Explicit trusted
+clock callbacks remain a local test seam.
+
+The immediate local daemon CLI can stop only its exact confirmed, pinned daemon
+through a private per-call capability bound to the owning UID, private Wake root,
+full target and original request IDs. This live object is never serialized or
+recreated from saved records and grants no other mutation, background or retry
+authority. HTTP and MCP retain actor authentication. The daemon owner still
+checks confirmation, account/home/build/process pins and its private lock.
+A repeated completed or uncertain stop returns its original journal without
+resending; changed pins or IDs conflict.
+
+A new protective local-stop record may have `created_at: null` with
+`created_at_status: "not_observed"` when qualified UTC is unavailable.
+The existing nullable `revoked_grants.revoked_at` SQLite audit column likewise
+uses qualified UTC or null: the original issuer/resource/grant revocation latch
+and bounded owned cancellation remain available without clock authority. These
+metadata exceptions neither create actor expiry values nor admit ordinary work.
+Existing journal timestamps, identities, revisions and outcomes remain intact.

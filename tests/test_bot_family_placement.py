@@ -14,6 +14,9 @@ class FamilyPlacementTests(unittest.TestCase):
         self.tabs = ControllerTabs(self.root, workspaces={}, host='test', environment='test')
         self.source = self.tabs.execute('tabs.session.create', dict(name='source', start=True))['session']
         self.sock = self.source['server']
+        # Lifecycle tests own a fixed roster; asynchronous tmux name refresh is
+        # a separate behavior and can invalidate exact pre-effect snapshots.
+        subprocess.run(['tmux', '-S', self.sock, 'set-window-option', '-g', 'automatic-rename', 'off'], check=True, capture_output=True)
         for bot in ('a', 'b'):
             self.call('register', bot_id=bot)
         self.call('register', bot_id='child', parent_bot_id='a', temporary=True)

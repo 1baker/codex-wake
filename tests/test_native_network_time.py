@@ -143,7 +143,8 @@ class NativeNetworkTimeTests(unittest.TestCase):
             prompt=native_prompt(root,record)
             def native(endpoint,codex,method,params,timeout):
                 if method=='thread/queue/list':return {'data':[],'nextCursor':None}
-                return {'thread':{'id':THREAD,'turns':[{'id':'completed','status':'completed','items':[{'type':'userMessage','id':'message','clientId':'client','content':[{'type':'text','text':prompt}]}]}]}}
+                if method=='thread/read':return {'thread':{'id':THREAD}}
+                return {'data':[{'id':'completed','status':'completed','itemsView':'full','items':[{'type':'userMessage','id':'message','clientId':'client','content':[{'type':'text','text':prompt}]}]}], 'nextCursor':None}
             with patch('codex_wake.native_delivery.native_request',side_effect=native),patch('codex_wake.native_delivery.subprocess.run') as submit:
                 poll_once(root,time_provider=lambda:TimeDecision('uncertain'))
             submit.assert_not_called()

@@ -7,6 +7,58 @@ from unittest.mock import patch
 
 
 class SessionPermissionsTests(unittest.TestCase):
+    def setUp(self):
+        clock = patch('codex_wake.measurements.utc_bounds', return_value=(100, 100))
+        clock.start()
+        self.addCleanup(clock.stop)
+
+    def test_bounded_approval_uses_stable_time_upper_without_renewing_expiry(self):
+        from codex_wake.session_permissions import PermissionStore, Principal
+        with tempfile.TemporaryDirectory() as tmp:
+            configured = PermissionStore(tmp, now=lambda: 100)
+            configured.configure({'version': 1, 'approvals': [
+                dict(id='approval', action='job.launch', subject='worker', scope='task',
+                     task_id='task', expires_at='1970-01-01T00:03:20Z', issuer='operator')]},
+                Principal('operator', 'operator'), expected_revision=0)
+            policy_bytes = configured.path.read_bytes()
+            actor = Principal('worker', tasks=('task',))
+            with patch('codex_wake.measurements.utc_bounds', return_value=(198, 199)), \
+                    patch('time.time', return_value=10000):
+                before = PermissionStore(tmp).evaluate('job.launch', actor, task_id='task')
+            self.assertEqual(before['permission'], 'allow')
+            with patch('codex_wake.measurements.utc_bounds', return_value=(199, 200)), \
+                    patch('time.time', return_value=-10000):
+                at_expiry = PermissionStore(tmp).evaluate('job.launch', actor, task_id='task')
+            self.assertEqual(at_expiry['permission'], 'approval_required')
+            self.assertEqual(configured.path.read_bytes(), policy_bytes)
+
+    def test_unqualified_time_holds_bounded_approvals_but_preserves_standing_control(self):
+        from codex_wake.measurements import TimeUnavailable
+        from codex_wake.session_permissions import PermissionStore, Principal, PermissionDenied, check_operation
+        with tempfile.TemporaryDirectory() as tmp:
+            actor = Principal('worker', tasks=('task',))
+            with patch('codex_wake.measurements.utc_time', side_effect=TimeUnavailable('private-clock-detail')):
+                store = PermissionStore(tmp)
+                store.configure({'version': 1, 'approvals': [
+                    dict(id='bounded', action='job.launch', subject='worker', scope='task',
+                         task_id='task', expires_at='1970-01-01T00:03:20Z', issuer='operator'),
+                    dict(id='standing-stop', action='job.cancel', subject='worker', scope='standing',
+                         issuer='operator')]}, Principal('operator', 'operator'), expected_revision=0)
+                decision = store.evaluate('job.launch', actor, task_id='task')
+                self.assertEqual((decision['permission'], decision['rule']),
+                                 ('approval_required', 'qualified_time_unavailable'))
+                with self.assertRaises(PermissionDenied) as refused:
+                    check_operation(tmp, 'job.launch', actor, task_id='task')
+                self.assertEqual(refused.exception.code, 'permission_approval_required')
+                self.assertEqual(store.evaluate('job.cancel', actor)['approval_id'], 'standing-stop')
+                self.assertEqual(store.evaluate('session.inspect', actor)['permission'], 'allow')
+            audit = json.loads(store.path.read_text())['history'][-1]
+            self.assertIsNone(audit['at'])
+            self.assertEqual(audit['time_state'], 'unavailable')
+            self.assertNotIn('private-clock-detail', json.dumps(decision))
+            self.assertEqual(PermissionStore(tmp, now=lambda: 100).evaluate(
+                'job.launch', actor, task_id='task')['approval_id'], 'bounded')
+
     def test_public_mcp_inspects_new_native_self_without_uuid_grant(self):
         from codex_wake.mcp_server import CommandRunner
         from codex_wake.session_permissions import PermissionStore, Principal

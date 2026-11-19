@@ -1,5 +1,7 @@
 # 0239 — Pinned native input lookup
 
+State: CLOSED
+
 Local ticket: CW-0239. Owner: primary agent. Priority: P1. State: DONE.
 Dependencies: none. WIP limit: one. Branch: fix/pinned-native-input.
 

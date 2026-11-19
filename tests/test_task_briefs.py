@@ -3,12 +3,16 @@ from pathlib import Path
 import hashlib
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from codex_wake.task_briefs import BriefAuthority, TaskBriefError, TaskBriefStore
 
 
 class TaskBriefTests(unittest.TestCase):
     def setUp(self):
+        clock = patch('codex_wake.measurements.utc_bounds', return_value=(100, 101))
+        clock.start()
+        self.addCleanup(clock.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / 'wake'
@@ -20,6 +24,45 @@ class TaskBriefTests(unittest.TestCase):
             non_goals=['No deployment'], acceptance=['Public command returns expected result'],
             context=[], workspace=str(self.workspace), allocation_ref='allocation-existing',
             permission_ref='profile-existing')
+
+    def test_proposal_approval_and_admission_use_qualified_utc_metadata(self):
+        store = TaskBriefStore(self.root)
+        with patch('codex_wake.task_briefs.datetime', create=True) as guest_datetime:
+            guest_datetime.now.side_effect = AssertionError('WSL datetime measurement forbidden')
+            proposed = store.propose('task-1', self.content, authority=self.worker)
+            approved = store.approve('task-1', 1, authority=self.operator)
+            admitted = store.admit('task-1', 'assignment-a', authority=self.worker)
+        expected = '1970-01-01T00:01:41+00:00'
+        self.assertEqual(proposed['proposed_at'], expected)
+        self.assertEqual(approved['approval']['approved_at'], expected)
+        self.assertEqual(admitted['admitted_at'], expected)
+
+    def test_unqualified_time_preserves_revisions_and_admitted_assignment(self):
+        from codex_wake.measurements import TimeUnavailable
+        store = TaskBriefStore(self.root)
+        store.propose('task-1', self.content, authority=self.worker)
+        store.approve('task-1', 1, authority=self.operator)
+        admitted = store.admit('task-1', 'assignment-a', authority=self.worker)
+        store.propose('task-1', dict(self.content, objective='A second revision'), authority=self.worker)
+        before = store.inspect('task-1')
+        pin = store.assignment_pin('task-1', 'assignment-a', authority=self.worker)
+        writes = (
+            ('new-task', lambda: store.propose('task-2', self.content, authority=self.operator)),
+            ('new-revision', lambda: store.propose('task-1', self.content, authority=self.worker)),
+            ('approval', lambda: store.approve('task-1', 2, authority=self.operator)),
+            ('admission', lambda: store.admit('task-1', 'assignment-b', authority=self.worker)),
+        )
+        with patch('codex_wake.measurements.utc_bounds', side_effect=TimeUnavailable('private-clock-detail')):
+            for name, operation in writes:
+                with self.subTest(operation=name):
+                    with self.assertRaises(TaskBriefError) as held:
+                        operation()
+                    self.assertEqual(held.exception.code, 'qualified_time_unavailable')
+                    self.assertNotIn('private-clock-detail', str(held.exception))
+                    self.assertEqual(store.inspect('task-1'), before)
+            self.assertEqual(store.inspect('task-2')['revisions'], [])
+            self.assertEqual(store.admit('task-1', 'assignment-a', authority=self.worker), admitted)
+            self.assertEqual(store.validate_pin(pin, authority=self.worker), pin)
 
     def test_worker_proposal_does_not_approve_or_admit_assignment(self):
         store = TaskBriefStore(self.root)

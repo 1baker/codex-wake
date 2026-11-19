@@ -115,7 +115,7 @@ class GrokMailboxRuntime:
 
 
 from dataclasses import dataclass, asdict
-import time
+from . import measurements
 from uuid import UUID, uuid4
 from .grok_runtime import GrokRuntimeAdapter
 from .runtime_delivery import RuntimeRecipient
@@ -187,9 +187,13 @@ class GrokNotificationBinding:
     def _deliver_locked(self,claim,job,bus_root,*,scheduler):
         try:
             runtime,recipient=self._recipient()
+            # This attempt cannot outlive its lease; context latency consumes this same anchor.
+            timer=measurements.deadline(scheduler.lease_seconds)
             context=scheduler.notification_context(job,attempt_id=claim['attempt_id'])
             window=context['dispatch_window_seconds']
             if window<=14:return dict(status='unsent',reason='original_deadline_reached')
+            timer.restrict(window-2)
+            runtime.host.deadline=timer
         except (BusError,ValueError,OSError):
             return dict(status='unsent',reason='pre_io_failure')
         marker=str(UUID(hex=hashlib.sha256(claim['attempt_id'].encode()).hexdigest()[:32]))
@@ -198,7 +202,7 @@ class GrokNotificationBinding:
                 'Use your issued actor capability to inspect and explicitly claim before work.\n'+
                 json.dumps(dict(bus_root=str(bus_root),message_id=job['message_id']),sort_keys=True))
         try:
-            result=GrokRuntimeAdapter(runtime.host,deadline=time.monotonic()+window-2).submit(recipient,prompt)
+            result=GrokRuntimeAdapter(runtime.host,deadline=timer).submit(recipient,prompt)
             if result.state=='accepted' and result.evidence_kind=='terminal_observation' and result.evidence:
                 return dict(status='submitted',receipt_id='terminal_observation:'+result.evidence['frame_sha256'],
                             evidence_kind='terminal_observation',execution='not_observed',acknowledgment='not_observed')

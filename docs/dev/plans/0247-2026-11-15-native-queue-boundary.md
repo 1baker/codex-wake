@@ -1,5 +1,7 @@
 # 0247 — Direct native busy queue cancellation and expiry boundary (#694)
 
+State: CLOSED
+
 State COMPLETE. Owner root/ecochran76; WIP1. Branch test/native-queue-694.
 Base b2b0dd98. One owned checkout protects dirty primary; retire after exact remote
 custody. Installed Wakedev37/native0.169 unchanged. Working daemon2082 retained.

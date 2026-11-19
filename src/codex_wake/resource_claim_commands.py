@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from .cli_output import emit
 from pathlib import Path
-import time
+from . import measurements
 
 from .goal_supervision import verified_native_caller
 from .managed_inventory import ManagedInventory
@@ -17,17 +17,18 @@ def _claimant(agent_id, root, *, observer, operator, native_context, now):
     if (observer is None or agent['enrollment'] != 'enrolled'
             or agent['state'] not in ('ready', 'stale')):
         raise ResourceClaimError('owner_unqualified', 'current enrolled managed binding and runtime observer required')
-    sample = observer(dict(runtime=agent['runtime'], conversation_id=agent['conversation_id'])).validated(now())
+    sample = observer(dict(runtime=agent['runtime'], conversation_id=agent['conversation_id'])).validated(measurements.snapshot() if now is None else now())
     if (sample.runtime != agent['runtime'] or sample.namespace != agent['namespace']
             or sample.conversation_id != agent['conversation_id'] or sample.root != agent['root']
             or sample.process != agent['process'] or sample.state != 'ready'):
         raise ResourceClaimError('owner_changed', 'fresh runtime binding differs from enrolled managed generation')
     if not operator and sample.runtime == 'grok' and sample.caller_verified is not True:
         raise ResourceClaimError('owner_unqualified', 'Grok requires verified host-bound caller context')
-    return Claimant(agent_id, sample.root, sample.process, sample.observed_at)
+    return Claimant(agent_id, sample.root, sample.process, sample.observed_at,
+                    clock_observation=sample.clock_observation)
 
 
-def execute(action, arguments, root, *, native_context=None, observer=None, operator=False, now=time.time):
+def execute(action, arguments, root, *, native_context=None, observer=None, operator=False, now=None):
     if type(operator) is not bool or 'operator' in arguments or 'role' in arguments:
         raise ResourceClaimError('authority_denied', 'operator authority is host supplied, never a model argument')
     store = ResourceClaims(root, now=now)
@@ -87,7 +88,7 @@ def register_parser(subparsers):
     return parser
 
 
-def run(args, root, *, native_context=None, observer=None, now=time.time):
+def run(args, root, *, native_context=None, observer=None, now=None):
     import json
     from .records import WakeError
     try:

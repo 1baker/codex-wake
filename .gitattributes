@@ -1,0 +1,3 @@
+
+# Unified diff blank context markers are data; verify with git apply --check.
+patches/codex/0248-native-expiry.patch -whitespace

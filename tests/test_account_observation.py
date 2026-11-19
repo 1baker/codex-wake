@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 import socket
 import tempfile
-import time
 import unittest
 from unittest.mock import patch
 
@@ -15,8 +14,52 @@ from codex_wake.controller_auth import Actor, AuthError
 from codex_wake.managed_inventory import InventoryError
 
 
+UTC = 1800000000
+
+
 class AccountObservationTests(unittest.TestCase):
+    def test_remote_expiry_uses_qualified_upper_and_time_loss_refuses_private_read(self):
+        from codex_wake.account_observation import execute
+        from codex_wake.measurements import TimeUnavailable
+        self.credentials()
+        actor = self.actor(expires=200)
+        with patch('codex_wake.measurements.utc_bounds', return_value=(198, 199)), \
+                patch('codex_wake.account_observation.time', create=True) as guest_time:
+            guest_time.time.side_effect = AssertionError('guest clock forbidden')
+            result = execute(self.root, {'selector': 'alice'}, actor=actor, authorize=lambda: actor)
+        self.assertEqual(result['result']['authentication']['state'], 'credentials_present')
+        for clock, expected in (((199, 200), 'insufficient_scope'),
+                                (TimeUnavailable('private-clock-detail'), 'qualified_time_unavailable')):
+            with self.subTest(expected=expected), \
+                    patch('codex_wake.measurements.utc_bounds', return_value=clock if isinstance(clock, tuple) else None,
+                          side_effect=clock if isinstance(clock, Exception) else None), \
+                    patch('codex_wake.account_observation._observation', side_effect=AssertionError('private read forbidden')):
+                with self.assertRaises(AuthError) as held:
+                    execute(self.root, {'selector': 'alice'}, actor=actor, authorize=lambda: actor)
+                self.assertEqual(held.exception.code, expected)
+                self.assertNotIn('private-clock-detail', str(held.exception))
+
+    def test_cached_expiry_holds_unknown_without_mutating_credentials(self):
+        from codex_wake.account_observation import execute
+        from codex_wake.measurements import TimeUnavailable
+        path = self.credentials()
+        original = path.read_bytes()
+        for bounds, expected in (((UTC+3598, UTC+3599), 'unknown'), ((UTC+3599, UTC+3600), 'stale')):
+            with patch('codex_wake.measurements.utc_bounds', return_value=bounds):
+                self.assertEqual(execute(self.root, {'selector': 'alice'})['result']['authentication']['freshness'], expected)
+        with patch('codex_wake.measurements.utc_bounds', side_effect=TimeUnavailable('private-detail')):
+            auth = execute(self.root, {'selector': 'alice'})['result']['authentication']
+        self.assertEqual(auth['freshness'], 'unknown')
+        self.assertEqual(auth['reason'], 'qualified_time_unavailable')
+        self.assertFalse(auth['provider_verified'])
+        self.assertEqual(auth['identity']['email'], 'alice@example.test')
+        self.assertNotIn('private-detail', json.dumps(auth))
+        self.assertEqual(path.read_bytes(), original)
+
     def setUp(self):
+        clock = patch("codex_wake.measurements.utc_bounds", return_value=(UTC, UTC + 1))
+        clock.start()
+        self.addCleanup(clock.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -28,7 +71,7 @@ class AccountObservationTests(unittest.TestCase):
         self.target = self.owner.execute('accounts.resolve', {'selector': 'alice'})['account']['target']
 
     def credentials(self, *, expired=False):
-        claims = {'email': 'alice@example.test', 'exp': 1 if expired else time.time()+3600,
+        claims = {'email': 'alice@example.test', 'exp': 1 if expired else UTC+3600,
                   'https://api.openai.com/auth': {'chatgpt_account_id': 'account-fixture', 'chatgpt_plan_type': 'pro'},
                   'secret_extra': 'NEVER_RETURN_PRIVATE_PAYLOAD'}
         payload = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b'=').decode()
@@ -38,7 +81,7 @@ class AccountObservationTests(unittest.TestCase):
         return path
 
     def actor(self, target=None, *, scopes=('account.observe',), expires=None):
-        return Actor('operator', 'owner', 'fixture-client', 'fixture-grant', 'local://fixture', 'wake:controller', frozenset(scopes), [self.target if target is None else target], expires or time.time()+120)
+        return Actor('operator', 'owner', 'fixture-client', 'fixture-grant', 'local://fixture', 'wake:controller', frozenset(scopes), [self.target if target is None else target], UTC+120 if expires is None else expires)
 
     def test_cli_json_reports_only_unverified_cached_identity_without_native_or_network(self):
         self.credentials()
@@ -80,7 +123,7 @@ class AccountObservationTests(unittest.TestCase):
     def test_authorization_requires_exact_live_account_scope_and_rechecks_before_disclosure(self):
         from codex_wake.account_observation import execute
         self.credentials()
-        for actor in (self.actor(scopes=('observe',)), self.actor(target={'host': socket.gethostname()}), self.actor(expires=time.time()-1)):
+        for actor in (self.actor(scopes=('observe',)), self.actor(target={'host': socket.gethostname()}), self.actor(expires=UTC-1)):
             with self.assertRaises(AuthError): execute(self.root, {'selector': 'alice'}, actor=actor, authorize=lambda: actor)
         actor = self.actor(); calls=[]
         def revoked():
@@ -126,7 +169,7 @@ class AccountObservationTests(unittest.TestCase):
         from codex_wake.controller_operations import ControllerOperations
         from codex_wake.managed_inventory import ManagedInventory
         self.credentials()
-        auth = OAuthAuthority(self.root / 'oauth.sqlite', issuer='https://fixture.test', resource='https://fixture.test/controller')
+        auth = OAuthAuthority(self.root / 'oauth.sqlite', issuer='https://fixture.test', resource='https://fixture.test/controller', now=lambda: UTC)
         client = auth.register({'redirect_uris': ['http://localhost/callback']})
         verifier = 'x' * 43
         challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b'=').decode()

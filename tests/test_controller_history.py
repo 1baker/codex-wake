@@ -83,7 +83,7 @@ profiles="{fixture.profiles}"
         from codex_wake.a2a_identity import RuntimeIdentity
         fixture.metadata['codexHome'] = str(self.root / 'homes' / 'codex-alice')
         fixture.namespace = RuntimeIdentity.from_metadata(fixture.thread, fixture.metadata).namespace
-        fixture.agent = fixture.inv.enroll(fixture.sample(True), operator=True)['agent']
+        fixture.agent = fixture.enroll_ended_generation()
         data = data.replace(data.split('managed_agent_id=')[1].split('\n')[0], '"' + fixture.agent['managed_agent_id'] + '"')
         self.path.write_text(data)
         config = fixture.config
@@ -126,6 +126,7 @@ profiles="{fixture.profiles}"
         ledger.write_bytes(b'{"used":93,"original_deadline":1800000010,"unknown":true}')
         preserved = ledger.read_bytes()
         fixture.current = False
+        fixture.enroll_ended_generation()
         fixture.lost = True
         uncertain_args = dict(owner='alice', thread_id=THREAD, expected_target=session['target'],
             intent='lost-response', expires_at='2027-01-16T09:00:00+00:00')

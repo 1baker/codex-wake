@@ -1,4 +1,4 @@
-"""Public job lifecycle with hermetic real Python commands (#336)."""
+"""Real-process job acceptance (#336); timed cases require enrolled Stable Time."""
 import json
 import os
 from pathlib import Path
@@ -9,11 +9,38 @@ import time
 import unittest
 
 from codex_wake.background_jobs import BackgroundJobs
+from codex_wake import measurements
 from codex_wake.session_permissions import PermissionStore, Principal
 from codex_wake.task_briefs import BriefAuthority, TaskBriefStore
 
 
 class BackgroundJobsTests(unittest.TestCase):
+    def test_exact_cancel_remains_available_without_qualified_timestamp(self):
+        from unittest.mock import patch
+        from codex_wake import measurements
+        clock = dict(reason='authenticated_counter_only', counter=dict(
+            epoch='c357309d-c209-4467-b757-e1488e6b1aaa', counter=1000,
+            frequency=1000, rate_ppm=0))
+        store = self.approve('pass', max_seconds=3)
+        with patch.object(measurements, 'utc_time', return_value=100), patch.object(measurements, 'snapshot', return_value=clock), patch('codex_wake.background_jobs.subprocess.Popen') as spawn:
+            spawn.return_value.poll.return_value = 0
+            job = store.launch('fixture', principal=self.worker, idempotency_key='cancel-clock')
+        with patch.object(measurements, 'utc_time', side_effect=measurements.TimeUnavailable('unqualified')):
+            store.cancel(job['job_id'], principal=self.worker, expected_generation=job['generation'])
+        request = json.loads((self.root/'background-jobs'/job['job_id']/'cancel.json').read_text())
+        self.assertIsNone(request['requested_at'])
+        self.assertEqual(request['clock_status'], 'unavailable')
+        self.assertEqual(request['generation'], job['generation'])
+
+    def test_unqualified_stable_time_refuses_before_supervisor_launch(self):
+        from unittest.mock import patch
+        from codex_wake import measurements
+        store = self.approve("raise SystemExit('must not execute')", max_seconds=3)
+        with patch.object(measurements, 'utc_time', side_effect=measurements.TimeUnavailable('unqualified')), patch('codex_wake.background_jobs.subprocess.Popen') as spawn:
+            with self.assertRaises(measurements.TimeUnavailable):
+                store.launch('fixture', principal=self.worker, idempotency_key='clock-held')
+        spawn.assert_not_called()
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -34,8 +61,8 @@ class BackgroundJobsTests(unittest.TestCase):
         self.pin = brief.assignment_pin('task-1', 'assignment-1')
 
     def terminal(self, store, job_id, seconds=8):
-        deadline = time.monotonic() + seconds
-        while time.monotonic() < deadline:
+        deadline = measurements.deadline(seconds)
+        while not deadline.expired():
             value = store.inspect(job_id)
             if value['status'] in ('completed', 'cancelled', 'timed_out', 'failed', 'unknown'):
                 return value
@@ -82,8 +109,8 @@ print(json.dumps(job))
             f"pathlib.Path({str(marker)!r}).write_text(str(p.pid)); time.sleep(30)")
         store = self.approve(script, max_seconds=5, max_log_bytes=64)
         launched = store.launch('fixture', principal=self.worker, idempotency_key='cancel')
-        deadline = time.monotonic() + 2
-        while not marker.exists() and time.monotonic() < deadline:
+        deadline = measurements.deadline(2)
+        while not marker.exists() and not deadline.expired():
             time.sleep(.01)
         self.assertTrue(marker.exists())
         store.cancel(launched['job_id'], principal=self.worker, expected_generation=launched['generation'])
@@ -142,13 +169,13 @@ print(json.dumps(job))
         script = f"import pathlib,time; p=pathlib.Path({str(marker)!r}); p.write_text(p.read_text()+'x' if p.exists() else 'x'); time.sleep(.5)"
         store = self.approve(script, max_seconds=2)
         job = store.launch('fixture', principal=self.worker, idempotency_key='uncertain')
-        deadline = time.monotonic() + 2
-        while not marker.exists() and time.monotonic() < deadline:
+        deadline = measurements.deadline(2)
+        while not marker.exists() and not deadline.expired():
             time.sleep(.01)
         self.assertTrue(marker.exists())
         os.kill(job['supervisor']['pid'], signal.SIGKILL)
-        deadline = time.monotonic() + 2
-        while store.inspect(job['job_id'])['status'] != 'unknown' and time.monotonic() < deadline:
+        deadline = measurements.deadline(2)
+        while store.inspect(job['job_id'])['status'] != 'unknown' and not deadline.expired():
             time.sleep(.01)
         again = BackgroundJobs(self.root).launch('fixture', principal=self.worker, idempotency_key='uncertain')
         self.assertEqual(again['job_id'], job['job_id'])
@@ -233,8 +260,10 @@ print(json.dumps(job))
             store.approve_command('mutation', argv, self.workspace, principal=self.operator,
                 task_pin=self.pin, owner='worker', mutation=True)
         identity = observe_process_exit(os.getpid()).identity()
+        claimant_clock = measurements.snapshot()
         claimant = Claimant('agent_' + 'a' * 32, str(self.workspace),
-            dict(pid=identity['pid'], start_ticks=identity['start_time_ticks'], boot_id=identity['boot_id']), time.time())
+            dict(pid=identity['pid'], start_ticks=identity['start_time_ticks'], boot_id=identity['boot_id']),
+            claimant_clock['utc']['upper'], clock_observation=claimant_clock)
         claims = ResourceClaims(self.root)
         claim = claims.claim('worktree', self.workspace, claimant)
         store.approve_command('mutation', argv, self.workspace, principal=self.operator,
@@ -257,11 +286,13 @@ print(json.dumps(job))
         identity = observe_process_exit(os.getpid()).identity()
         process = dict(pid=identity['pid'], start_ticks=identity['start_time_ticks'], boot_id=identity['boot_id'])
         def observer(_):
-            return Observation('codex', 'fixture', 'worker', str(self.workspace), 'ready', time.time(),
-                'native_metadata', process, [], {'inspect': 'supported'})
+            clock = measurements.snapshot()
+            return Observation('codex', 'fixture', 'worker', str(self.workspace), 'ready', clock['utc']['upper'],
+                'native_metadata', process, [], {'inspect': 'supported'}, clock_observation=clock)
         inventory = ManagedInventory(self.root)
         agent = inventory.enroll(observer({}), operator=True)['agent']
-        claimant = Claimant(agent['managed_agent_id'], str(self.workspace), process, time.time())
+        initial_clock = measurements.snapshot()
+        claimant = Claimant(agent['managed_agent_id'], str(self.workspace), process, initial_clock['utc']['upper'], clock_observation=initial_clock)
         claims = ResourceClaims(self.root)
         claim = claims.claim('worktree', self.workspace, claimant)
         parser = argparse.ArgumentParser()
@@ -285,15 +316,17 @@ print(json.dumps(job))
         catalog = json.loads(catalog_path.read_text())
         legacy = catalog['profiles']['mutation']
         stored_claim = legacy['command']['claim']
-        stored_claim['claimant'] = dict(stored_claim.pop('owner'), observed_at=time.time() - 60)
+        stored_claim['claimant'] = dict(stored_claim.pop('owner'), observed_at=measurements.utc_time() - 60)
         legacy['sha256'] = hashlib.sha256(json.dumps(legacy['command'], sort_keys=True,
             separators=(',', ':'), allow_nan=False).encode()).hexdigest()
         catalog_path.write_text(json.dumps(catalog))
         launch.idempotency_key = 'old-profile-fresh-observation'
         old_profile_job = execute(launch, self.root, principal=self.worker, observer=observer)
         self.assertEqual(self.terminal(BackgroundJobs(self.root), old_profile_job['job_id'])['status'], 'completed')
-        self.assertLess(legacy['command']['claim']['claimant']['observed_at'], time.time() - 30)
-        stale = Claimant(agent['managed_agent_id'], str(self.workspace), process, time.time() - 40)
+        self.assertLess(legacy['command']['claim']['claimant']['observed_at'], measurements.utc_time() - 30)
+        stale_clock = measurements.snapshot()
+        stale_clock['counter']['counter'] -= 40 * stale_clock['counter']['frequency']
+        stale = Claimant(agent['managed_agent_id'], str(self.workspace), process, measurements.utc_time() - 40, clock_observation=stale_clock)
         with self.assertRaises(Exception):
             BackgroundJobs(self.root).launch('mutation', principal=self.worker,
                 idempotency_key='stale', claimant=stale)

@@ -1039,6 +1039,84 @@ print(json.dumps({
         record["id"] = f"wake_{len(predicate)}"
         return record
 
+    def test_default_poll_uses_qualified_lower_for_legacy_not_before(self):
+        from test_measurements import observation
+        clock=observation(1000)
+        lower=datetime(2026,5,18,21,14,59,tzinfo=UTC).timestamp()+.25
+        clock['utc'].update(lower=lower,upper=lower+2)
+        with tempfile.TemporaryDirectory() as tmp,patch('codex_wake.measurements.snapshot',return_value=clock), \
+                patch('codex_wake.daemon.utc_now',return_value=datetime(2026,5,18,21,15,1,tzinfo=UTC)):
+            root=Path(tmp)/'wake'
+            record=self.make_record(tmp,dict(type='not_before',due_at='2026-05-18T21:15:00Z'))
+            write_record(root,record)
+            result=poll_once(root,dispatch=False)
+            self.assertEqual(result.fired,0)
+            self.assertEqual(result.pending,1)
+            self.assertEqual(find_record(root,record['id']).record['predicate'],record['predicate'])
+
+    def test_missing_utc_holds_legacy_pending_and_firing_without_dispatch(self):
+        from codex_wake.measurements import TimeUnavailable
+        from tests.test_injector import FakeTmuxRunner
+        from codex_wake.daemon import poll_result_dict
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)/'wake';runner=FakeTmuxRunner()
+            for status in ('pending','firing'):
+                record=self.make_record(tmp,dict(type='not_before',due_at='2026-05-18T21:15:00Z'))
+                record.update(id='legacy-'+status,status=status)
+                write_record(root,record)
+            with patch('codex_wake.measurements.utc_bounds',side_effect=TimeUnavailable('UTC absent')), \
+                    patch('codex_wake.daemon.utc_now',side_effect=AssertionError('guest clock forbidden')):
+                result=poll_once(root,runner=runner)
+            self.assertEqual(result.time_held,2)
+            self.assertEqual(result.dispatched,0)
+            self.assertEqual(find_record(root,'legacy-pending').record['status'],'pending')
+            self.assertEqual(find_record(root,'legacy-firing').record['status'],'firing')
+            self.assertEqual(runner.pastes,[])
+            self.assertEqual(poll_result_dict(result)['time_held'],2)
+
+    def test_signal_expiry_uncertainty_holds_match_without_retiring_original_arm(self):
+        from dataclasses import replace
+        lower=datetime(2026,9,14,14,1,59,tzinfo=UTC).timestamp()+.25
+        for already_reserved in (False,True):
+            with self.subTest(already_reserved=already_reserved),tempfile.TemporaryDirectory() as tmp:
+                root=Path(tmp)/'wake'
+                registered=datetime(2026,9,14,14,0,tzinfo=UTC)
+                runtime=SQLiteSignalModule(signal_journal_path(root),lease_clock=lambda:registered,
+                    record_publisher=WakeRecordPublisher(root,ManagedReaderCapability(root,'reader',1,frozenset({1,2}),True)))
+                registration=EventWake(runtime,adapters=[make_adapter()],clock=lambda:registered,
+                    id_factory=lambda:'wake_uncertain_expiry').register(
+                        replace(make_intent(),expires_at=datetime(2026,9,14,14,2,tzinfo=UTC)),idempotency_key='uncertain-expiry')
+                self.assertIsInstance(registration,Registration)
+                runtime.ingest([make_observation()],SourceCommit('memory','contract-test','checkpoint-1',1,
+                    datetime(2026,9,14,14,1,tzinfo=UTC)))
+                if already_reserved:
+                    armed=runtime.load_armed_signal('wake_uncertain_expiry')
+                    from codex_wake.signals import EvaluationLimits,Matched
+                    self.assertIsInstance(runtime.evaluate('wake_uncertain_expiry',armed,datetime(2026,9,14,14,1,tzinfo=UTC),EvaluationLimits(100)),Matched)
+                with patch('codex_wake.measurements.utc_bounds',return_value=(lower,lower+2)):
+                    result=poll_once(root,dispatch=False,signal_runtime=runtime)
+                self.assertEqual(result.fired,int(already_reserved))
+                self.assertEqual(result.pending,int(not already_reserved))
+                self.assertEqual(result.time_held,int(not already_reserved))
+                self.assertIsNotNone(runtime.load_armed_signal('wake_uncertain_expiry'))
+                self.assertEqual(find_record(root,'wake_uncertain_expiry').record['status'],'firing' if already_reserved else 'pending')
+
+    def test_legacy_firing_rechecks_retry_anchor_before_dispatch(self):
+        from tests.test_injector import FakeTmuxRunner
+        instant=datetime(2026,5,18,21,14,59,tzinfo=UTC).timestamp()
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)/'wake';runner=FakeTmuxRunner()
+            record=self.make_record(tmp,dict(type='not_before',due_at='2026-05-18T21:15:00Z'))
+            record.update(id='legacy-retained-firing',status='firing')
+            write_record(root,record)
+            with patch('codex_wake.measurements.utc_bounds',return_value=(instant,instant)):
+                result=poll_once(root,runner=runner)
+            self.assertEqual(result.time_held,1)
+            self.assertEqual(result.dispatched,0)
+            self.assertEqual(find_record(root,record['id']).record['status'],'firing')
+            self.assertEqual(runner.pastes,[])
+            self.assertTrue(poll_result_has_activity(result))
+
     def test_not_before_moves_ready_record_to_firing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "wake"

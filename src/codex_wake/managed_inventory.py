@@ -16,10 +16,10 @@ from pathlib import Path
 import re
 import stat
 import tempfile
-import time
 from uuid import uuid4
 
 from .records import WakeError
+from . import measurements
 
 VERSION = 1
 MAX_BYTES = 4 * 1024 * 1024
@@ -62,6 +62,7 @@ class Observation:
     capabilities: dict
     profile: str | None = None
     caller_verified: bool = False
+    clock_observation: dict | None = None
 
     def validated(self, now):
         if self.runtime not in ('codex', 'grok') or self.state not in STATES:
@@ -72,8 +73,13 @@ class Observation:
         expected_source = 'native_metadata' if self.runtime == 'codex' else 'host_bound_runtime'
         if self.source != expected_source:
             raise InventoryError('identity_unqualified', 'runtime evidence provenance is unqualified')
+        try:
+            fresh = (measurements.fresh(self.clock_observation, MAX_AGE_SECONDS, current=now)
+                     if isinstance(now, dict) else self.observed_at <= now <= self.observed_at + MAX_AGE_SECONDS)
+        except (measurements.TimeUnavailable, TypeError, ValueError):
+            fresh = False
         if (type(self.observed_at) not in (int, float) or not math.isfinite(self.observed_at)
-                or not self.observed_at <= now <= self.observed_at + MAX_AGE_SECONDS):
+                or not fresh):
             raise InventoryError('observation_stale', 'fresh bounded runtime evidence required')
         if (not isinstance(self.attachments, list) or len(self.attachments) > 32
                 or not isinstance(self.capabilities, dict) or len(self.capabilities) > 32):
@@ -105,7 +111,7 @@ class Observation:
 
 class ManagedInventory:
     """Serialize policy and identity transitions in one crash-safe private document."""
-    def __init__(self, root, *, now=time.time):
+    def __init__(self, root, *, now=None):
         self.root = Path(root).absolute()
         if self.root != self.root.resolve():
             raise InventoryError('store_unavailable', 'Wake root must not traverse symlinks')
@@ -118,7 +124,8 @@ class ManagedInventory:
         self._private(self.directory, directory=True)
         self.path = self.directory / 'inventory.json'
         self.lock_path = self.directory / 'inventory.lock'
-        self.now = now
+        self.now = measurements.utc_time if now is None else now
+        self.clock = (lambda: measurements.snapshot()) if now is None else (lambda: self.now())
 
     @staticmethod
     def _private(path, *, directory=False):
@@ -190,11 +197,12 @@ class ManagedInventory:
             fields = {'managed_agent_id', 'runtime', 'namespace', 'conversation_id', 'enrollment',
                       'root', 'created_at', 'history', 'predecessor', 'task_id', 'allocation_id',
                       'state', 'observed_at', 'evidence_kind', 'process', 'attachments', 'capabilities', 'profile'}
-            if set(agent) != fields:
+            if set(agent) - {'clock_observation'} != fields:
                 raise InventoryError('store_unavailable', 'unknown managed-agent record fields')
             Observation(agent['runtime'], agent['namespace'], agent['conversation_id'],
                         agent['root'], agent['state'], agent['observed_at'], agent['evidence_kind'],
-                        agent['process'], agent['attachments'], agent['capabilities'], agent['profile']).validated(agent['observed_at'])
+                        agent['process'], agent['attachments'], agent['capabilities'], agent['profile'],
+                        clock_observation=agent.get('clock_observation')).validated(agent['observed_at'])
 
     def inspect(self, managed_agent_id=None):
         with self._transaction(write=False) as data:
@@ -209,14 +217,20 @@ class ManagedInventory:
 
     def _view(self, agent):
         result = json.loads(json.dumps(agent))
-        if result['state'] == 'ready' and not result['observed_at'] <= self.now() <= result['observed_at'] + MAX_AGE_SECONDS:
-            result['state'] = 'stale'
+        if result['state'] == 'ready':
+            try:
+                Observation(result['runtime'], result['namespace'], result['conversation_id'],
+                    result['root'], result['state'], result['observed_at'], result['evidence_kind'],
+                    result['process'], result['attachments'], result['capabilities'], result['profile'],
+                    clock_observation=result.get('clock_observation')).validated(self.clock())
+            except (InventoryError, measurements.TimeUnavailable):
+                result['state'] = 'stale'
         result['binding_current'] = result['state'] == 'ready' and result['enrollment'] == 'enrolled'
         result['grants_operations'] = False
         return result
 
     def enroll(self, observation, *, operator=False, predecessor=None, task_id=None, allocation_id=None):
-        sample = observation.validated(self.now())
+        sample = observation.validated(self.clock())
         if sample.state != 'ready':
             raise InventoryError('identity_unavailable', 'new enrollment requires ready verified binding')
         key = identity_key(sample.runtime, sample.namespace, sample.conversation_id)
@@ -260,7 +274,7 @@ class ManagedInventory:
             return {'status': 'enrolled', 'agent': self._view(agent), 'policy': data['policy']}
 
     def reconcile(self, managed_agent_id, observation):
-        sample = observation.validated(self.now())
+        sample = observation.validated(self.clock())
         key = identity_key(sample.runtime, sample.namespace, sample.conversation_id)
         with self._transaction() as data:
             agent = data['agents'].get(key)
@@ -304,6 +318,10 @@ class ManagedInventory:
         agent.update(state=sample.state, observed_at=sample.observed_at, evidence_kind=sample.source,
                      process=sample.process, attachments=sample.attachments,
                      capabilities=sample.capabilities, profile=sample.profile)
+        if sample.clock_observation is not None:
+            agent['clock_observation'] = json.loads(json.dumps(sample.clock_observation))
+        else:
+            agent.pop('clock_observation', None)
         agent['history'].append({'event': 'binding_observed', 'at': self.now(),
                                  'state': sample.state, 'process': sample.process,
                                  'attachments': sample.attachments})

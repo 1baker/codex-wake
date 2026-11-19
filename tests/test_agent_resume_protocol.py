@@ -73,6 +73,17 @@ class ResumeProtocolTests(unittest.TestCase):
         self.runner=SimpleNamespace(wake_root=self.root,lifecycle_profiles=self.profiles)
         self.context=dict(threadId=THREAD,sessionId=THREAD,callId='fixture',**{
             'x-codex-turn-metadata':dict(thread_id=THREAD,session_id=THREAD,turn_id='turn')})
+    def enroll_ended_generation(self, *, inventory=None):
+        """A detached attachment must name an ended process, never this runner."""
+        prior = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])
+        try:
+            self.binding_file.write_text(json.dumps(dict(process_identity(prior.pid), pid=prior.pid)))
+            self.agent = (inventory or self.inv).enroll(self.sample(True), operator=True)['agent']
+        finally:
+            prior.terminate(); prior.wait(timeout=5)
+            self.binding_file.write_text(json.dumps(self.identity))
+        return self.agent
+
     def stop(self):
         self.server.shutdown();self.worker.join(timeout=2)
     def save_profiles(self):self.profiles.write_text(json.dumps(self.config));self.profiles.chmod(0o600)

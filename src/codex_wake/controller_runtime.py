@@ -13,8 +13,10 @@ import os
 from pathlib import Path
 import sqlite3
 import time
+import stat
+from weakref import WeakKeyDictionary
 
-from .controller_auth import Actor, AuthError
+from .controller_auth import Actor, AuthError, _qualified_upper
 from .managed_inventory import InventoryError
 
 
@@ -32,9 +34,50 @@ def identity(actor):
     return {key: getattr(actor, key) for key in ('issuer', 'resource', 'subject', 'client_id', 'grant_id')}
 
 
+class _LocalStopCapability:
+    """Live-process custody only; never an Actor or a wire representation."""
+
+
+_LOCAL_STOPS = WeakKeyDictionary()
+
+
+def _private_local_root(root):
+    root = Path(root).absolute()
+    if os.getuid() != os.geteuid() or root != root.resolve():
+        raise AuthError('insufficient_scope')
+    for path in (root, root/'controller-operations', root/'controller-operations'/'operations.sqlite'):
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            if path == root:
+                raise AuthError('insufficient_scope') from None
+            continue
+        if info.st_uid != os.getuid() or info.st_mode & 0o077 or stat.S_ISLNK(info.st_mode):
+            raise AuthError('insufficient_scope')
+        if not (stat.S_ISDIR(info.st_mode) if path != root/'controller-operations'/'operations.sqlite' else stat.S_ISREG(info.st_mode)):
+            raise AuthError('insufficient_scope')
+    return root
+
+
+def _local_stop_capability(root, arguments):
+    """Called only by the immediate local daemon adapter, never from saved work."""
+    root = _private_local_root(root)
+    if not isinstance(arguments, dict) or arguments.get('confirm') is not True:
+        raise InventoryError('confirmation_required', 'explicit confirmation of this scoped interruption is required')
+    target, meta = arguments.get('expected_target'), arguments.get('_request')
+    if (not isinstance(target, dict) or not {'host','environment','account','home','home_generation','build_sha256','process','socket_generation'} <= target.keys()
+            or not isinstance(meta, dict) or set(meta) != {'operation_id','idempotency_key','correlation_id','binding','target'} or meta['target'] != target):
+        raise InventoryError('stale_target', 'exact local stop target and original request required')
+    for key in ('operation_id','idempotency_key','correlation_id','binding'):
+        bounded_id(meta[key])
+    capability = _LocalStopCapability()
+    _LOCAL_STOPS[capability] = encoded(dict(root=str(root), uid=os.getuid(), arguments=arguments))
+    return capability
+
+
 class ControllerRuntime:
-    def __init__(self, root, *, adapter=None, now=time.time):
-        self.root, self.adapter, self.now = Path(root), adapter, now
+    def __init__(self, root, *, adapter=None, now=None):
+        self.root, self.adapter, self.now = Path(root), adapter, now if now is not None else _qualified_upper
         directory = self.root / 'controller-operations'
         directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.path = directory / 'operations.sqlite'
@@ -189,6 +232,68 @@ class ControllerRuntime:
         return dict(schema_version=1, operation=operation, status='completed',
             result=dict(operation=self.projection(record), **extra))
 
+    def _protective_timestamp(self):
+        try:
+            return self.now()
+        except AuthError as error:
+            if error.code != 'qualified_time_unavailable':
+                raise
+            return None
+
+    def execute_local_stop(self, capability, arguments, *, dispatch):
+        """One exact synchronous local stop; no transferable or renewable grant."""
+        root = _private_local_root(self.root)
+        expected = _LOCAL_STOPS.pop(capability, None) if isinstance(capability, _LocalStopCapability) else None
+        if expected != encoded(dict(root=str(root), uid=os.getuid(), arguments=arguments)):
+            raise AuthError('insufficient_scope')
+        meta = arguments['_request']
+        target = arguments['expected_target']
+        principal = dict(issuer='local://uid/'+str(os.getuid()), resource='wake:controller',
+            subject='uid:'+str(os.getuid()), client_id='local-cli', grant_id='local-cli')
+        payload = {key:value for key,value in arguments.items() if key != '_request'}
+        intent = dict(operation='daemons.stop', payload=payload, correlation_id=meta['correlation_id'], binding=meta['binding'], target=target)
+        raw = encoded(intent)
+        if len(raw.encode()) > 262144:
+            raise InventoryError('invalid_argument', 'operation intent exceeds bounded capacity')
+        fingerprint = hashlib.sha256(raw.encode()).hexdigest()
+        intent_key = hashlib.sha256(encoded(dict(principal=principal, key=meta['idempotency_key'])).encode()).hexdigest()
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            previous = db.execute('SELECT fingerprint,record FROM operations WHERE intent_key=?', (intent_key,)).fetchone()
+            if previous:
+                old = json.loads(previous[1])
+                if previous[0] != fingerprint or old['principal'] != principal or old['operation_id'] != meta['operation_id']:
+                    raise InventoryError('idempotency_conflict', 'intent key already binds different immutable stop inputs')
+                return self.envelope('daemons.stop', old)
+            if db.execute('SELECT COUNT(*) FROM operations').fetchone()[0] >= 10000:
+                raise InventoryError('capacity', 'retained operation capacity reached')
+            stamp = self._protective_timestamp()
+            record = dict(schema_version=1, operation_id=meta['operation_id'], operation='daemons.stop',
+                correlation_id=meta['correlation_id'], binding=meta['binding'], original_binding=meta['binding'], target=target,
+                principal=principal, authorization=dict(scopes=['control','observe'], targets=[target]),
+                payload=payload, payload_sha256=hashlib.sha256(encoded(payload).encode()).hexdigest(),
+                created_at=stamp, submission='admitted', execution='unknown', delivery='uncertain', acceptance='unknown',
+                phase='dispatching', reason='dispatch_in_progress_or_interrupted', result=None, cancellation='not_requested')
+            if stamp is None:
+                record['created_at_status'] = 'not_observed'
+            try:
+                db.execute('INSERT INTO operations VALUES(?,?,?,?)', (meta['operation_id'], intent_key, fingerprint, encoded(record)))
+            except sqlite3.IntegrityError:
+                raise InventoryError('idempotency_conflict', 'operation ID already names another immutable intent') from None
+        self._event(record, 'admitted', dict(kind='admitted', operation_id=record['operation_id'], correlation_id=record['correlation_id']))
+        try:
+            _private_local_root(root)
+            # The daemon owner still revalidates confirmation, target, lock and selected build.
+            value = dispatch('daemons.stop', payload)
+            if len(encoded(value).encode()) > 262144:
+                raise ValueError('effect result exceeds retained bound')
+            record.update(execution='completed', delivery='retained', acceptance='owner_reported', phase='terminal', reason=None, result=value)
+            self._event(record, 'completed', dict(kind='terminal', operation_id=record['operation_id']))
+        except Exception as error:
+            record.update(execution='unknown', delivery='uncertain', reason=getattr(error,'code','effect_uncertain'), phase='uncertain')
+        self._save(record)
+        return self.envelope('daemons.stop', record)
+
     def execute(self, actor, operation, arguments, *, authorize, dispatch, required_capability=None):
         if not isinstance(arguments, dict) or not isinstance(arguments.get('_request'), dict):
             raise InventoryError('intent_required', 'explicit _request operation/idempotency/correlation/binding/target metadata required')
@@ -282,12 +387,16 @@ class ControllerRuntime:
     def _wait(self, actor, record, authorize, timeout):
         if type(timeout) not in (int, float) or not 0 <= timeout <= 30:
             raise InventoryError('invalid_argument', 'caller wait timeout must be zero to thirty seconds')
-        deadline = time.monotonic() + timeout
+        # Caller waiting is advisory; _owned retains genuine authorization checks.
+        deadline = time.monotonic() + timeout if timeout else None
         while True:
+            if deadline is not None and (deadline - time.monotonic()) <= 0: return record, 'timeout'
             record = self._refresh(actor, self._owned(actor, self._load(record['operation_id']), authorize), authorize)
+            remaining = (deadline - time.monotonic()) if deadline is not None else None
+            if remaining is not None and remaining <= 0: return record, 'timeout'
             if record['phase'] == 'terminal': return record, 'completed'
-            if time.monotonic() >= deadline: return record, 'timeout'
-            time.sleep(min(.05, max(0, deadline - time.monotonic())))
+            if remaining is None: return record, 'timeout'
+            time.sleep(min(.05, remaining))
 
     def operation(self, actor, operation, arguments, *, authorize, expected_operation=None):
         if not isinstance(arguments, dict): raise InventoryError('invalid_argument', 'object arguments required')
@@ -363,23 +472,34 @@ class ControllerRuntime:
             return self.envelope(operation, record)
         if operation == 'operations.wait':
             record, status = self._wait(actor, record, authorize, arguments.get('timeout', 30))
+            self._owned(actor, record, authorize)
             return self.envelope(operation, record, wait=dict(status=status, ends_work=False))
-        record = self._refresh(actor, record, authorize)
         if operation == 'operations.stream':
             cursor, limit, timeout = arguments.get('cursor', 0), arguments.get('limit', 100), arguments.get('timeout', 0)
             if type(cursor) is not int or cursor < 0 or type(limit) is not int or not 1 <= limit <= 100 or type(timeout) not in (int, float) or not 0 <= timeout <= 30:
                 raise InventoryError('invalid_argument', 'bounded nonnegative stream cursor/limit/timeout required')
-            deadline = time.monotonic() + timeout
+            deadline = time.monotonic() + timeout if timeout else None
+            record = self._refresh(actor, record, authorize)
             while True:
+                remaining = (deadline - time.monotonic()) if deadline is not None else None
+                if remaining is not None and remaining <= 0:
+                    events = []
+                    break
                 with self.connect() as db:
                     rows = db.execute('SELECT payload FROM events WHERE operation_id=? AND sequence>? ORDER BY sequence LIMIT ?', (record['operation_id'], cursor, limit)).fetchall()
                 events = [json.loads(row[0]) for row in rows]
-                if events or record['phase'] == 'terminal' or time.monotonic() >= deadline: break
-                time.sleep(min(.05, max(0, deadline - time.monotonic())))
+                remaining = (deadline - time.monotonic()) if deadline is not None else None
+                if remaining is not None and remaining <= 0:
+                    events = []
+                    break
+                if events or record['phase'] == 'terminal' or remaining is None: break
+                time.sleep(min(.05, remaining))
                 record = self._refresh(actor, self._owned(actor, self._load(record['operation_id']), authorize), authorize)
             self._owned(actor, record, authorize)
+            if deadline is not None and (deadline - time.monotonic()) <= 0: events = []
             return self.envelope(operation, record, events=events, next_cursor=events[-1]['sequence'] if events else cursor,
                 stream=dict(mode='bounded_correlated_events', token_stream=False))
+        record = self._refresh(actor, record, authorize)
         return self.envelope(operation, record)
 
 
@@ -391,7 +511,7 @@ class ControllerRuntime:
         """
         bounded_id(grant_id)
         with self.connect() as db:
-            db.execute('INSERT OR IGNORE INTO revoked_grants VALUES(?,?,?,?)',(issuer,resource,grant_id,self.now()))
+            db.execute('INSERT OR IGNORE INTO revoked_grants VALUES(?,?,?,?)',(issuer,resource,grant_id,self._protective_timestamp()))
             pending=[];remaining=0
             for row in db.execute('SELECT record FROM operations'):
                 record=json.loads(row[0])

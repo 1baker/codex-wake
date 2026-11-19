@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import shlex
 import shutil
@@ -9,8 +10,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .records import WakeError, format_utc, schema_summary, utc_now
+from .records import WakeError, format_utc, schema_summary
 from .process import boot_id_value, process_identity
+from . import measurements
 from .service import (
     ServiceConfig,
     build_service_config,
@@ -53,7 +55,15 @@ def write_monitor_health(
     now: datetime | None = None,
     extra: dict[str, Any] | None = None,
 ) -> Path:
-    current = now or utc_now()
+    if now is not None:
+        current = now
+    else:
+        try:
+            lower, _upper = measurements.utc_bounds()
+            # Second-resolution observations must never become newer by rounding.
+            current = datetime.fromtimestamp(math.floor(lower), UTC)
+        except (measurements.TimeUnavailable, OverflowError, OSError, ValueError):
+            current = None
     pid = os.getpid()
     identity = process_identity(pid) or {}
     from .recurring_schedules import scheduler_generation
@@ -76,9 +86,11 @@ def write_monitor_health(
         "reader_schema_versions": schema_summary()['read_versions'],
         "recurring_monitor_generation": recurring_generation,
         "reader_capabilities": ["signal_records_v2", "emergency_control_v1", "recurring_schedules_v1", "wake_session_modes_v1"],
-        "checked_at": format_utc(current),
+        "checked_at": format_utc(current) if current is not None else None,
         "poll_result": poll_result or {},
     }
+    if current is None:
+        payload["time_status"] = "not_observed"
     signal_sources = (poll_result or {}).get("signal_sources")
     if isinstance(signal_sources, list):
         payload["signal_sources"] = signal_sources
@@ -125,8 +137,15 @@ def health_is_recent(
     checked_at = parse_health_time(health.get("checked_at"))
     if checked_at is None:
         return False
-    current = now or utc_now()
-    return (current.astimezone(UTC) - checked_at).total_seconds() <= stale_after_seconds
+    if now is not None:
+        lower = upper = now.astimezone(UTC).timestamp()
+    else:
+        try:
+            lower, upper = measurements.utc_bounds()
+        except measurements.TimeUnavailable:
+            return False
+    observed = checked_at.timestamp()
+    return observed <= lower and upper - observed <= stale_after_seconds
 
 
 def parse_unit_exec_start_wake_root(unit_path: Path) -> str:

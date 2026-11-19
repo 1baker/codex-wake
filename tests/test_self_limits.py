@@ -11,6 +11,59 @@ import test_goal_supervision as fixtures
 THREAD, NOW = fixtures.THREAD, fixtures.NOW
 
 
+@contextmanager
+def fixture_clock(directory, observation):
+    """Share injected measurement evidence with only this case's owned watcher."""
+    from pathlib import Path
+    import subprocess
+    clock_path = Path(directory) / 'measurement.json'
+    controller_path = Path(directory) / 'wake/goal-supervision/controller.json'
+    def publish():
+        temporary = clock_path.with_suffix('.tmp')
+        temporary.write_text(json.dumps(observation))
+        temporary.replace(clock_path)
+    def sample():
+        publish()
+        return json.loads(json.dumps(observation))
+    def synchronize():
+        publish()
+        if controller_path.exists():
+            end = time.monotonic() + 3
+            while time.monotonic() < end:
+                if json.loads(controller_path.read_text()).get('clock_observation') == observation:
+                    return
+                time.sleep(.01)
+            raise AssertionError('owned watcher did not observe fixture measurement')
+    bootstrap = """import json,runpy,sys
+from pathlib import Path
+from codex_wake import measurements,native_clock
+path=Path(sys.argv.pop(1))
+mode=sys.argv.pop(1);entry=sys.argv.pop(1)
+def sample():return json.loads(path.read_text())
+measurements.snapshot=sample
+native_clock.snapshot=sample
+if mode=='module':runpy.run_module(entry,run_name='__main__')
+else:
+ # Counter scenarios drive poll explicitly against their injected native peer.
+ # The child supplies the real singleton lock, process and clock heartbeat.
+ from codex_wake import goal_supervision
+ goal_supervision.poll=lambda root: []
+ exec(entry)
+"""
+    original = subprocess.Popen
+    def launch(command, *args, **kwargs):
+        command = list(command)
+        if command[1:3] == ['-m', 'codex_wake.self_limits']:
+            command = [command[0], '-c', bootstrap, str(clock_path), 'module', command[2], *command[3:]]
+        elif len(command)>2 and command[1]=='-c' and 'from codex_wake.goal_supervision import watch' in command[2]:
+            command = [command[0], '-c', bootstrap, str(clock_path), 'code', command[2], *command[3:]]
+        return original(command, *args, **kwargs)
+    publish()
+    with patch('codex_wake.measurements.snapshot',side_effect=sample), patch(
+            'codex_wake.native_clock.snapshot',side_effect=sample), patch('subprocess.Popen',side_effect=launch):
+        yield synchronize
+
+
 class SelfLimitsTests(unittest.TestCase):
     fixture = fixtures.GoalSupervisionTests.fixture
     def test_own_setup_starts_controller_and_stops_at_existing_usage(self):
@@ -23,7 +76,10 @@ class SelfLimitsTests(unittest.TestCase):
                 allocations={}, self_enrollment=grant)))
             context = dict(threadId=THREAD, sessionId=THREAD, callId='self-test',
                 **{'x-codex-turn-metadata': dict(thread_id=THREAD,session_id=THREAD,turn_id='work')})
-            with patch('codex_wake.lifecycle_budget.trusted_upper', return_value=NOW), patch('codex_wake.native_clock.snapshot', return_value=dict(utc=dict(status='network',sources=['fixture-a','fixture-b'],lower=NOW,upper=NOW),counter=None,reason='bounded_utc')), patch('codex_wake.goal_watcher.watcher_status', return_value=dict(reason='watcher_not_installed')):
+            observation=dict(reason='authenticated_utc',valid_for_ns=300000000000,
+                utc=dict(status='network',lower=NOW,upper=NOW),counter=dict(
+                    epoch='c357309d-c209-4467-b757-e1488e6b1aaa',counter=1000,frequency=1000,rate_ppm=0))
+            with fixture_clock(directory,observation), patch('codex_wake.lifecycle_budget.trusted_upper', return_value=NOW), patch('codex_wake.goal_watcher.watcher_status', return_value=dict(reason='watcher_not_installed')):
                 first = execute(root, policy, 'set', dict(token_limit=100,time_limit_seconds=120), native_context=context)
                 self.assertIn('pid', first['controller'], (first, (root/'goal-supervision/self-watcher.log').read_text() if (root/'goal-supervision/self-watcher.log').exists() else 'no log'))
                 pid = first['controller']['pid']
@@ -152,6 +208,7 @@ class SelfLimitsAdmissionTests(unittest.TestCase):
     def test_counter_only_session_enrolls_without_goal_and_stops_exact_owned_turn(self):
         from codex_wake.goal_supervision import enroll,poll
         from test_goal_time import ANCHOR
+        from copy import deepcopy
         for fault,existing_goal in [('exhaustion',None),('continuity',None),('exhaustion',dict(threadId=THREAD,createdAt=NOW,status='paused',tokenBudget=50))]:
             with self.subTest(fault=fault,existing_goal=existing_goal),tempfile.TemporaryDirectory() as directory:
                 root,policy,log,_,_=self.fixture(directory)
@@ -167,21 +224,30 @@ class SelfLimitsAdmissionTests(unittest.TestCase):
                     if method=='thread/turns/list':return dict(data=[dict(id=t,status='inProgress') for t in active],nextCursor=None)
                     if method=='turn/interrupt':active.remove(params['turnId']);return {}
                     raise AssertionError(method)
-                with self.controller(root),patch('codex_wake.goal_supervision.native_request',side_effect=native),patch(
-                        'codex_wake.lifecycle_budget.trusted_upper',side_effect=ValueError('admissible time unavailable')),patch(
-                        'codex_wake.native_clock.snapshot',side_effect=lambda:clock):
+                with fixture_clock(directory,clock) as synchronize, self.controller(root,interval=.05) as watcher,patch('codex_wake.goal_supervision.native_request',side_effect=native),patch(
+                        'codex_wake.lifecycle_budget.trusted_upper',side_effect=ValueError('admissible time unavailable')):
+                    anchor = dict(ANCHOR,counter=31000)
+                    clock['counter'] = dict(anchor)
+                    synchronize()
+                    def at_seconds(seconds):
+                        return dict(anchor,counter=anchor['counter']+seconds*anchor['frequency'])
                     if fault=='exhaustion' and existing_goal is None:
-                        path=root/'goal-supervision/controller.json';compatible=json.loads(path.read_text())
-                        stale=dict(compatible);stale.pop('time_bases');stale.pop('session_scope_without_goal')
-                        stale['observed_boottime']-=30
-                        for missing_heartbeat in (False,True):
-                            if missing_heartbeat:path.unlink()
-                            else:path.write_text(json.dumps(stale))
-                            with self.assertRaisesRegex(ValueError,'existing watcher owner is stale'):
-                                enroll(root,policy,THREAD,100,120,native_context=context,session_scope=True,prepare_only=True)
-                            self.assertEqual([p.name for p in (root/'goal-supervision').glob('*.json')],[] if missing_heartbeat else ['controller.json'])
-                            self.assertFalse(list((root/'goal-supervision/allocations').glob('*.json')))
-                            path.write_text(json.dumps(compatible))
+                        # Freeze publication while asserting a retained stale owner.
+                        os.kill(watcher.pid,signal.SIGSTOP)
+                        try:
+                            path=root/'goal-supervision/controller.json';compatible=json.loads(path.read_text())
+                            stale=deepcopy(compatible);stale.pop('time_bases');stale.pop('session_scope_without_goal')
+                            stale['clock_observation']['counter']['counter']-=30*anchor['frequency']
+                            for missing_heartbeat in (False,True):
+                                if missing_heartbeat:path.unlink()
+                                else:path.write_text(json.dumps(stale))
+                                with self.assertRaisesRegex(ValueError,'existing watcher owner is stale'):
+                                    enroll(root,policy,THREAD,100,120,native_context=context,session_scope=True,prepare_only=True)
+                                self.assertEqual([p.name for p in (root/'goal-supervision').glob('*.json')],[] if missing_heartbeat else ['controller.json'])
+                                self.assertFalse(list((root/'goal-supervision/allocations').glob('*.json')))
+                                path.write_text(json.dumps(compatible))
+                        finally:
+                            os.kill(watcher.pid,signal.SIGCONT)
                     first=enroll(root,policy,THREAD,100,120,native_context=context,session_scope=True)
                     self.assertEqual(first['state'],'armed')
                     self.assertEqual(first['time_basis'],'authenticated_host_counter')
@@ -192,21 +258,24 @@ class SelfLimitsAdmissionTests(unittest.TestCase):
                         # session projection was not retained. Reuse its anchor.
                         for path in (root/'goal-supervision').glob('*.json'):
                             if json.loads(path.read_text()).get('thread_id')==THREAD:path.unlink()
-                        clock['counter']=dict(ANCHOR,counter=2000)
+                        clock['counter']=at_seconds(1)
+                        synchronize()
                         recovered=enroll(root,policy,THREAD,100,120,native_context=context,session_scope=True)
                         self.assertEqual(recovered['clock_anchor'],first['clock_anchor'])
                         self.assertEqual(recovered['elapsed_limit_seconds'],120)
                         self.assertGreaterEqual(recovered['elapsed_upper_seconds'],1)
                         self.assertEqual(recovered['lifetime_used_tokens'],40)
                         first=recovered
-                    clock['counter']=dict(ANCHOR,counter=2000)
+                    clock['counter']=at_seconds(1)
+                    synchronize()
                     tightened=enroll(root,policy,THREAD,90,110,native_context=context,session_scope=True)
                     self.assertEqual(tightened['clock_anchor'],first['clock_anchor'])
                     self.assertEqual(tightened['generation'],first['generation'])
                     self.assertEqual(tightened['lifetime_used_tokens'],40)
                     self.assertGreaterEqual(tightened['elapsed_upper_seconds'],1)
                     self.assertEqual(tightened['elapsed_limit_seconds'],110)
-                    clock['counter']=dict(ANCHOR,epoch='replacement') if fault=='continuity' else dict(ANCHOR,counter=112000)
+                    clock['counter']=dict(anchor,epoch='replacement') if fault=='continuity' else at_seconds(111)
+                    synchronize()
                     stopped=poll(root)[0]
                     self.assertEqual(stopped['state'],'stopped')
                     self.assertTrue(stopped['stop_proof'])
@@ -216,7 +285,8 @@ class SelfLimitsAdmissionTests(unittest.TestCase):
                         self.assertIsNone(stopped['first_stop']['observed_upper'])
                     if existing_goal is not None:self.assertEqual(existing_goal['status'],'paused')
                     self.assertEqual(active,[])
-                    clock['counter']=dict(ANCHOR,counter=3000 if fault=='continuity' else 113000)
+                    clock['counter']=at_seconds(2 if fault=='continuity' else 112)
+                    synchronize()
                     retry=enroll(root,policy,THREAD,90,110,native_context=context,session_scope=True)
                     self.assertTrue(retry['stop_latched'])
                     self.assertEqual(retry['state'],'held')

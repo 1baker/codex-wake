@@ -185,12 +185,27 @@ class IntegratedPolicySelectionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)/'wake'
             for policy in ('queue','interrupt'):
-                with self.assertRaisesRegex(WakeError,'busy_policy_unsupported'):
-                    run(['--wake-root',str(root),'native','after','--busy-policy',policy,
-                         '--codex-path','/not-an-executable','exact-thread','1m','--','Synthetic'])
+                if policy == 'interrupt':
+                    with self.assertRaisesRegex(WakeError,'busy_policy_unsupported'):
+                        run(['--wake-root',str(root),'native','after','--busy-policy',policy,
+                             '--codex-path','/not-an-executable','exact-thread','1m','--','Synthetic'])
                 runner=CommandRunner(wake_root=root)
                 value,failed=runner.call('wake_grok_after',dict(binding_id='grok_'+'a'*32,
                     trigger='1m',prompt='Synthetic',idempotency_key='original',busy_policy=policy))
                 self.assertTrue(failed)
                 self.assertEqual(value['error']['code'],'busy_policy_unsupported')
             self.assertFalse(root.exists())
+
+
+def setUpModule():
+    from itertools import count
+    from unittest.mock import patch
+    from test_measurements import observation
+    global _qualified_clock_patch
+    counters=count(1000,100)
+    _qualified_clock_patch=patch('codex_wake.measurements.snapshot', side_effect=lambda:observation(next(counters),rate=0))
+    _qualified_clock_patch.start()
+
+
+def tearDownModule():
+    _qualified_clock_patch.stop()

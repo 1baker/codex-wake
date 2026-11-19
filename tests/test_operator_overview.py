@@ -105,9 +105,11 @@ class OverviewTests(unittest.TestCase):
                             status=dict(type='idle',activeFlags=[]))
                 identity=RuntimeIdentity.from_metadata(thread,server)
                 process=process_identity(pid)
+                from codex_wake import measurements
+                clock = measurements.snapshot()
                 managed=ManagedInventory(root).enroll(Observation('codex',identity.namespace,'thread',str(root),
-                    'ready',time.time(),'native_metadata',dict(pid=pid,start_ticks=process['start_time_ticks'],
-                    boot_id=process['boot_id']),[],{'inspect':'supported'}),operator=True)['agent']
+                    'ready',clock['utc']['upper'],'native_metadata',dict(pid=pid,start_ticks=process['start_time_ticks'],
+                    boot_id=process['boot_id']),[],{'inspect':'supported'},clock_observation=clock),operator=True)['agent']
                 bus,capability=BusStore.configure(root/'bus',bus_id='focusfixture')
                 policy=PermissionStore(root)
                 operator=Principal('operator:'+bus.bus_id,'operator')

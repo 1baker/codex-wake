@@ -1,0 +1,35 @@
+{
+  "recorded_at": "2026-11-18T18:18:13.114683+00:00",
+  "base": "c39eabd6cf29096fbb0cfc366ada11ae0bd6a089",
+  "tickets": [
+    "ST04-DAEMON-UTC",
+    "ST04-RECORD-EVENTS",
+    "ST04-SIGNAL-LEASES"
+  ],
+  "states": "implemented_integrated_validated_closed_repo_local",
+  "root_owner": "ST04-DAEMON-UTC",
+  "workers": {
+    "ST04-RECORD-EVENTS": "/root/st04_record_events",
+    "ST04-SIGNAL-LEASES": "/root/st04_signal_leases"
+  },
+  "validation": {
+    "root_preintegration": "62PASS311",
+    "worker_record_events": "22PASS311/312;52adjacentPASS311",
+    "worker_signal_leases": "7PASS311/312",
+    "combined": "92PASS311/312",
+    "final_schema2_delta": "27PASS311/312",
+    "static": "ruffF821/F822/F823,policywiring,diffPASS"
+  },
+  "integration_findings": [
+    "Alreadyreservedmatchsurvivesexpiryuncertainty; rootpublicregressionREDthenGREEN, samejournalreservation/identity.",
+    "Schema2requiresnonnullupdated_at; unknownUTCmoveholdsuntouchedwithsignal_move_time_unqualified. RootpublicregressionREDthenGREEN. No schema/terminalfencechange."
+  ],
+  "retained_failures": [
+    "Rootlower/notbefore,missingUTC,signalexpiry,retry/reportingREDlogs; duplicatekeywordsyntaxsetupfailure corrected.",
+    "Workerrecordonewrongtestclasssuffixcollectionerrorretained/corrected.",
+    "Workerleaseexactbasecounterfactualandpre-sourceleaseREDlogs retained.",
+    "Commitwrapper firstsyntaxerror occurredbeforemutation; correctedonce."
+  ],
+  "review": "EarlieronebroadreviewandoneboundedTDDfindingspass preserved; no broadreviewrepeat. Ordinarysourceintegrationandcausalchecks only.",
+  "limits": "GlobalST04/#695/#628/fullPython/activationandliveGrok remainopen. No new provider requests/credentialcopies/servicechanges/Nativebuild/fullsuite/merge/deploy."
+}

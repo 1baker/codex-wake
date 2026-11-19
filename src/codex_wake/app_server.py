@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import math
+import time
 import os
 import select
 import shutil
@@ -8,18 +10,32 @@ import socket
 import threading
 import stat
 import subprocess
-import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Mapping, Protocol
 
 from .injector import canonical_prompt
-from .records import WakeError, WakePath, append_event, format_utc, replace_record, utc_now
+from . import measurements
+from .records import WakeError, WakePath, append_event, format_utc, replace_record
 
 
 APP_SERVER_BACKOFF_SECONDS = (60, 300)
 APP_SERVER_CODEX_ENV = "CODEX_WAKE_CODEX_CMD"
+
+
+def _deadline(seconds):
+    if type(seconds) not in (int, float) or not math.isfinite(seconds) or seconds < 0:
+        raise WakeError('invalid app-server timeout')
+    # Advisory resource budget only; dispatch time and expiry retain their owners.
+    return time.monotonic() + seconds
+
+
+def _remaining(deadline):
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise WakeError('app-server timed out while waiting for response')
+    return remaining
 
 
 class AppServerClient(Protocol):
@@ -141,14 +157,16 @@ def private_daemon_socket(socket_path: str) -> Path:
     return path
 
 
-def persistent_app_server_socket(codex_cmd: str | None = None) -> Path:
+def persistent_app_server_socket(codex_cmd: str | None = None, *, _budget=None) -> Path:
     """Discover an existing private daemon; never start or take ownership of it."""
+    deadline=_deadline(5) if _budget is None else _budget
     codex = resolve_codex_cmd(codex_cmd, required=True)
     try:
         result = subprocess.run(
             [codex, "app-server", "daemon", "version"], capture_output=True,
-            text=True, timeout=5, check=False,
+            text=True, timeout=min(5.0, _remaining(deadline)), check=False,
         )
+        _remaining(deadline)
         if result.returncode:
             raise WakeError("app-server persistent daemon discovery unsupported")
         data = json.loads(result.stdout)
@@ -171,11 +189,13 @@ class StdioAppServerClient:
         codex_cmd: str | None = None,
         timeout_seconds: float = 30.0,
     ) -> None:
+        startup=_deadline(timeout_seconds)
         self.command = app_server_command(command, codex_cmd=codex_cmd)
         self.timeout_seconds = timeout_seconds
         self._next_id = 1
         self._read_buffer = b""
         try:
+            _remaining(startup)
             self.process = subprocess.Popen(
                 self.command,
                 stdin=subprocess.PIPE,
@@ -187,6 +207,13 @@ class StdioAppServerClient:
                 f"app-server command not found: {self.command[0]}; configure "
                 f"{APP_SERVER_CODEX_ENV} or reinstall the service with --codex-path"
             ) from exc
+        try:
+            _remaining(startup)
+            if self.process.stdin is not None:
+                os.set_blocking(self.process.stdin.fileno(),False)
+        except (WakeError,OSError):
+            self.close()
+            raise
 
     def close(self) -> None:
         try:
@@ -203,6 +230,7 @@ class StdioAppServerClient:
                     stream.close()
 
     def request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        deadline=_deadline(self.timeout_seconds)
         if self.process.stdin is None or self.process.stdout is None:
             raise WakeError("app-server stdio pipes are unavailable")
         request_id = self._next_id
@@ -213,12 +241,20 @@ class StdioAppServerClient:
             "method": method,
             "params": params,
         }
-        self.process.stdin.write((json.dumps(payload) + "\n").encode())
-        self.process.stdin.flush()
-        deadline = time.monotonic() + self.timeout_seconds
+        pending=memoryview((json.dumps(payload)+"\n").encode())
+        while pending:
+            if not select.select([], [self.process.stdin], [], _remaining(deadline))[1]:
+                raise WakeError(f"app-server timed out while sending {method}")
+            try:
+                written=os.write(self.process.stdin.fileno(),pending)
+            except BlockingIOError:
+                continue
+            if written<=0:
+                raise WakeError('app-server closed stdin')
+            pending=pending[written:]
         while True:
             while b"\n" not in self._read_buffer:
-                remaining = deadline - time.monotonic()
+                remaining = _remaining(deadline)
                 if remaining <= 0 or not select.select([self.process.stdout], [], [], remaining)[0]:
                     raise WakeError(f"app-server timed out while waiting for {method}")
                 chunk = os.read(self.process.stdout.fileno(), 65536)
@@ -228,8 +264,7 @@ class StdioAppServerClient:
                 if len(self._read_buffer) > 32 * 1024 * 1024:
                     raise WakeError("app-server response exceeds capacity")
             line, self._read_buffer = self._read_buffer.split(b"\n", 1)
-            if time.monotonic() >= deadline:
-                raise WakeError(f"app-server timed out while waiting for {method}")
+            _remaining(deadline)
             try:
                 message = json.loads(line)
             except ValueError as exc:
@@ -243,6 +278,7 @@ class StdioAppServerClient:
             result = message.get("result")
             if not isinstance(result, dict):
                 raise WakeError(f"app-server {method} returned non-object result")
+            _remaining(deadline)
             return result
 
     def initialize(self) -> dict[str, Any]:
@@ -441,16 +477,23 @@ class UnixWebSocketAppServerClient(StdioAppServerClient):
     def __init__(self, *, codex_cmd: str | None = None, timeout_seconds: float = 30.0) -> None:
         from websockets.sync.client import unix_connect
         from websockets.exceptions import WebSocketException
+        startup=_deadline(timeout_seconds)
         self.timeout_seconds = timeout_seconds
         self._next_id = 1
-        socket_path = persistent_app_server_socket(codex_cmd)
+        _remaining(startup)
+        socket_path = persistent_app_server_socket(codex_cmd, _budget=startup)
         try:
             self._connection_context = unix_connect(
-                socket_path, uri="ws://localhost/", open_timeout=min(5.0, timeout_seconds),
+                socket_path, uri="ws://localhost/", open_timeout=min(5.0, _remaining(startup)),
                 close_timeout=1.0, max_size=32 * 1024 * 1024, max_queue=16,
                 compression=None, ping_interval=None, proxy=None,
             )
             self.connection = self._connection_context.__enter__()
+            try:
+                _remaining(startup)
+            except WakeError:
+                self.close()
+                raise
         except (OSError, TimeoutError, WebSocketException) as exc:
             raise WakeError(f"app-server Unix WebSocket connection failed: {exc}") from exc
 
@@ -458,22 +501,22 @@ class UnixWebSocketAppServerClient(StdioAppServerClient):
         from websockets.exceptions import WebSocketException
         request_id = self._next_id
         self._next_id += 1
-        deadline = time.monotonic() + self.timeout_seconds
+        deadline = _deadline(self.timeout_seconds)
         # recv's timeout doesn't bound sendall. Interrupt only our socket at the
-        # same absolute deadline, including a peer that stops reading requests.
+        # protective budget, including time spent in a stalled send.
         def expire() -> None:
             try:
                 self.connection.socket.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
-        timer = threading.Timer(self.timeout_seconds, expire)
+        timer = threading.Timer(_remaining(deadline), expire)
         timer.daemon = True
         timer.start()
         try:
             self.connection.send(json.dumps({"jsonrpc": "2.0", "id": request_id,
                                              "method": method, "params": params}))
             while True:
-                remaining = deadline - time.monotonic()
+                remaining = _remaining(deadline)
                 if remaining <= 0:
                     raise TimeoutError()
                 payload = self.connection.recv(timeout=remaining)
@@ -489,16 +532,14 @@ class UnixWebSocketAppServerClient(StdioAppServerClient):
                 result = message.get("result")
                 if not isinstance(result, dict):
                     raise WakeError(f"app-server {method} returned non-object result")
-                if time.monotonic() >= deadline:
-                    raise TimeoutError()
+                _remaining(deadline)
                 return result
         except TimeoutError as exc:
             raise WakeError(f"app-server timed out while waiting for {method}") from exc
         except WakeError:
             raise
         except (ValueError, OSError, WebSocketException) as exc:
-            if time.monotonic() >= deadline:
-                raise WakeError(f"app-server timed out while waiting for {method}") from exc
+            _remaining(deadline)
             raise WakeError(f"app-server WebSocket {method} failed: {exc}") from exc
         finally:
             timer.cancel()
@@ -556,10 +597,13 @@ def dispatch_app_server_record(
     default_codex_cmd: str | None = None,
     now: datetime | None = None,
 ) -> AppServerDispatchResult:
-    current = now or utc_now()
     record = dict(found.record)
     if record.get("status") != "firing":
         return AppServerDispatchResult("skipped", "record is not firing")
+    try:
+        current=now if now is not None else measurements.datetime_now()
+    except measurements.TimeUnavailable as error:
+        raise WakeError('app-server qualified Stable Time unavailable') from error
     wake_id = record.get("id")
     if not isinstance(wake_id, str) or not wake_id:
         raise WakeError("wake record missing id")

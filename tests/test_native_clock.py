@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from copy import deepcopy
 
 from codex_wake.native_clock import from_response
@@ -20,6 +21,51 @@ def response():
 
 
 class NativeClockTests(unittest.TestCase):
+    def test_default_snapshot_retains_service_instant_without_counter_helper(self):
+        import json, tempfile
+        from pathlib import Path
+        from unittest.mock import MagicMock
+        from codex_wake.native_clock import snapshot
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'token').write_text('a' * 64)
+            config = root / 'client.json'
+            config.write_text(json.dumps(dict(url='https://localhost:47770',
+                token_file=str(root / 'token'), ca_file=str(root / 'ca'))))
+            opener = MagicMock()
+            opener.open.return_value.__enter__.return_value.read.return_value = json.dumps(response()).encode()
+            with patch('codex_wake.native_clock.configuration', return_value=str(config)), \
+                    patch('codex_wake.native_clock.ssl.SSLContext'), \
+                    patch('codex_wake.native_clock.urllib.request.build_opener', return_value=opener), \
+                    patch('codex_wake.host_counter.read_counter', side_effect=OSError('auxiliary client failed')) as helper:
+                value = snapshot()
+                opener.open.side_effect = OSError('private transport detail')
+                failed = snapshot()
+            self.assertEqual(value['reason'], 'authenticated_utc')
+            self.assertEqual(value['basis'], 'service_measurement')
+            self.assertEqual(value['counter']['counter'], 10000000)
+            self.assertLess(value['utc']['upper'], 1800014400.200)
+            helper.assert_not_called()
+            self.assertEqual(failed['reason'], 'stable_time_client_transport_failed')
+            self.assertIsNone(failed['counter'])
+
+    def test_missing_stable_time_configuration_holds_without_network_fallback(self):
+        from codex_wake.native_clock import snapshot
+        with patch('codex_wake.native_clock.configuration', return_value=None), \
+                patch('codex_wake.time_inspection.network_time_decision',
+                    side_effect=AssertionError('non-Stable-Time fallback attempted')) as fallback:
+            value = snapshot()
+            self.assertIsNone(value['utc'])
+            self.assertIsNone(value['counter'])
+            self.assertEqual(value['reason'], 'stable_time_configuration_required')
+            fallback.assert_not_called()
+
+    def test_authenticated_utc_retains_conservative_remaining_validity(self):
+        result = from_response(response(), counter=10000010, frequency=10000000)
+        # Eleven counter ticks at the slowest allowed rate consume1106ns,
+        # rounded up, plus1ns safety margin from the original ten-second lease.
+        self.assertEqual(result['valid_for_ns'], 9999998893)
+
     def test_wake_tolerance_does_not_relax_service_utc_qualification(self):
         valid = response()
         self.assertIsNotNone(from_response(valid, counter=10000010, frequency=10000000)['utc'])

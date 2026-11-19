@@ -8,6 +8,35 @@ from codex_wake.resource_claims import Claimant, ResourceClaims, ResourceClaimEr
 
 
 class ResourceClaimTests(unittest.TestCase):
+    def test_stable_counter_freshness_survives_utc_metadata_rollback(self):
+        from unittest.mock import patch
+        from codex_wake import measurements
+        anchor = dict(reason='authenticated_counter_only', counter=dict(
+            epoch='c357309d-c209-4467-b757-e1488e6b1aaa', counter=1000,
+            frequency=1000, rate_ppm=0))
+        current = dict(anchor, counter=dict(anchor['counter'], counter=2000))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            workspace = root/'work'
+            workspace.mkdir()
+            owner = Claimant('agent_'+'1'*32, str(root),
+                dict(pid=11, start_ticks=1, boot_id='boot'), 1000,
+                clock_observation=anchor)
+            with patch.object(measurements, 'snapshot', return_value=current), patch.object(measurements, 'utc_time', return_value=991):
+                store = ResourceClaims(root/'wake')
+                claim = store.claim('worktree', workspace, owner)
+                with store.guard(claim['claim_id'], claim['generation'], owner):
+                    pass
+                self.assertEqual(claim['owner']['managed_agent_id'], owner.managed_agent_id)
+                self.assertEqual(claim['history'][0]['at'], 991)
+                legacy = Claimant(owner.managed_agent_id, owner.root, owner.process, 991)
+                with self.assertRaises(ResourceClaimError):
+                    store.claim('worktree', workspace, legacy)
+                stale = dict(current, counter=dict(current['counter'], counter=40000))
+                with patch.object(measurements, 'snapshot', return_value=stale), self.assertRaises(ResourceClaimError):
+                    with store.guard(claim['claim_id'], claim['generation'], owner):
+                        self.fail('stale custody reached mutation')
+
     def test_competing_agent_cannot_claim_owned_worktree(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

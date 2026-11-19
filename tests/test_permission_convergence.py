@@ -9,12 +9,14 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from codex_wake.a2a_bus import BusStore
 from codex_wake.cli import run
 
 
 THREAD = '00000000-0000-7000-8000-000000000325'
+UTC_BOUNDS = (1800000000, 1800000001)
 # Contract matrix is deliberately independent of the implementation's catalog.
 DEFAULTS = {
     'session.inspect': 'allow', 'refresh.self': 'allow',
@@ -30,6 +32,9 @@ DEFAULTS = {
 
 class PermissionConvergenceTests(unittest.TestCase):
     def setUp(self):
+        clock = patch('codex_wake.measurements.utc_bounds', return_value=UTC_BOUNDS)
+        clock.start()
+        self.addCleanup(clock.stop)
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.base = Path(temp.name)
@@ -58,7 +63,10 @@ class PermissionConvergenceTests(unittest.TestCase):
         script = '''
 import json,sys
 from pathlib import Path
+from unittest.mock import patch
 from codex_wake.mcp_server import CommandRunner
+clock=patch('codex_wake.measurements.utc_bounds',return_value=json.loads(sys.argv[4]))
+clock.start()
 thread=sys.argv[2]
 meta=dict(threadId=thread,sessionId=thread,callId='convergence',**{
     'x-codex-turn-metadata':dict(thread_id=thread,session_id=thread,turn_id='turn')})
@@ -72,7 +80,7 @@ print(json.dumps({action:runner.call('wake_permissions_show',
         for key in ('XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_STATE_HOME', 'XDG_CACHE_HOME'):
             env[key] = str(self.base / key)
         result = subprocess.run([sys.executable, '-c', script, str(root), THREAD,
-                                 json.dumps(list(DEFAULTS))], env=env, text=True,
+                                 json.dumps(list(DEFAULTS)), json.dumps(UTC_BOUNDS)], env=env, text=True,
                                 capture_output=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
         return json.loads(result.stdout)
@@ -105,7 +113,7 @@ print(json.dumps({action:runner.call('wake_permissions_show',
             self.assertEqual(value['revision'], 2)
 
     def test_expired_approvals_cannot_reappear_after_public_restart(self):
-        reference=datetime.now(timezone.utc)
+        reference=datetime.fromtimestamp(UTC_BOUNDS[0], timezone.utc)
         future=(reference+timedelta(days=365)).isoformat()
         past=(reference-timedelta(days=365)).isoformat()
         policy = {'version': 1, 'global': {'default': 'approval_required'},

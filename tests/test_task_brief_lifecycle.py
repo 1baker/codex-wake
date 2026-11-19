@@ -21,6 +21,9 @@ from codex_wake.task_briefs import BriefAuthority, TaskBriefStore
 
 class TaskBriefLifecycleTests(unittest.TestCase):
     def setUp(self):
+        clock = patch('codex_wake.measurements.utc_bounds', return_value=(100, 101))
+        clock.start()
+        self.addCleanup(clock.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.workspace = Path(self.temp.name)

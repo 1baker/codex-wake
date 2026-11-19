@@ -6,6 +6,7 @@ import re
 import time
 from types import MappingProxyType
 
+from . import measurements
 from .records import WakeError
 from .runtime_delivery import (
     RuntimeCapability, RuntimeObservation, RuntimeRecipient, RuntimeSubmission,
@@ -19,6 +20,7 @@ class GrokRuntimeAdapter:
     def __init__(self, host, *, deadline=None, busy_policy="wait", preferred_method="terminal_observation"):
         self.host = host
         self.deadline = deadline
+        self.host.deadline = deadline
         self.busy_policy = busy_policy
         self.preferred_method = preferred_method
 
@@ -67,12 +69,24 @@ class GrokRuntimeAdapter:
                     and lines[-2] == '❯' and re.fullmatch(footer, lines[-1])):
                 return RuntimeObservation('ready', 'qualified_empty_composer', capabilities)
             return RuntimeObservation('unavailable', 'busy_draft_or_unknown_composer', capabilities)
+        except measurements.TimeUnavailable:
+            return RuntimeObservation('unavailable', 'qualified_time_unavailable', capabilities)
         except Exception:
             return RuntimeObservation('unavailable', 'binding_or_ui_unavailable', capabilities)
 
     def submit(self, recipient, prompt):
         if self.busy_policy != "wait":
             return RuntimeSubmission("not_sent", reason="busy_policy_unsupported", pre_io=True)
+        try:
+            if self.deadline is None:
+                self.deadline = measurements.deadline(30)
+            if not callable(getattr(self.deadline, 'remaining', None)):
+                raise measurements.TimeUnavailable('retained_deadline_required')
+            if self.deadline.remaining() <= 12:
+                return RuntimeSubmission('not_sent', reason='original_deadline_reached', pre_io=True)
+            self.host.deadline = self.deadline
+        except measurements.TimeUnavailable:
+            return RuntimeSubmission('not_sent', reason='qualified_time_unavailable', pre_io=True)
         method = recipient.binding.get("_preferred_method", self.preferred_method)
         if method == "native_preferred":
             from .runtime_policies import terminal_fallback
@@ -87,33 +101,52 @@ class GrokRuntimeAdapter:
             return terminal_fallback(terminal_recipient, prompt, preferred, terminal)
         if method != "terminal_observation":
             return RuntimeSubmission("not_sent", reason="delivery_method_unsupported", pre_io=True)
-        if self.deadline is not None and self.deadline-time.monotonic() <= 12:
-            return RuntimeSubmission('not_sent', reason='original_deadline_reached')
-        if self.observe(recipient).state != 'ready':
-            return RuntimeSubmission('not_sent', reason='recipient_not_ready')
+        observation = self.observe(recipient)
+        if observation.state != 'ready':
+            return RuntimeSubmission('not_sent', reason=observation.reason, pre_io=True)
         try:
             self.host.refresh_identity(recipient.binding)
             if self.observe(recipient).state != 'ready':
-                return RuntimeSubmission('not_sent', reason='fresh_identity_or_composer_changed')
+                return RuntimeSubmission('not_sent', reason='fresh_identity_or_composer_changed', pre_io=True)
+        except measurements.TimeUnavailable:
+            return RuntimeSubmission('not_sent', reason='qualified_time_unavailable', pre_io=True)
         except Exception:
-            return RuntimeSubmission('not_sent', reason='fresh_session_identity_unavailable')
+            return RuntimeSubmission('not_sent', reason='fresh_session_identity_unavailable', pre_io=True)
         try:
-            if self.deadline is not None and self.deadline-time.monotonic() <= 12:
-                return RuntimeSubmission('not_sent', reason='original_deadline_reached')
+            if self.deadline.remaining() <= 12:
+                return RuntimeSubmission('not_sent', reason='original_deadline_reached', pre_io=True)
+        except measurements.TimeUnavailable:
+            return RuntimeSubmission('not_sent', reason='qualified_time_unavailable', pre_io=True)
+        try:
             self.host.paste(recipient.binding, prompt, deadline=self.deadline)
             # Enter returns before the TUI necessarily repaints. Observe only
             # this original marker, within both a short bound and its deadline.
-            until = min(time.monotonic() + 1, self.deadline if self.deadline is not None else float('inf'))
-            while True:
-                observed = self.reconcile(recipient, prompt)
-                if observed.evidence:
-                    return RuntimeSubmission('accepted', evidence_kind='terminal_observation', evidence=observed.evidence)
-                remaining = until - time.monotonic()
-                if remaining <= 0:
-                    break
-                time.sleep(min(.05, remaining))
+            phase = measurements.deadline(1)
+            previous_phase = getattr(self.host, "_phase_deadline", None)
+            self.host._phase_deadline = phase
+            try:
+                return self._acceptance(recipient, prompt, phase)
+            finally:
+                self.host._phase_deadline = previous_phase
         except Exception:
             pass
+        return RuntimeSubmission('uncertain', reason='terminal_acceptance_unconfirmed')
+
+    def _acceptance(self, recipient, prompt, phase):
+        while True:
+            remaining = min(phase.remaining(), self.deadline.remaining())
+            if remaining <= 0:
+                break
+            observed = self.reconcile(recipient, prompt)
+            # A receipt read cannot extend either retained budget or survive clock loss.
+            if min(phase.remaining(), self.deadline.remaining()) <= 0:
+                break
+            if observed.evidence:
+                return RuntimeSubmission('accepted', evidence_kind='terminal_observation', evidence=observed.evidence)
+            remaining = min(phase.remaining(), self.deadline.remaining())
+            if remaining <= 0:
+                break
+            time.sleep(min(.05, remaining))
         return RuntimeSubmission('uncertain', reason='terminal_acceptance_unconfirmed')
 
     def reconcile(self, recipient, prompt):

@@ -9,8 +9,8 @@ from dataclasses import dataclass
 import hashlib
 import json
 from pathlib import Path
-import time
 
+from . import measurements
 from .records import WakeError, parse_timestamp
 
 ACTIONS = {
@@ -163,7 +163,7 @@ def _validate(policy):
 
 
 class PermissionStore:
-    def __init__(self, root, *, now=time.time):
+    def __init__(self, root, *, now=None):
         self.root = Path(root).absolute()
         if self.root != self.root.resolve():
             raise PermissionDenied('permission_root_not_canonical')
@@ -190,7 +190,7 @@ class PermissionStore:
                 self.routing_error=exc
         self.directory = self.root / 'session-permissions'
         self.path = self.directory / 'policy.json'
-        self.now = now
+        self.now = measurements.utc_time if now is None else now
 
     def active(self):
         return (self.routing_error is not None or self.execution_root!=self.root or self.path.exists() or self.path.is_symlink() or self.directory.is_symlink()
@@ -232,7 +232,12 @@ class PermissionStore:
             policy.setdefault('known_actions', list(ACTIONS))
             digest = hashlib.sha256(json.dumps(policy, sort_keys=True).encode()).hexdigest()
             entry = dict(revision=old['revision']+1, issuer=principal.subject,
-                         at=self.now(), digest=digest)
+                         at=None, digest=digest)
+            try:
+                entry['at'] = self.now()
+            except measurements.TimeUnavailable:
+                # Audit metadata must not disable verified operator controls.
+                entry['time_state'] = 'unavailable'
             value = dict(revision=entry['revision'], issuer=principal.subject,
                          policy=policy, history=[*old['history'], entry])
             _save(self.path, value)
@@ -336,18 +341,27 @@ class PermissionStore:
             decision,source='deny','legacy_profile_ceiling'
         approval_id = approval_scope = approval_issuer = None
         if decision == 'approval_required':
+            approval_time_unavailable = False
             for a in p.get('approvals', []):
                 subject_match = a['subject'] == principal.subject or (
                     a['subject'] in ((principal.predecessor,) + principal.ancestors) and a['scope'] == 'task' and a.get('successors', True) is True)
                 if (a['action'] != action or not subject_match or a.get('target', target) != target
-                        or ('expires_at' in a and parse_timestamp(a['expires_at']).timestamp() <= self.now())
                         or (a['scope'] != 'standing' and a['task_id'] != task_id)
                         or (a['scope'] == 'operation' and a['id'] != operation_id)
                         or (action == 'refresh.shared' and a['scope'] != 'standing')):
                     continue
+                if 'expires_at' in a:
+                    try:
+                        if parse_timestamp(a['expires_at']).timestamp() <= self.now():
+                            continue
+                    except measurements.TimeUnavailable:
+                        approval_time_unavailable = True
+                        continue
                 decision, approval_id = 'allow', a['id']
                 approval_scope, approval_issuer = a['scope'], a['issuer']
                 break
+            if decision == 'approval_required' and approval_time_unavailable:
+                source = 'qualified_time_unavailable'
         return dict(permission=decision, action=action, subject=principal.subject, target=target,
                     relationship=relation, task_id=task_id, operation_id=operation_id, rule=source, revision=saved['revision'],
                     approval_id=approval_id, approval_scope=approval_scope, approval_issuer=approval_issuer, capability=capability, readiness=readiness,

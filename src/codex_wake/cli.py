@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import shutil
 import sys
 import uuid
 from contextlib import nullcontext
 from dataclasses import asdict, replace
-from datetime import UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .app_server import discover_local_thread_candidates, read_app_server_thread_status, resolve_codex_cmd
@@ -43,6 +44,7 @@ from .records import (
     cancel_record,
     cleanup_archived_records,
     capture_tmux_target,
+    creation_utc_upper,
     default_wake_root,
     find_record,
     format_utc,
@@ -912,8 +914,11 @@ def create_after(args: argparse.Namespace, root: Path) -> int:
         observation = read_time()
         now = creation_time(observation)
     else:
-        now = utc_now()
-    due = now + parse_duration(args.duration)
+        upper = creation_utc_upper()
+        now = datetime.fromtimestamp(upper, UTC)
+    # Legacy records store whole seconds. Round the raw accepted upper upward
+    # before datetime's microsecond quantization can move the deadline earlier.
+    due = (now if observation is not None else datetime.fromtimestamp(math.ceil(upper), UTC)) + parse_duration(args.duration)
     predicate = {"type": "not_before", "due_at": format_utc(due)}
     return create_record(args.prompt, predicate, root, now, args, time_observation=observation)
 
@@ -928,7 +933,7 @@ def create_at(args: argparse.Namespace, root: Path) -> int:
         due = precise_deadline(args.timestamp)
         stamp = due.isoformat().replace('+00:00','Z')
     else:
-        now, stamp = utc_now(), format_utc(due)
+        now, stamp = datetime.fromtimestamp(creation_utc_upper(), UTC), format_utc(due)
     predicate = {"type": "not_before", "due_at": stamp}
     return create_record(args.prompt, predicate, root, now, args, time_observation=observation)
 
@@ -938,9 +943,10 @@ def create_app(args: argparse.Namespace, root: Path) -> int:
         return app_status(args)
     if args.app_command == "candidates":
         return app_candidates(args)
-    now = utc_now()
+    upper = creation_utc_upper()
+    now = datetime.fromtimestamp(upper, UTC)
     if args.app_command == "after":
-        due = now + parse_duration(args.duration)
+        due = datetime.fromtimestamp(math.ceil(upper), UTC) + parse_duration(args.duration)
     elif args.app_command == "at":
         due = parse_timestamp(args.timestamp)
     else:
@@ -1145,7 +1151,7 @@ def create_file(args: argparse.Namespace, root: Path) -> int:
     if not path:
         raise WakeError("file path is required")
     predicate = {"type": "file_exists", "path": path}
-    return create_record(args.prompt, predicate, root, utc_now(), args)
+    return create_record(args.prompt, predicate, root, datetime.fromtimestamp(creation_utc_upper(), UTC), args)
 
 
 def create_changed(args: argparse.Namespace, root: Path) -> int:
@@ -1172,7 +1178,7 @@ def create_changed(args: argparse.Namespace, root: Path) -> int:
             "registered_mtime_ns": stat.st_mtime_ns,
             "registered_size": stat.st_size,
         }
-    return create_record(args.prompt, predicate, root, utc_now(), args)
+    return create_record(args.prompt, predicate, root, datetime.fromtimestamp(creation_utc_upper(), UTC), args)
 
 
 def create_filesystem_signal(args: argparse.Namespace, root: Path) -> int:
@@ -2047,7 +2053,7 @@ def create_pid(args: argparse.Namespace, root: Path) -> int:
         predicate["registered_start_time_ticks"] = identity["start_time_ticks"]
         if "boot_id" in identity:
             predicate["registered_boot_id"] = identity["boot_id"]
-    return create_record(args.prompt, predicate, root, utc_now(), args)
+    return create_record(args.prompt, predicate, root, datetime.fromtimestamp(creation_utc_upper(), UTC), args)
 
 
 def create_record(

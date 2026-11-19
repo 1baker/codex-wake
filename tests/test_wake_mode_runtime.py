@@ -16,6 +16,28 @@ def inventory(live=False, complete=True):
 
 
 class BackgroundMode(unittest.TestCase):
+    def test_busy_bounded_background_requires_explicit_queue_and_fresh_qualification(self):
+        from codex_wake.runtime_delivery import RuntimeCapability, RuntimeObservation, RuntimeRecipient, RuntimeSubmissionEnvelope
+        envelope = RuntimeSubmissionEnvelope('22222222-2222-4222-8222-222222222222', 2000000100000000)
+        for policy, capability, expected in (('queue', 'supported', 'accepted'),
+                                             ('wait', 'supported', 'not_sent'),
+                                             ('queue', 'not_qualified', 'not_sent')):
+            with self.subTest(policy=policy, capability=capability), tempfile.TemporaryDirectory() as d:
+                boundary = Mock()
+                boundary.resolve.side_effect = lambda target: RuntimeRecipient('codex', THREAD, dict(target))
+                boundary.observe.side_effect = [RuntimeObservation('busy', 'recipient_busy',
+                    {'busy_queue': RuntimeCapability(state, 'host_qualification')})
+                    for state in ('supported', capability)]
+                boundary.submit_bounded.return_value = RuntimeSubmission('accepted')
+                adapter = ModeRuntimeAdapter(Path(d), boundary)
+                recipient = adapter.resolve(dict(TARGET, busy_policy=policy))
+                with patch('codex_wake.sessions.observe', return_value=inventory()):
+                    self.assertEqual(adapter.observe(recipient).state, 'busy')
+                    result = adapter.submit_bounded(recipient, 'check', envelope)
+                self.assertEqual(result.state, expected)
+                self.assertEqual(boundary.submit_bounded.call_count, int(expected == 'accepted'))
+                boundary.submit.assert_not_called()
+
     def adapter(self, root, states):
         self.request = Mock(return_value={'thread': {'id': THREAD}})
         self.run = Mock()
@@ -72,8 +94,8 @@ class ConversationAdmission(unittest.TestCase):
         boundary = Mock()
         boundary.resolve.side_effect = lambda target: RuntimeRecipient('codex', target['thread_id'], target)
         boundary.observe.return_value = RuntimeObservation('ready', 'idle', {})
-        boundary.submit.return_value = RuntimeSubmission('accepted', receipt_id='22222222-2222-4222-8222-222222222222', evidence_kind='native_queue_acceptance')
-        boundary.reconcile.return_value = RuntimeReconciliation(reason='not_yet_observed')
+        boundary.submit_bounded.return_value = RuntimeSubmission('accepted', receipt_id='22222222-2222-4222-8222-222222222222', evidence_kind='native_queue_acceptance')
+        boundary.reconcile_bounded.return_value = RuntimeReconciliation(reason='not_yet_observed')
         origin = dict(utc=dict(status="network", sources=["a", "b"], lower=2000000000, upper=2000000000), counter=None)
         due = dict(utc=dict(status="network", sources=["a", "b"], lower=2000000120, upper=2000000120), counter=None)
         with tempfile.TemporaryDirectory() as d, patch('codex_wake.sessions.observe', return_value=inventory(live=True)):
@@ -86,19 +108,23 @@ class ConversationAdmission(unittest.TestCase):
                 first, second, third = all_records(root)
                 self.assertEqual(first.record["status"], "firing", first.record["time_recovery"])
                 result = dispatch_firing_record(root, first, runtime_adapter=boundary)
-                self.assertEqual(result.status, 'submitted', result)
+                self.assertEqual(result.status, 'skipped', result)
                 self.assertEqual(dispatch_firing_record(root, second, runtime_adapter=boundary).status, 'requeued')
-                self.assertEqual(boundary.submit.call_count, 1)
-                boundary.reconcile.return_value = RuntimeReconciliation(evidence=dict(source='native_turn', execution='turn_completed', turn_id='turn1', user_message_id='message1', client_message_id='client1'))
+                self.assertEqual(boundary.submit_bounded.call_count, 1)
+                # Exact terminal inspection of the first pending submission opens
+                # admission for the next occurrence, without submitting twice.
+                boundary.reconcile_bounded.return_value = RuntimeReconciliation(evidence=dict(source='native_turn', execution='turn_completed', turn_id='turn1', user_message_id='message1', client_message_id='client1'))
+                first = next(item for item in all_records(root) if item.record['id'] == first.record['id'])
+                self.assertEqual(dispatch_firing_record(root, first, runtime_adapter=boundary).status, 'submitted')
                 poll_once(root, dispatch=False)
-                pending = next(item for item in all_records(root) if item.record['status'] == 'firing')
-                self.assertEqual(dispatch_firing_record(root, pending, runtime_adapter=boundary).status, 'submitted')
-                self.assertEqual(boundary.submit.call_count, 2)
-                poll_once(root, dispatch=False)
-                pending = next(item for item in all_records(root) if item.record['status'] == 'firing')
-                self.assertEqual(dispatch_firing_record(root, pending, runtime_adapter=boundary).status, 'submitted')
-                self.assertEqual(boundary.submit.call_count, 3)
-                self.assertEqual(boundary.reconcile.call_count, 3)
+                second = next(item for item in all_records(root) if item.record['id'] == second.record['id'])
+                self.assertEqual(dispatch_firing_record(root, second, runtime_adapter=boundary).status, 'skipped')
+                self.assertEqual(boundary.submit_bounded.call_count, 2)
+                second = next(item for item in all_records(root) if item.record['id'] == second.record['id'])
+                self.assertEqual(dispatch_firing_record(root, second, runtime_adapter=boundary).status, 'submitted')
+                third = next(item for item in all_records(root) if item.record['id'] == third.record['id'])
+                self.assertEqual(dispatch_firing_record(root, third, runtime_adapter=boundary).status, 'skipped')
+                self.assertEqual(boundary.submit_bounded.call_count, 3)
 
 
 class QualifiedServerAbsence(unittest.TestCase):
@@ -134,7 +160,7 @@ class QualifiedServerAbsence(unittest.TestCase):
             if child.poll() is None: child.terminate(); child.wait(timeout=5)
 
 class BackgroundDispatch(unittest.TestCase):
-    def test_native_dispatch_starts_exact_background_turn_without_queue_subprocess(self):
+    def test_native_dispatch_holds_background_without_qualified_bounded_backend(self):
         import contextlib
         import io
         import sys
@@ -153,14 +179,11 @@ class BackgroundDispatch(unittest.TestCase):
             with patch('codex_wake.native_clock.snapshot', return_value=due), patch('codex_wake.native_protocol.native_request', return_value=dict(threadId=THREAD, turn=dict(id='turn-background'))) as start:
                 poll_once(root, dispatch=False)
                 result = dispatch_firing_record(root, all_records(root)[0], runtime_adapter=base)
-                self.assertEqual(result.status, 'submitted', result)
-                self.assertEqual(start.call_args.args[2], 'turn/start')
-                self.assertEqual(start.call_args.args[3]['threadId'], THREAD)
-                self.assertIn('check', start.call_args.args[3]['input'][0]['text'])
+                self.assertEqual(result.status, 'requeued', result)
+                self.assertEqual(result.message, 'bounded_native_backend_not_qualified')
+                start.assert_not_called()
                 runner.assert_not_called()
-                delivery = all_records(root)[0].record['native_delivery']
-                self.assertEqual(delivery['turn_id'], 'turn-background')
-                self.assertNotIn('queue_id', delivery)
+                self.assertNotIn('native_delivery', all_records(root)[0].record)
 
 class HistoricalAdmissionBudget(unittest.TestCase):
     def test_legacy_terminal_backlog_is_reconciled_one_peer_per_admission(self):
@@ -175,7 +198,7 @@ class HistoricalAdmissionBudget(unittest.TestCase):
         boundary=Mock()
         boundary.resolve.side_effect=lambda target:RuntimeRecipient('codex',target['thread_id'],target)
         boundary.observe.return_value=RuntimeObservation('ready','idle',{})
-        boundary.submit.return_value=RuntimeSubmission('accepted',receipt_id='22222222-2222-4222-8222-222222222222',evidence_kind='native_queue_acceptance')
+        boundary.submit_bounded.return_value=RuntimeSubmission('accepted',receipt_id='22222222-2222-4222-8222-222222222222',evidence_kind='native_queue_acceptance')
         boundary.reconcile.return_value=RuntimeReconciliation(evidence=dict(source='native_turn',execution='turn_completed',turn_id='turn',user_message_id='message',client_message_id='client'))
         origin=dict(utc=dict(status='network',sources=['a','b'],lower=2000000000,upper=2000000000),counter=None)
         due=dict(utc=dict(status='network',sources=['a','b'],lower=2000000120,upper=2000000120),counter=None)
@@ -186,8 +209,13 @@ class HistoricalAdmissionBudget(unittest.TestCase):
                     run(['--wake-root',d,'native','after','--json','--endpoint',TARGET['endpoint'],'--codex-path',sys.executable,'--idempotency-key',key,THREAD,'1m','--',key])
             with patch('codex_wake.native_clock.snapshot',return_value=due):
                 poll_once(root,dispatch=False)
+                # Retained historical unbounded receipts must use their original
+                # read-only reconciliation, without creating bounded duplicates.
+                from codex_wake.records import replace_record
                 for found in all_records(root):
-                    self.assertEqual(dispatch_firing_record(root,found,runtime_adapter=boundary).status,'submitted')
+                    record = dict(found.record, status='submitted', native_delivery=dict(state='accepted',
+                        submission_id='22222222-2222-4222-8222-222222222222', route='existing_tab'))
+                    replace_record(root, found, record)
             with patch('codex_wake.native_clock.snapshot',return_value=origin),contextlib.redirect_stdout(io.StringIO()):
                 run(['--wake-root',d,'native','after','--json','--session-mode','background','--endpoint',TARGET['endpoint'],'--codex-path',sys.executable,'--idempotency-key','new-mode',THREAD,'1m','--','check'])
             with patch('codex_wake.native_clock.snapshot',return_value=due):
@@ -195,10 +223,11 @@ class HistoricalAdmissionBudget(unittest.TestCase):
                 pending=next(x for x in all_records(root) if x.record['status']=='firing')
                 self.assertEqual(dispatch_firing_record(root,pending,runtime_adapter=boundary).status,'requeued')
                 self.assertEqual(boundary.reconcile.call_count,1)
-                self.assertEqual(boundary.submit.call_count,2)
+                boundary.submit_bounded.assert_not_called()
                 poll_once(root,dispatch=False)
                 pending=next(x for x in all_records(root) if x.record['status']=='firing')
-                self.assertEqual(dispatch_firing_record(root,pending,runtime_adapter=boundary).status,'submitted')
+                self.assertEqual(dispatch_firing_record(root,pending,runtime_adapter=boundary).status,'skipped')
+                boundary.submit_bounded.assert_called_once()
                 self.assertEqual(boundary.reconcile.call_count,2)
 
 class HistoricalHarness(unittest.TestCase):

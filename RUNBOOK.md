@@ -10080,6 +10080,90 @@ Both owned terminals and scratch directories retired; independent process/config
 native-hash audit PASS. Evidence0247. No deployment. Memory disposition forbidden.
 
 
+## Turn | 2026-11-15 | #695 final model-send expiry
+
+Operator selected Stable Time and a final expiry recheck before model execution.
+Native e1832b9895 stages pending model history and gates HTTP/WebSocket send after
+preparation/authentication. The hook-expiry regression was RED before this change;
+all21 queue tests now PASS, including absence of expired prompt/derived context
+after session reload. Exact attempts and retained failures are under the private
+native-expiry-0248 receipt root; plan0248 and the apply-ready native patch retain
+source custody. Complete GNU package assembly is running; baseline remains musl.
+The separate test user's stale clock fixture endpoint correctly holds; dedicated
+real consumer and sample-to-native elapsed qualification remain unresolved.
+Shared Wake adapter implementation continues in its bounded worker. #695 stays
+OPEN; no working daemon change, deployment or bounded queue activation occurred.
+
+
+## Turn | 2026-11-15 | #695 review and local-validation remediation
+
+[Plan0248](docs/dev/plans/0248-2026-11-15-native-queue-expiry.md) remains OPEN.
+The single two-axis review accepted S-1 (unused clockless selection API) and
+F-SPEC-01 (authentication recovery can reuse an earlier time decision). One TDD
+remediation pass is active; no repeated broad review. Full Python3.12 validation
+ran2661 tests and failed17/19 (one skip); complete raw failure evidence retained.
+The planning auditor also found13 already-completed historical plans and this
+active plan used unrecognized state headers. Normalize only their header syntax,
+retaining bounded completion notes and unresolved caveats; this does not
+requalify earlier runtime claims. The before-audit lists all14 exact errors.
+Runtime/control regressions and release prerequisites remain under focused repair.
+No installed service or production clock credential changed.
+
+
+## Turn | 2026-11-16 | #695 source custody and automatic-resume readback
+
+[Plan0248](docs/dev/plans/0248-2026-11-15-native-queue-expiry.md) remains OPEN.
+Native3695947e81 and its exact binary patch are preserved; reverse-apply check
+passes and a private verified bundle retains the source. Native queue24 PASS;
+one formal review and one findings-remediation pass completed. Complete GNU
+package2 assembled, not qualified. Python3.11 comprehensive validation ran2661
+and failed one monitor-publication freshness assertion (one skip); Python3.12
+correctly did not start. Focused repetition reproduced that single failure.
+No repeated broad review or working-runtime update occurred. The exact session-only
+file wake armed with a ready monitor and subsequently reached this conversation;
+this proves observed automatic continuation for the current attachment, not
+recovery of the earlier unbound state or general daemon qualification. The
+persisted delivery journal still reports acknowledgment/execution not observed;
+keep that tracker evidence separate from the receiving conversation's observation.
+
+Focused diagnosis captured a negative6.9s snapshot age with matching live owner
+and no error. Stale was the correct product result after a wall-clock reversal;
+the cadence test's unconditional freshness assertions were invalid. Preserve
+write/tick/cadence assertions and existing clock-controlled freshness coverage.
+All11 monitor tests PASS after this test-only correction; full matrix pending.
+
+
+## Turn | 2026-11-16 | #695 MONITOR-CLOCK-01 TDD repair
+
+The operator requested TDD after a deterministic0.19s public refresh/status
+reproduction proved that guest-wall rollback changed freshness. Keep one bug
+cycle at a time: the explicit clock-provider seam first failed as unsupported,
+then passed with persisted authenticated counters; a separate default-reader
+expiry test failed fresh-versus-stale, then passed after default Stable Time
+wiring. The default reader never falls back to guest UTC or plain NTP. Counter
+resolution/rate enlarge elapsed age conservatively; missing/changed evidence
+is stale and does not rebase. Old snapshots remain readable without authority.
+
+The original reproduction is green against the real configured clock. A private
+background owner published stable_time_counter freshness with upper age0.130s;
+its owned process stopped and was absent afterward. Changed-surface Python3.11
+validation44 PASS70.880s, including monitor, observer, summary and routing callers.
+The summary test now injects the external clock seam rather than replacing the
+status method. Python3.12 selected checks16 PASS14.433s; no installed-service change.
+
+Frozen matrix v3 at29c6424d finished2661 tests with3 failures,1 error,1 skip.
+Its four failures remain in host-preflight, shared-refresh, monitor policy and
+unified connectors; Python3.12 full did not start. The consumed completion wake
+was canceled after direct result reconciliation, with cancellation confirmed.
+Temporary clock checkout exists only to preserve that frozen run and must be
+removed after integration and verified remote custody. Formal #695 review is not
+repeated. Clock transport/separate-UID acceptance gates and #695 OPEN remain.
+
+Clock repair commit9a670307 is fast-forwarded into feat/native-expiry-695 and
+verified at the matching remote ref. The temporary checkout was removed normally
+after accounting for disposable caches. MONITOR-CLOCK-01 source repair is DONE;
+#695 remains OPEN with its retained full-suite and native qualification gates.
+
 ## 2026-11-16 | P233 PR700 merged and one profile deployed
 
 Merged12345152/dev39 preserves currentmain/dev38 behavior and P233 Grok controls. Combined92tests/static/policy checks pass; exactwheel351file hashes match UID1017 and working prefix,92installedchecks covered with PATH fixture correction,14working-stage checks pass. Nine CLI launchers selectdev39; selected independent codex-ecochran76 native daemon runs exact e8eb511a and six package files match. Strict config and native model/list pass; Grok4.7 correctlyunavailable/native_auth_not_current. No inference/login/refresh/replay or allowance reset. Original settings/other builds/rollback preserved; shared Wake services not restarted. Parent628 remains OPEN; children8/8CLOSED,review1/remediation1complete. See [deployment](docs/dev/evidence/plan0233/integration-and-deployment.md). Memoryforbidden,zero writes.
@@ -10153,3 +10237,334 @@ zero replay/input. Metadata200, anonymous protected routes401. Supervisor unchan
 4/4 immediate native generations preserved, one earlier snapshot exit unexplained.
 No native update, provider canary or full-suite claim. Local checks replace hostedCI.
 Deployment evidence under plan0248. Memory unavailable: project routing unresolved.
+
+
+## Turn | 2026-11-16 | #695 resumed, real clock enrollment and main reconciliation
+
+The operator said ok go after the prerequisite credential-policy exception was
+explained. Execute only the prepared UID1017 read-only Stable Time enrollment,
+using child stdin and private owner-only files. Real read returns authenticated
+UTC and counter evidence; no values/hashes logged, working service unchanged.
+Native3695947e81/package2 still unqualified; no working native update.
+
+Reconcile deployed Grok, dev40 clock and dev41 accepted peer-history source from
+main4bcba85e into the existing #695 lane. Preserve all three append-only catalog/
+roadmap/runbook intents; disambiguate the two P248 roadmap labels by native/peer
+suffixes without renaming canonical plan files. Source auto-merges; verify focused
+carry behavior before completing merge. No second broad review is requested.
+
+
+## Turn | 2026-11-16 | #695 clock transport source regression
+
+Native db4dcfc839 advances helper bounds using a fresh nonce-correlated read of
+its same-UID private Windows QPC bridge. Invalid ownership, nonce, frequency,
+rollback, remaining service validity or over-two-second handoff holds admission.
+The public clock regression first returned stale lower100, then passed with
+projected bounds; the two clock tests and24 existing queue tests pass together.
+Python helper now carries conservative remaining validity and the bridge address;
+13 clock/bridge checks pass on Python3.11 and3.12. Selected Ruff and diff pass.
+This proves controlled source behavior, not installed native queue acceptance or
+arbitrary suspension safety. Complete package3 is building at the exact native
+commit. No working native replacement; production bounded adapter stays disabled.
+
+
+## Turn | 2026-11-16 | #695 diagnose unsafe local native replacement
+
+Package3 assembled875.971s and all6 hashes matched after UID1017 transfer.
+Actual installed bounded queue expiry/cancel/control passes49.579s; unknown-time
+hold and immutable identity/deadline across daemon restart pass69.221s. No expired
+or canceled input reached model/history. Working daemon unchanged; owned cases0.
+The maintained upgrade journey uncovered 0.169 unconditional active-work stop.
+After removing obsolete setup assumptions, minimal real active-stream repros fail
+both cross-build and same-build replacement, with forced shutdown and no checkpoint.
+Source confirms local replacement and production restart have no work-preparation
+check; legacy cooperative protocol is absent. Native075639f50a now safely refuses
+different-package local replacement while running, and pins identical complete
+packages without restart or retarget. Managed-PID regression red then green;
+all8 preparation checks pass. Production restart and cooperative recovery remain
+unqualified; package4 and original installed repro are pending. No broad review
+repeat, qualification bypass, working installation or #695 closure.
+Matrixv4 times out2400s, with4 observed assertions and312 not started; exact orphan
+child terminated, raw failures retained. Memory forbidden by plan; private evidence
+and checkpoint retain the diagnosis and remaining gates.
+
+
+## Turn | 2026-11-16 | #695 package4 original live updater regression passes
+
+The exact package4 completion wake reached this chat. Build1432.524s passes;
+all6 immutable file hashes match before and after transfer to real UID1017.
+Original cross-build and identical-build live loops pass, preserving active turn,
+PID and selection; updater exits1 with actionable refusal for a different package,
+and0 for identical-package pinning. Neither requests shutdown. Exact package4
+also passes actual launcher plus real Stable Time expiry/cancel/control,
+clock-unavailable hold and original identity/deadline across native restart,
+51.626s. Final owned processes0; working daemon1879/hash unchanged. Curated
+partial evidence under issue0695; production/cooperative/rollback gates stay open.
+
+Four previous full-matrix failures were replayed without a full rerun. Preflight
+passes alone, retained as unreconciled; three reproduce. Normalize peer plan's
+CLOSED header without changing its outcome, regenerate11 missing Grok command
+coverage entries, and isolate refresh fixture config. One-variable probe proves
+XDG_CONFIG_HOME fixes refresh while XDG_STATE_HOME does not; production close
+protection is unchanged. Two document checks and29 refresh controls pass on311;
+36 affected module checks pass on312 in48.912s; the51-test preflight module
+passes145.032s. Original full-suite preflight failure remains unexplained, not
+reclassified as clean or quarantined. #695 remains OPEN.
+
+
+## Turn | 2026-11-16 | #695 bounded preflight order diagnostic
+
+A private runner repeats only the original ordered prefix through the recorded
+preflight failure, with immediate assertion traces and a360-second cap. First
+attempt is invalid setup: missing repo-root import path causes a tests-package
+import error before target. Preserve it; exact-marker processes0 and temp removed.
+Corrected runner checks discovery errors before execution. At20acef34 it passes
+214 tests including the target,186.405s; not a full-suite result. Temp and all
+marker-owned processes are gone. The original full-suite failure remains open,
+not explained by these passes. Working daemon/hash unchanged; #695 remains OPEN.
+
+
+### 2026-11-16 prepared expiry and stopped rollback qualification
+
+Exact Native075639f50a package4, SHA44f25dea, passed two more installed
+journeys under real UID1017, using the actual launcher and authenticated Stable
+Time with the existing approved credential references. Prepared-expiry v2
+passed39.919s: an explicitly trusted owned UserPromptSubmit hook entered while
+eligible and returned after the original deadline; expired prompt and derived
+context were absent from both captured model requests, including after reload.
+Controls completed. This does not establish arbitrary suspension atomicity.
+
+Stopped rollback v4 passed99.126s: three real TUI clients, two synthetic histories
+and paused native goals/budgets; explicit stop, rollback to working0.169musl,
+then explicit stop/re-upgrade to candidateGNU. History prefixes and goal fields
+survived; old binary left the bounded entry untouched, and candidate expired
+its original ID/deadline after re-upgrade. An owned mandatory log permission
+failure prevented startup, then permission repair restored launchability.
+Exactly two synthetic provider requests; no external model calls.
+
+Earlier setup/readiness failures remain recorded. The v3 qualifier raced an
+asynchronous paused-goal dialog: Enter selected Resume goal, causing the mock
+request cap to fail. V4 explicitly waits, selects Leave paused and asserts status;
+no product code or cap was changed. Final scoped processes0; working PID1879
+and musl hash unchanged. Curated package4-partial-acceptance.json retains all
+remaining gates. Default/shared layouts, private-owner locks, uninterrupted
+reconnect, production cooperation, suspend boundary and full Python validation
+remain unqualified. Production bounded adapter remains disabled; #695 OPEN.
+
+
+## Turn | 2026-11-16 | #695 unresolved preflight focused diagnosis
+
+At d06c7ae4 the private diagnosing-bugs replay runs only
+HandoffPreflightTests.scenario(bad_review='test_count_only'), three bounded
+repetitions with immediate assertion traceback reporting. Python3.11 passes
+all three,8.479s, with original validation config/state roots and explicit
+Stable Time disable for this isolated synthetic protocol test. No full suite
+was run. Retained original stderr has WebSocket1011 connection errors before
+the failed subtest, but those same errors occur in these passing replays; they
+are not a discriminating signal or an established cause. Original matrix lacks
+the assertion traceback because it timed out before unittest's final summary.
+No reliable minimal red loop yet; no production or test implementation change.
+Preserve original failure, no quarantine or full-green claim. Further diagnosis
+requires the actual assertion trace from a bounded reproducing selection; do
+not repeat the already-passing prefix or enlarge into a duplicate full run.
+#695 remains OPEN; installed qualification gates unchanged.
+
+
+## Turn | 2026-11-16 | #695 installed private-client ownership
+
+Exact package4 SHA44f25dea under UID1017 through the installed pinned launcher
+with registered private backend: first real TUI holds account ownership; second
+launch exits2, identifies recorded live owner PID/channel and provides Close
+existing client plus fuser recovery instructions. Candidate native process hash
+verified. One Ctrl-C closes owner normally; fresh real TUI opens same store
+under new owner, then exits normally. No model requests. Initial qualifier
+failed only on its unnecessary second Ctrl-C after pane exit; retain that
+receipt. V2 passes; scoped final processes0; working PID1879/hash unchanged.
+Curated package4 partial evidence updated. This qualifies normal-exit private
+lock recovery, not forced-crash handling, default/shared histories or reconnect.
+No source behavior changed; #695 remains OPEN and not installable.
+
+
+## Turn | 2026-11-16 | #695 delegated implementation and installed acceptance
+
+Root took695-QUAL, pending_cancel_695 took695-ADAPTER, send_boundary_695 took
+695-TIMING; one ticket each, three-lane ceiling, root alone owns UID1017 runtime.
+Adapter public cancel red (held rather than canceled)→green, worker97f6dca7
+remote verified and integrated89c639f9. Source31133PASS39.450s,3129PASS7.278s,
+rootintegration9PASS3.787s. Exact original payload/client/deadline and queue ID
+required; ambiguous/legacy/admitted outcomes hold; lost reply never claims local
+success or resubmits. Production factory remains disabled.
+
+Default home qualification first failed safely held:150-byte counter socket
+under the long disposable HOME could not provide trusted evidence. A short
+private HOME alone returns authenticatedUTC,87-byte path; actual default-home
+rollback/re-upgrade then passes120.172s. Shared setup collision occurred before
+native start; corrected actual legacy shared-home journey passes62.753s.
+New isolated installed wheel9f465233 at source89c639f9 passes native cancellation
+and same-client restart/reconnect41.510s, including actual post-delete lost
+reply and exact tombstone reconciliation without second delete. Three owned
+provider requests; no external model requests. Final owned processes0 and
+working PID1879/hash unchanged. Two repo-local tickets validated/DONE, parent695
+OPEN. Worker checkout safely removed125→124; refs retained; native21 unchanged.
+
+Timing worker establishes a specific source blocker, not a new runtime proof:
+HTTP async authentication/preparation and WS task/lock/send-command queue occur
+after existing core checks. Artifact transport-boundary-blocker.json records
+anchors and minimal fix scope. Strict remote execution versus final native-send
+semantics requires user decision; do not silently weaken contract. Timing ticket
+blocked; final requested review/TDD cycle not yet run. Prior cycle retained.
+Original Python assertion remains unresolved. No merge, deployment or closure.
+
+
+## Turn | 2026-11-16 | #695 final native-send source complete, package5 pending
+
+Operator accepted final native-send admission; remote model-start remains an
+explicit limitation. Native worker source9af0e8e48d committed clean. HTTP async
+auth red→green, WS delayed-sender/early-publication red→green, full queue late
+transport red→green, UNKNOWN early-consume red→green retained. Compile-only
+exhaustive-error-match attempts retained separately. Existing QueueStore atomic
+consume reused at final sender; pending outer preflight non-consuming, no new
+protocol/state API. Known expiry durableExpired; UNKNOWN originalpending and
+qualified same-ID/deadline resume; history isolation through reload pass.
+28queue/clock plus221API controls pass. Full source patch pinned; verified
+incremental private Native bundle depends on retained verified075 base bundle.
+
+One final two-axis batch review (Wakef8e→f28, Native075→9af): Standards1low
+nonblocking private-helper scenario cleanup backlog, Spec0source findings and
+newpackage/runtime needs_evidence. One bounded findings pass: no accepted
+behavioral blocker; no new fixture or code rewrite. Source frozen. Package5
+locked/offline metadata preflight validates maintained four-bin selector, GNU
+dev-small, jobs2, stack8MiB, incremental0 and retained cache. Complete immutable
+assembly started once; CLI doctor arm will be covered there. Existing UID1017
+Stable Time reference still returns finite authenticatedUTC, no credentials
+copied. Package5 runtime acceptance pending; source does not qualify new bytes.
+
+Completion wake intent007c195714e3434cadd371b4eb9f2cd0 is armed, monitor ready,
+exact native read verified, session_only/existing_tab preserved. Resume exact
+build result first, then all6 hashes, publicpackage transfer and serial UID1017
+qualification through retained recipes. Earlier source-completion wake canceled
+with confirmation after manual reconciliation. No working installation or695
+closure; original full Python assertion and production activation/cooperation
+gates remain open. Native/Wake owned checkouts retained for exact build/runtime
+acceptance; registered inventories21/124, no new checkout in this turn.
+
+
+## Turn | 2026-11-16 | #695 package5 qualified; admitted-wire repair
+
+Exact scheduled wake007c1957/native receipt90a3465c reached this chat. Build5
+PASS1176.072s, Native9af/codex6bc59c44, six hashes verified both sides before
+and after transfer/qualification. Nine real UID1017 stages serial, no working
+changes: first8PASS; final adapter stage rejected duplicate finite upper
+bounds differing one f64 step. Failure retained. Exact public response replay
+normalizing only that field proves equality trigger. Public regression RED,
+Wakeff9b9c01 fixes adjacent-representation validation conservatively (larger
+upper+outward rounding strictly before originalexpiry); too-wide/crossing-expiry
+controls refuse. Ten focused controls pass on3113.716s/3123.203s; ruff/diffPASS.
+Only failed installed stage replayed with new isolated helper, credentials
+references unchanged. Long tmux case setup failed before native work; shorter
+case PASS25.147s. Native package not rebuilt; broad review not repeated.
+
+Actual canceled/lostreply/admitted/restart/reconnect proof passes. Separate
+nonzero goal continuity PASS42.807s: Native charged25 provider-reported tokens,
+budget2000; exact cumulative usage/status/history retained through rollback
+and re-upgrade. Owned second stream intentionally paused/interrupted before
+upgrade; working/unrelated turns preserved. No external model calls. All
+original failures retained; original fullPython failure remains unresolved.
+Final fresh owned processes0, working1879/b452 unchanged. No695close or
+production bounded activation. Wake0839 pending continuation canceled after
+manual terminal-run reconciliation; original submitted007 wake is not falsely
+reported canceled. Parent next gates remain production adoption and Python.
+
+
+## Turn | 2026-11-16 | #695 host-qualified default factory
+
+Root took activation and delegated hostgate/explicitqueue slices. Each meaningful
+behavior observed RED thenGREEN: typed preIO refusal versus lostreply; qualified
+busy capability; real sameconnection peer/caps; mode/MCP/startup policy. Host
+opt-in policy pins private report; sameUnixpeer executable and capabilities are
+rechecked before bounded input. CLI/MCP freeze explicitqueue; absentwait retains
+historical idempotency. Actor/mode/route gates and Grok wait-only remain intact.
+
+Affected8module integration94PASS31156.962s; focused51PASS31217.322s plus final
+startup/idempotency2PASS2.534s. Ruff full selectedfiles reports54 preexisting and
+54 current diagnostics, zerointroduced; no unrelated lintcleanup. Actual isolated
+UID1017 defaultfactory against package5/real StableTime passes submit original
+IDs/expiry, cancel, admitted reconciliation and missing/revoked approval refusal;
+2localhost provider calls,0external calls/credentialcopies,stop0. Initialwheel
+c774cfdd; finalwheel341da603 changes only startup/idempotency and installed2PASS
+2.522s. Firstdelta smoke moduleimport setupfailure retained. Native9af/all6hashes
+unchanged, workingPID1879/b452 unchanged, owned activationprocesses0.
+
+695-ACTIVATE validated repo-local; working-host opt-in remains unset. No native
+rebuild, previous qualification repeat or broadreview repeat. New Python latency
+25/100ms probes2PASS4.317s; originalassertion context missing, no speculativefix,
+quarantine or fullgreen claim. Parent695 remains OPEN. Owned Wake/Native checkouts
+retained for this explicit blocker, next review on original failure evidence or
+next authorized installation gate; no new checkout, registeredWakecount123.
+
+
+## Turn | 2026-11-17 | #695 captured Python failure is host clock discontinuity
+
+Actual wake85f44962/b71b1149 reconciled exact corrected diagnostic run115214:
+FAIL389tests377.363s; historicalhandoffmethodPASS. Firstnewfailure background
+mutation jobunknown vscompleted. Focused publiccase red0.839s; exceptioncapture
+shows supervisor ResourceClaimError owner_unqualified before childcreation:
+fresh claimant timestamp exceeds laterwallclock by8.714642s. Independent8s
+CLOCK_REALTIME/CLOCK_MONOTONIC sample sees four8-9s realtimejumps. Samepublic
+scenario with continuous shared diagnosticclock10PASS7.302s. Temporaryhooks
+removed; productguards unchanged. Original54s launcherimportfailure retained.
+No comprehensive retry, native rebuild or broadreview. Clockdiagnosis artifact
+owns curated evidence; fullsuite notgreen, oldhandoff cause unresolved,695OPEN.
+Next gate: qualified sharedclaim freshness/hosttime repair. Checkouts retained
+for this concrete remaining gate; no new checkout or workingdaemon changes.
+
+Plan0250 Stable Time integration milestone (2026-11-17T16:19:52.554273+00:00). Qualified measurement module adopted by native transport, custody/background jobs, goal UTC budgets, recovery, shared reload expiry, Grok login, permissions, task metadata, governor meters/waits and goal-controller freshness. Original deadlines, anchors, usage and stop records retained. Focused Python3.11/3.12 evidence is in0250-execution.json; retained wider governor failures were repaired with targeted checks, not relabeled as a full green run. Strict executor, cancellation, bootstrap and remaining audit adoption stay open. No new comprehensive run, Native build, broad review, provider effects or daemon changes; #695 OPEN.
+
+Plan0250 continuation (2026-11-18T11:40:44.255121+00:00). Protective controller/native cancellation integrated through53cb11bd; combined14 focused cases PASS on each Python3.11/3.12, private Unix peer evidence only. Pushed checkpointf8d8fea9 retained. Fresh Grok allowance approved and unused. Earlier preflight inspected9af rather than selecteda5806e and its adapter unconditionally refused; categorical Native-capability inference withdrawn. Selected source thread/sample is a one-response candidate; real selected-build interception/cleanup and startup effects must qualify before activation. ST04-COLLECTOR and GR01-SAMPLE now bounded running tickets in0250-execution.json. No live provider/refresh, daemon changes, Native build, broad review or comprehensive retry. #695 remains open.
+
+Plan0250 bounded results (2026-11-18T11:46:42.139844+00:00): ST04-COLLECTOR integrated2d3f3aa0; sixfocusedchecksPASS311/312worker and rootintegration6PASS311. No rawcollector monotonic deadlines remain; parentlaunch/childprep/lifetime ownseparateoriginalqualifiedanchors. GR01-SAMPLE privateadapter implementsdurableexclusiveone-attemptreservation andpostreplypins/deadline. FivechecksPASS311/312, root5PASS311. Actualselectedf321binarysyntheticResponsesprelude1+sample1PASS, toolcallnull/noCoreexecution, ownedchildreaped. NotGrok auth/wire/liveacceptance. ExactGrokendpointloadedlist and boundedGrokfilteredDBonlylistempty; GR01-PARENT-EVIDENCE holdsliveactivation. Allowanceunused, no metadatarefresh/providercalls. Freshdefaultdaemonobserved0.170PID3161414; nochangebythiscontinuation, historical1879absent. Sourcefrozen9af/package5 remainsdistinct. #695 andglobalST04 OPEN, no repeatedbroadreview/build/fullsuite.
+
+Plan0250 creation/wait batch (2026-11-18T15:19:20.652312+00:00): rootST04-CREATION plus one worker each forCONTROLLER-WAITS andLOCAL-WAITS; root serialLOCAL-ACTOR issuance follow-up. Fourrepo-localticketsvalidated/closed, notparent695. Creation34PASS311/312; combined23PASS311/312 afterretained2fixtureerrors corrected; adjacent7PASS311. Onefinalreview5d291917...f0556ea0: Standards0, Spec1P1accepted; finalwaitauthorityboundary red4subcases then5PASS311/312 inoneTDDpass. Curatedreviewartifact ownsfindings. Sourcebranchonly, noliveeffects/Nativebuild/fullsuite/merge/deploy. GlobalST04/fullPython/activation/Grokuncertainrequest remainopen.
+
+Plan0250 daemon/event/lease batch (2026-11-18T18:18:13.114683+00:00): rootownsdaemonUTC; oneeachworkerrecordsmetadata/signalownership. Three repo-localticketsvalidated/closed. Combined92PASS311/312 andfinal27causaldeltaPASS311/312. Reservedmatchexpiryreplayandstrictschema2timestampguardsaddedfromRED/GREENintegrationchecks; noregistrationrenewal/schema/terminalfencechange. SourceClock/time_heldgatespreservequalifiedcounter-onlyNative6/7/8. Prioronebroadreview/TDDpassretained, norepeat. Curatedevidence st04-daemon-signal-validation.json. GlobalST04/#695/#628/fullPython/activation open; Grokparentstaleholdcorrected, expiredwindow/uncertainrequestpreserved. No liveprovider/daemon/Nativebuild/fullsuite/merge/deployeffects.
+
+Plan0250 acknowledgement/monitor batch (2026-11-18T20:05:12.906549+00:00): root ST04-ACK-WAIT and worker ST04-MONITOR integrated through4c78045f, two repo-local tickets closed. Integrated49 focused public checks PASS each Python3.11/3.12; Ruff/policy wiring/diff PASS. Missing pre-paste time holds without attempt; post-paste loss preserves unknown/no-replay fence and later receipt reconciliation. Monitor timestamps/freshness use conservative qualified bounds. Prior review retained. Global ST04/#695/fullPython/runtime gates remain open; no build/fullsuite/live/daemon/merge/deploy effects.
+
+Plan0250 terminal/input/output custody packet (2026-11-18T20:41:27.677977+00:00): root signal cancellation and SSH input, delegated injector UTC, output frames, Grok custody wait. Five repo-local tickets validated/closed through1054d949; parent695 remains open. Integrated85 terminal/input +10 network PASS each311/312; final12 causal stream/custody/input PASS each after retained readiness correction. Earlier joint311 had Windows vsock startup and empty-output failures; actual host exact retry PASS311, original joint31211 PASS, empty-output originalcause unproven/pass-on-retry preserved. Explicit peer release fixes readiness risk without changing product budgets. Source evidence st04-terminal-stream-validation.json owns commands, failure disposition and limits. Static inventoryffa2 found305 raw calls83files before packet; broader adoption unfinished, OpenClaw parked. No broadreview/build/fullsuite/live provider/daemon/merge/deploy effects.
+
+Plan0250 policy reconciliation (2026-11-18T21:37:38.415472+00:00, incidental OS metadata): user replacement AGENTS supersedes universal raw-clock elimination and helper requirements for consuming service observations. Three corrective components validated/closed through932ea539: ordinary ACK/SSH/presentation/custody waits and helper-free time inspection. Integrated41 wait cases and17 service cases PASS each311/312; actual CLI read qualified_live service measurement with explicit basis, no receipt-time authorization. Client/helper failures distinguished from service outage. Historical305-call inventory is not a migration target. Lower owner waits and strict legacy handoff consumers remain explicit pending components. No provider/daemon/build/fullsuite/merge/deploy effects;695 remains OPEN. Evidence r0250-policy-reconciliation.json.
+
+Plan0250 supported service decisions (2026-11-18T22:15:02.188201+00:00, incidental metadata): root default native_clock/stable_time Python clients now consume service-measurement UTC/counter directly, no helper read; exact real API succeeds with helper forced unavailable. Actor/selection point distinguished from Native final-send; immutable anchors retained. Owner worker integrated9f2de173 with final result/output auth checks. Core77PASS311 plus final10measurements/2reader controls; core78PASS312, owner23PASSeach. Authority20PASS311;312 initial19PASS/1 first-poll timing failure, exactcase PASSboth after private poll cadence/readiness correction; first failure retained. Source evidence r0250-default-client-validation.json. Native clock-source legacy protocol/qualification and other transport waits remain open; no fullPython/build/provider/daemon/merge/deploy effects,695OPEN.
+
+
+## Turn | 2026-11-19 | #695 service-instant acceptance complete
+
+Validated Wake2ae7d069 and Nativee7286ffdc3 implement the approved best-effort
+StableTime service-instant final admission contract, preserving original expiry,
+identities, uncertainty holds, explicit host qualification and no replay. Native
+complete GNU package sixhashes and actualUID1017 prepared/queue/cancel/restart/
+control/invalid-reader proofs pass. Prior unchanged launcher/history/upgrade/
+rollback/ownership and single review/remediation evidence are retained. No
+working-daemon replacement, external model calls or credential copies occurred.
+
+Python3.11/3.12 each cover2806unique cases:2805PASS/1opt-in-systemdskip;18duplicate
+import instances deduplicated. Local approved StableTime configuration differs
+from hosted blank-config CI; no paid hosted runs. Corrected missingRustPATH and
+private runner multiprocessingmain guard;156ambiguous childresults invalidated.
+Shared refresh producer now publishes structured heartbeat evidence; obsolete
+transport assertions and actual fixture clock/lease/setup seams repaired without
+weakening production gates. Python3.12 fullrun2802PASS/1skip/3Windows failures;
+unchanged focusedreruns1+3PASS qualify failed cases, with original failures and
+unproven causes retained. Rust3libtests remain unexecuted after bounded compile
+attempts, explicitly deferred against exact installed behavior acceptance.
+
+Plan0248 closes repo-local; Plan0250 remains OPEN only for independent liveGrok
+window/sample gates. Worker eed6d40c pushed/read back and its clean checkout
+removed normally after cache inventory; Wake registered worktrees123. Integration checkout removal follows exact final remote custody; Native checkout
+is retained for clean source/cache custody because the OpenAI upstream remote
+is not an authorized archive target. Exact cleanup readbacks live in the private
+checkpoint. See service-instant-closeout.json and0248/0250 ledgers. Merge, release
+and working-host activation remain separate.
+
+#695 tracker CLOSED completed at 2026-11-19T05:03:01Z; GitHub MCP and independent
+CLI readback agree. Acceptance published90b3fe30 before closure.

@@ -20,6 +20,38 @@ NOW=1893456000
 
 
 class GoalSupervisionTests(unittest.TestCase):
+    def test_identical_reenrollment_retains_qualified_native_lease_without_rearming(self):
+        from copy import deepcopy
+        observation=dict(reason='authenticated_utc',utc=dict(status='network',lower=NOW,upper=NOW),
+            valid_for_ns=300000000000,counter=dict(epoch='c357309d-c209-4467-b757-e1488e6b1aaa',
+                counter=1000,frequency=1000,rate_ppm=0))
+        controller=dict(fresh=True,generation='controller-original',governor_protocol=1)
+        with tempfile.TemporaryDirectory() as directory:
+            root,policy,_,native,request=self.fixture(directory)
+            native['lease_reply']=dict(armed=True,expired=False,stopVerified=False,ttlMs=10000)
+            with patch('codex_wake.goal_supervision._heartbeat',return_value=controller),patch(
+                    'codex_wake.goal_supervision.native_request',side_effect=request),patch(
+                    'codex_wake.lifecycle_budget.trusted_upper',return_value=NOW),patch(
+                    'codex_wake.measurements.snapshot',return_value=observation),patch(
+                    'time.clock_gettime',return_value=10):
+                first=enroll(root,policy,THREAD,100,120,requires_native_guard=True)
+                self.assertEqual(first['native_guard']['status'],'armed')
+                original=deepcopy(first['native_guard'])
+                effects=len(native['lease_calls'])
+                again=enroll(root,policy,THREAD,100,120,requires_native_guard=True)
+                self.assertEqual(again['deadline'],first['deadline'])
+                self.assertEqual(again['time_origin'],first['time_origin'])
+                self.assertEqual(again['enrollment_revision'],first['enrollment_revision'])
+                self.assertEqual(again['native_guard'],original)
+                self.assertEqual(again['native_guard']['ack_clock'],observation)
+                self.assertEqual(len(native['lease_calls']),effects)
+                self.assertEqual(effects,1)
+                tightened=enroll(root,policy,THREAD,90,120,requires_native_guard=True)
+                self.assertEqual(tightened['deadline'],first['deadline'])
+                self.assertGreater(tightened['enrollment_revision'],first['enrollment_revision'])
+                self.assertNotEqual(tightened['native_guard']['lease_id'],original['lease_id'])
+                self.assertEqual(len(native['lease_calls']),2)
+
     def test_initial_accounting_timeout_does_not_persist_an_irrecoverable_stop(self):
         with tempfile.TemporaryDirectory() as directory:
             root,policy,_,native,_=self.fixture(directory)
@@ -694,7 +726,7 @@ class GoalSupervisionTests(unittest.TestCase):
             root,policy,log,native,_=self.fixture(directory)
             with log.open('a') as stream:stream.write('{"type":')
             with patch('codex_wake.lifecycle_budget.trusted_upper',return_value=NOW):
-                receipt=enroll(root,policy,THREAD,100,120,checkpoint_seconds=30)
+                enroll(root,policy,THREAD,100,120,checkpoint_seconds=30)
                 first=poll(root)[0]
                 self.assertEqual(first['state'],'winding_down')
                 self.assertEqual(native['goal']['status'],'paused')
@@ -704,7 +736,7 @@ class GoalSupervisionTests(unittest.TestCase):
                 again=poll(root)[0]
                 self.assertEqual(again['winddown_deadline'],limit)
                 self.assertEqual(sum(m=='turn/steer' for m,_ in native['calls']),1)
-                with patch('codex_wake.goal_supervision.time.clock_gettime',return_value=receipt['started_boottime']+31):
+                with patch('codex_wake.lifecycle_budget.trusted_upper',return_value=NOW+31):
                     final=poll(root)[0]
                 self.assertEqual(final['state'],'stopped',final)
                 native['active']=['operator-reply']
@@ -716,12 +748,12 @@ class GoalSupervisionTests(unittest.TestCase):
             root,policy,log,native,_=self.fixture(directory)
             with log.open('a') as stream:stream.write('{"type":')
             with patch('codex_wake.lifecycle_budget.trusted_upper',return_value=NOW):
-                receipt=enroll(root,policy,THREAD,100,20,checkpoint_seconds=60)
+                enroll(root,policy,THREAD,100,20,checkpoint_seconds=60)
                 first=poll(root)[0]
                 self.assertEqual(first['winddown_deadline'],NOW+20)
                 repeated=enroll(root,policy,THREAD,100,20,checkpoint_seconds=60)
                 self.assertEqual(repeated['winddown_deadline'],first['winddown_deadline'])
-                with patch('codex_wake.goal_supervision.time.clock_gettime',return_value=receipt['started_boottime']+21):
+                with patch('codex_wake.lifecycle_budget.trusted_upper',return_value=NOW+21):
                     self.assertEqual(poll(root)[0]['state'],'stopped')
                 self.assertEqual(native['active'],[])
 
@@ -913,11 +945,33 @@ class GoalSupervisionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root,policy,_,native,request=self.fixture(directory)
             with self.controller(root),patch('codex_wake.lifecycle_budget.trusted_upper',return_value=NOW):
-                receipt=enroll(root,policy,THREAD,42,120)
+                enroll(root,policy,THREAD,42,120)
                 self.assertEqual(poll(root)[0]['state'],'checkpoint_requested')
-                with patch('codex_wake.goal_supervision.time.clock_gettime',return_value=receipt['started_boottime']+121):
-                    self.assertEqual(poll(root)[0]['state'],'stopped')
+                with patch('codex_wake.lifecycle_budget.trusted_upper',return_value=NOW+121):
+                    stopped=poll(root)[0]
+                    self.assertEqual(stopped['state'],'stopped')
+                    self.assertEqual(stopped['first_stop']['observed_upper'],NOW+121)
+                    self.assertIsNone(stopped['first_stop']['observed_boottime'])
+                    self.assertIsNone(stopped['stop_episodes'][-1]['observed_boottime'])
                 self.assertEqual(native['active'],[])
+
+    def test_unqualified_utc_stops_without_rewriting_original_allowance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root,policy,_,native,_=self.fixture(directory)
+            with self.controller(root),patch('codex_wake.lifecycle_budget.trusted_upper',return_value=NOW):
+                original=enroll(root,policy,THREAD,100,120)
+                with patch('codex_wake.lifecycle_budget.trusted_upper',side_effect=ValueError('unqualified')):
+                    result=poll(root)[0]
+                self.assertEqual(result['reason'],'clock_unqualified')
+                self.assertEqual(result['state'],'stopped')
+                self.assertEqual(native['active'],[])
+                retained=show(root,policy,THREAD)
+                self.assertFalse(retained['first_stop']['clock_qualified'])
+                self.assertIsNone(retained['first_stop']['observed_upper'])
+                self.assertIsNone(retained['first_stop']['observed_boottime'])
+                self.assertEqual(retained['first_stop']['clock_reason'],'clock_unqualified')
+                for name in ('deadline','time_origin','started_upper','used_tokens','token_limit'):
+                    self.assertEqual(retained[name],original[name])
 
     def test_revoked_host_grant_stops_only_persisted_exact_thread(self):
         with tempfile.TemporaryDirectory() as directory:

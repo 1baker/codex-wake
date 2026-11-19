@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import fcntl
 import hashlib
 import os
@@ -9,6 +10,7 @@ import re
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from fractions import Fraction
 from pathlib import Path
 from typing import Any, Callable
 
@@ -158,6 +160,15 @@ def utc_now() -> datetime:
     return datetime.now(UTC).replace(microsecond=0)
 
 
+def creation_utc_upper() -> float:
+    """Qualified creation observation; unavailable time cannot authorize a new record."""
+    from .measurements import TimeUnavailable, utc_time
+    try:
+        return utc_time()
+    except TimeUnavailable:
+        raise WakeError('stable_time_creation_unqualified') from None
+
+
 def format_utc(value: datetime) -> str:
     return value.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
@@ -207,7 +218,7 @@ def parse_utc_timestamp(value: str) -> datetime:
 
 
 def make_wake_id(now: datetime | None = None) -> str:
-    current = now or utc_now()
+    current = now if now is not None else datetime.fromtimestamp(creation_utc_upper(), UTC)
     stamp = current.astimezone(UTC).strftime("%Y%m%d_%H%M%S")
     return f"wake_{stamp}_{secrets.token_hex(2)}"
 
@@ -343,12 +354,29 @@ def capture_tmux_target(
     }
 
 
-def make_event(event_type: str, message: str, now: datetime | None = None) -> dict[str, Any]:
-    return {
-        "at": format_utc(now or utc_now()),
+def _metadata_now(now: datetime | None) -> datetime | None:
+    if now is not None:
+        return now
+    from . import measurements
+    try:
+        return measurements.datetime_now()
+    except measurements.TimeUnavailable:
+        return None
+
+
+def _event_at(event_type: str, message: str, now: datetime | None) -> dict[str, Any]:
+    event = {
+        "at": None if now is None else format_utc(now),
         "type": event_type,
         "message": message,
     }
+    if now is None:
+        event['time_status'] = 'not_observed'
+    return event
+
+
+def make_event(event_type: str, message: str, now: datetime | None = None) -> dict[str, Any]:
+    return _event_at(event_type, message, _metadata_now(now))
 
 
 def append_event(
@@ -375,7 +403,7 @@ def build_record(
     target: dict[str, Any],
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    current = now or utc_now()
+    current = now if now is not None else datetime.fromtimestamp(creation_utc_upper(), UTC)
     wake_id = make_wake_id(current)
     timestamp = format_utc(current)
     return {
@@ -630,11 +658,29 @@ def _cancel_found(
     if status in {"submitted", "failed", "cancelled", "expired", "archived"}:
         raise WakeError(f"cannot cancel wake in status {status}")
     network = classify_record(record) in {'network_v3', 'native_network_v5', 'native_intent_v6', 'runtime_intent_v7'}
-    current = None if network else now or utc_now()
+    if network:
+        current = None
+    elif now is not None:
+        current = now
+    elif record.get('schema_version') in (1, 2, 4):
+        from . import measurements
+        try:
+            current = measurements.datetime_now()
+        except measurements.TimeUnavailable:
+            # Stopping an authorized wake does not require a timestamp.
+            current = None
+    else:
+        current = utc_now()
     record["status"] = "cancelled"
-    record["updated_at"] = None if network else format_utc(current)
+    if current is None and record.get('schema_version') == 2:
+        # Schema2 requires a timestamp string. Retain the last observation,
+        # explicitly excluding it as evidence of the cancellation's time.
+        record['updated_at_time_status'] = 'not_observed'
+    else:
+        record["updated_at"] = None if current is None else format_utc(current)
+        record.pop('updated_at_time_status', None)
     events = list(record.get("events") or [])
-    events.append(dict(type='cancelled',message='Wake cancelled by operator',at=None,time_status='not_observed') if network else make_event("cancelled", "Wake cancelled by operator", current))
+    events.append(dict(type='cancelled',message='Wake cancelled by operator',at=None,time_status='not_observed') if current is None else make_event("cancelled", "Wake cancelled by operator", current))
     record["events"] = events
     destination = write_record(root, record)
     if checkpoint is not None:
@@ -659,13 +705,21 @@ def move_record(
 ) -> Path:
     if status not in VALID_STATUSES:
         raise WakeError(f"invalid wake status: {status}")
-    current = now or utc_now()
     record = dict(found.record)
+    untimed = record.get('schema_version') in (6, 7, 8) and now is None
+    current = None if untimed else _metadata_now(now)
+    if current is None and found.record.get('schema_version') == 2:
+        # Schema2 still requires a timestamp. Do not publish an unreadable
+        # record or change the separate signal terminal-fence contract.
+        raise WakeError('signal_move_time_unqualified')
     record["status"] = status
-    record["updated_at"] = format_utc(current)
+    record["updated_at"] = None if current is None else format_utc(current)
     if last_error:
         record["last_error"] = last_error
-    record = append_event(record, event_type, message, current)
+    event = (dict(at=None, type=event_type, message=message)
+             if untimed
+             else _event_at(event_type, message, current))
+    record['events'] = [*(record.get('events') or []), event]
     destination = write_record(root, record)
     if found.path != destination and found.path.exists():
         found.path.unlink()
@@ -677,6 +731,29 @@ def replace_record(root: Path, found: WakePath, record: dict[str, Any]) -> Path:
     if found.path != destination and found.path.exists():
         found.path.unlink()
     return destination
+
+
+def _archive_time(schema,now):
+    if schema in (6,7,8):
+        return None,None  # Existing untimed native archival contract.
+    if schema==3:
+        from .network_wakes import creation_time,read_time
+        decision=read_time()
+        current=creation_time(decision)
+        lower,upper=decision.lower,decision.upper
+    elif now is not None:
+        current=now  # Explicit trusted host clock seam.
+        lower=upper=now.timestamp()
+    else:
+        from . import measurements
+        try:
+            lower,upper=measurements.utc_bounds()
+        except measurements.TimeUnavailable:
+            if schema in (1,4):
+                return None,dict(basis='not_observed',lower=None,upper=None)
+            raise WakeError('qualified_time_unavailable: archival requires qualified UTC') from None
+        current=datetime.fromtimestamp(upper,UTC)
+    return current,dict(basis='qualified_utc',lower=lower,upper=upper)
 
 
 def archive_record(
@@ -691,19 +768,17 @@ def archive_record(
     status = record.get("status")
     if status not in TERMINAL_STATUSES:
         raise WakeError(f"cannot archive wake in status {status}")
-    if record.get('schema_version') in (6, 7, 8):
-        # Archival is an operator action, not evidence of UTC acquisition.
-        current = None
-    elif record.get("schema_version") == 3:
-        from .network_wakes import creation_time, read_time
-        current = creation_time(read_time())
-    else:
-        current = now or utc_now()
+    schema=record.get('schema_version')
+    current,bounds=_archive_time(schema,now)
     record["previous_status"] = status
     record["status"] = "archived"
     record["archived_at"] = None if current is None else format_utc(current)
-    record["updated_at"] = "" if current is None else format_utc(current)
-    record = append_event(record, "archived", "Wake archived by operator", current)
+    record["updated_at"] = ("" if schema in (6,7,8) else None) if current is None else format_utc(current)
+    if bounds is not None:record['archive_time_bounds']=bounds
+    if current is None and schema not in (6,7,8):
+        record['events']=[*(record.get('events') or []),dict(type='archived',message='Wake archived by operator',at=None,time_status='not_observed')]
+    else:
+        record = append_event(record, "archived", "Wake archived by operator", current)
     archive_dir = root / "archive"
     archive_dir.mkdir(parents=True, exist_ok=True)
     final_path = archive_dir / f"{wake_id}.json"
@@ -727,6 +802,48 @@ def archive_terminal_records(root: Path, now: datetime | None = None) -> list[Pa
     return archived
 
 
+def _archive_retention_upper(record):
+    bounds=record.get('archive_time_bounds')
+    if bounds is None and record.get('schema_version')==3 and isinstance(record.get('archived_at'),str) and record['archived_at']:
+        # The legacy network writer stored an accepted upper bound, truncated
+        # to whole seconds. Its next whole second remains conservative.
+        return parse_utc_timestamp(record['archived_at']).timestamp()+1
+    if (not isinstance(bounds,dict) or bounds.get('basis')!='qualified_utc'
+            or any(type(bounds.get(key)) not in (int,float) or not math.isfinite(bounds[key])
+                   for key in ('lower','upper')) or bounds['lower']>bounds['upper']):
+        raise WakeError('archive_retention_time_unqualified: retain legacy or unknown-time archive for explicit reconciliation')
+    return bounds['upper']
+
+
+def _retention_candidates(items,older_than,now):
+    seconds=Fraction(older_than.days*86400+older_than.seconds)+Fraction(older_than.microseconds,1000000)
+    current=None if now is None else now.timestamp()
+    candidates=[]
+    for item in items:
+        wake_id=item.record.get('id')
+        text=retention_timestamp(item.record)
+        if not isinstance(wake_id,str) or not wake_id or text is None:continue
+        try:reference=parse_utc_timestamp(text)
+        except WakeError:continue
+        upper=_archive_retention_upper(item.record)
+        if current is None:
+            from . import measurements
+            try:current=measurements.utc_bounds()[0]
+            except measurements.TimeUnavailable:
+                raise WakeError('qualified_time_unavailable: retention requires qualified UTC') from None
+        cutoff=Fraction(current)-seconds
+        if item.record.get('schema_version')==3:
+            from .network_wakes import evaluation_time,read_time
+            try:
+                decision=read_time()
+                evaluation_time(decision)
+                cutoff=Fraction(decision.lower)-seconds
+            except WakeError:
+                raise WakeError('qualified_time_unavailable: network retention time unqualified') from None
+        if Fraction(upper)<=cutoff:candidates.append((item,reference))
+    return candidates
+
+
 def cleanup_archived_records(
     root: Path,
     *,
@@ -737,27 +854,11 @@ def cleanup_archived_records(
 ) -> list[CleanupResult]:
     if older_than <= timedelta():
         raise WakeError("older_than must be greater than zero")
-    current = now or utc_now()
-    cutoff = current - older_than
     results: list[CleanupResult] = []
-    for item in iter_archived_records(root):
+    # Complete time qualification before any deletion; unknown legacy data
+    # cannot cause a partially applied batch before its gate is reported.
+    for item,retention_at in _retention_candidates(iter_archived_records(root),older_than,now):
         wake_id = item.record.get("id")
-        retention_text = retention_timestamp(item.record)
-        if not isinstance(wake_id, str) or not wake_id or retention_text is None:
-            continue
-        try:
-            retention_at = parse_utc_timestamp(retention_text)
-        except WakeError:
-            continue
-        item_cutoff = cutoff
-        if item.record.get("schema_version") == 3:
-            from .network_wakes import evaluation_time, read_time
-            try:
-                item_cutoff = evaluation_time(read_time()) - older_than
-            except WakeError:
-                continue
-        if retention_at > item_cutoff:
-            continue
         if decode_signal_record(item.record) is not None and not _signal_cleanup_allowed(root, item.record):
             continue
         if delete and item.path.exists():
@@ -780,19 +881,10 @@ def protected_signal_cleanup_records(
 
     if older_than <= timedelta():
         raise WakeError("older_than must be greater than zero")
-    cutoff = (now or utc_now()) - older_than
     protected: list[dict[str, Any]] = []
-    for item in iter_archived_records(root):
+    items=(item for item in iter_archived_records(root) if decode_signal_record(item.record) is not None)
+    for item,retention_at in _retention_candidates(items,older_than,now):
         wake_id = item.record.get("id")
-        retention_text = retention_timestamp(item.record)
-        if not isinstance(wake_id, str) or retention_text is None:
-            continue
-        try:
-            retention_at = parse_utc_timestamp(retention_text)
-        except WakeError:
-            continue
-        if retention_at > cutoff:
-            continue
         detail = signal_cleanup_protection(root, item.record)
         if detail is None or detail.get("allowed"):
             continue
@@ -808,7 +900,7 @@ def protected_signal_cleanup_records(
     return protected
 
 
-def _retire_signal_terminal(root: Path, record: dict[str, Any], now: datetime) -> None:
+def _retire_signal_terminal(root: Path, record: dict[str, Any], now: datetime | None) -> None:
     if decode_signal_record(record) is None:
         return
     try:

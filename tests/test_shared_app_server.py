@@ -34,12 +34,29 @@ def result(identifier, value):
 
 class SharedReaderTests(unittest.TestCase):
     def setUp(self):
+        clock = dict(reason='authenticated_utc', valid_for_ns=1000000000,
+            utc=dict(status='network', lower=1700000000, upper=1700000001),
+            counter=dict(epoch='3c93a3d4-445d-4403-8a40-77fa9162dee6',
+                counter=1000, frequency=1000, rate_ppm=5000))
+        for target, value in (('configuration', '/explicit-test-clock'), ('snapshot', clock)):
+            context = patch('codex_wake.native_clock.' + target, return_value=value)
+            context.start()
+            self.addCleanup(context.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.path = Path(self.tmp.name) / 'daemon.sock'
         self.sock = socket.socket(socket.AF_UNIX)
         self.sock.bind(str(self.path))
         self.addCleanup(self.tmp.cleanup)
         self.addCleanup(self.sock.close)
+
+    def test_metadata_transport_does_not_require_time_authority(self):
+        reader, connection = self.reader([result(1, {}), result(2, {'data': [], 'nextCursor': None})])
+        with patch('codex_wake.native_clock.configuration', return_value=None):
+            with reader:
+                self.assertEqual(reader.loaded_threads(), [])
+        self.assertTrue(connection.closed)
+        self.assertEqual([item['method'] for item in connection.sent],
+                         ['initialize', 'initialized', 'thread/loaded/list'])
 
     def reader(self, replies):
         connection = FakeConnection(replies)
@@ -116,7 +133,7 @@ class SharedReaderTests(unittest.TestCase):
                     self.fail('must reject')
 
     def test_invalid_timeouts_and_endpoint(self):
-        for timeout in [0, -1, float('inf'), float('nan'), 61]:
+        for timeout in [0, -1, float('inf'), float('nan'), 61, True, None, '1']:
             with self.assertRaises(WakeError):
                 SharedAppServerReader('unix://' + str(self.path), timeout=timeout)
         for endpoint in ['stdio://', 'unix://', 'unix://relative']:

@@ -470,16 +470,25 @@ def _accounting_decreased(receipt,observation):
 
 
 def _heartbeat(directory):
+    from . import measurements
     try:
         path=directory/'controller.json';_private(path)
         value=json.loads(path.read_text())
-        age=time.clock_gettime(time.CLOCK_BOOTTIME)-value['observed_boottime']
+        age=measurements.elapsed_bounds(value['clock_observation'],measurements.snapshot())[1]
         valid=(value['active'] is True and value['pid']!=os.getpid()
             and value['boot_id']==boot_id_value() and process_exists(value['pid'])
             and process_identity(value['pid'])==value['identity']
             and 0<=age<=max(3,3*value['interval']))
         return dict(value,fresh=valid,age_seconds=age,process_alive=process_exists(value['pid']) and process_identity(value['pid'])==value['identity'])
     except (OSError,ValueError,KeyError,TypeError):return dict(fresh=False,reason='controller_unavailable')
+
+
+def _controller_clock():
+    from . import measurements
+    try:
+        return measurements.snapshot()
+    except measurements.TimeUnavailable:
+        return None
 
 
 def show(root,policy_path,caller_thread_id,allocation_id=None,*,permission_principal=None,native_context=None):
@@ -493,7 +502,7 @@ def show(root,policy_path,caller_thread_id,allocation_id=None,*,permission_princ
         from .goal_readiness import engagement
         return dict(state='held',reason='not_enrolled',thread_id=caller_thread_id,controller=controller,
             engagement=engagement({},controller))
-    with _lock(directory,name):
+    with _lock(directory,'maintenance'), _lock(directory,name):
         _private(path);receipt=json.loads(path.read_text())
         pending_recovery=None
         if receipt.get('allocation_path'):
@@ -521,11 +530,14 @@ def show(root,policy_path,caller_thread_id,allocation_id=None,*,permission_princ
         if permit_path.exists():
             _private(permit_path)
             permit=json.loads(permit_path.read_text())
-            if (permit.get('state') in ('prepared','handoff')
+            if (permit.get('state') in ('prepared','handoff','unqualified')
                     and receipt.get('state') in ('armed','checkpoint_requested')
-                    and not receipt.get('stop_latched')
-                    and time.clock_gettime(time.CLOCK_BOOTTIME)<permit.get('expires_boottime',0)):
-                receipt.update(state='held',reason='controller_maintenance')
+                    and not receipt.get('stop_latched')):
+                from .goal_maintenance import window
+                decision=window(directory,permit)
+                if decision['state']!='expired' or permit.get('state')=='unqualified':
+                    receipt.update(state='held',reason='maintenance_clock_unqualified'
+                        if decision['state']=='unqualified' or permit.get('state')=='unqualified' else 'controller_maintenance')
         if receipt['state'] in ('armed','checkpoint_requested') and not receipt['controller']['fresh']:
             receipt.update(state='held',reason='controller_unavailable')
         receipt['sampled']=True;receipt['maximum_token_overshoot']=None
@@ -733,10 +745,11 @@ def enroll(root,policy_path,caller_thread_id,token_limit,time_limit_seconds,
             receipt.pop('poll_ack',None)
         else:receipt.setdefault('enrollment_revision',1)
         prior_guard=(old or {}).get('native_guard',{})
+        from .goal_native_guard import qualified as guard_qualified
         guard_stale=(prior_guard.get('status') in ('expired','lost','released') or
             prior_guard.get('status')=='armed' and
             (prior_guard.get('controller_generation')!=controller.get('generation') or
-             time.clock_gettime(time.CLOCK_BOOTTIME)-prior_guard.get('ack_boottime',-1e30)>=prior_guard.get('ttl_ms',0)/1000))
+             not guard_qualified(old)))
         if old and requires_native_guard and guard_stale:
             receipt['enrollment_revision']+=1
             receipt.pop('poll_ack',None)
@@ -876,7 +889,14 @@ def enroll(root,policy_path,caller_thread_id,token_limit,time_limit_seconds,
         if receipt.get('requires_native_guard'):
             from .goal_native_guard import arm
             exhausted=receipt.get('first_stop',{}).get('reason') in ('allocation_exhausted','task_exhausted','continuation_held')
-            if not receipt.get('stop_latched') or exhausted:
+            retain_guard=bool(same and old.get('state') in ('armed','checkpoint_requested')
+                and receipt.get('state') in ('armed','checkpoint_requested')
+                and not receipt.get('stop_latched')
+                and old.get('enrollment_revision')==receipt.get('enrollment_revision')
+                and prior_guard.get('controller_generation')==controller.get('generation')
+                and guard_qualified(receipt))
+            if retain_guard:guarded=True
+            elif not receipt.get('stop_latched') or exhausted:
                 guarded=arm(path,receipt,force=True,stop=bool(receipt.get('stop_latched')))
             else:guarded=False
             if not guarded:
@@ -933,6 +953,24 @@ def _allocation_latch(receipt,reason,deadline=None):
     return deadline
 
 
+def _stop_clock(receipt,reason):
+    """A protective stop remains writable without a qualified timestamp."""
+    from .goal_time import upper, relative, GoalTimeUnavailable
+    observed=None
+    clock_reason='clock_unqualified'
+    if receipt['boot_id']!=boot_id_value():
+        clock_reason='boot_identity_changed'
+    elif reason!='clock_unqualified' and receipt.get('clock_failure')!='clock_unqualified':
+        try:
+            observed=upper(receipt)
+            clock_reason='authenticated_host_counter' if relative(receipt) else 'qualified_utc'
+        except GoalTimeUnavailable as error:
+            clock_reason=error.code
+    return dict(observed_boottime=None,
+        observed_upper=observed if not relative(receipt) else None,
+        clock_qualified=observed is not None,clock_reason=clock_reason)
+
+
 def _stop_episode(path,receipt,reason):
     """Retain distinct faults across recovery without rewriting the first stop."""
     episodes=receipt.setdefault('stop_episodes',[])
@@ -941,12 +979,12 @@ def _stop_episode(path,receipt,reason):
     controller=_heartbeat(path.parent)
     event=dict(id=uuid4().hex,kind='stop',reason=reason,receipt_generation=receipt['generation'],
         allocation_id=receipt['allocation_id'],boot_id=boot_id_value(),
-        observed_boottime=time.clock_gettime(time.CLOCK_BOOTTIME),
         controller_generation=controller.get('generation'),used_tokens=receipt.get('used_tokens'),
         token_limit=receipt['token_limit'],deadline=receipt['deadline'],
         native_method=receipt.get('observation_method') if reason=='observation_unavailable' else None,
         cause=receipt.get('observation_error') if reason=='observation_unavailable' else None)
     from .goal_time import public_time
+    event.update(_stop_clock(receipt,reason))
     event.update(public_time(receipt))
     episodes.append(event);receipt['active_stop_id']=event['id']
 
@@ -960,9 +998,9 @@ def _first_stop(path,receipt,reason):
             retained=json.loads(allocation_path.read_text()).get('first_stop')
             if retained and retained.get('receipt_generation')==receipt['generation']:
                 original=retained
-    now=time.clock_gettime(time.CLOCK_BOOTTIME)
-    elapsed=now-receipt['started_boottime']
-    qualified=receipt['boot_id']==boot_id_value() and elapsed>=0
+    clock=_stop_clock(receipt,reason) if original is None else original
+    qualified=clock['clock_qualified']
+    clock_unqualified=not qualified
     try:
         controller_path=path.parent/'controller.json';_private(controller_path)
         controller=json.loads(controller_path.read_text())
@@ -971,10 +1009,9 @@ def _first_stop(path,receipt,reason):
     # first retained diagnostic explicitly instead of inventing that history.
     receipt['first_stop']=original or dict(version=1,reason=reason,
         provenance='existing_latch_observed' if receipt.get('stop_latched') else 'stop_decision',
-        observed_boottime=now,boot_id=boot_id_value(),
-        observed_upper=receipt['started_upper']+elapsed if qualified else None,
-        clock_qualified=qualified,clock_reason='same_boot_elapsed' if qualified else
-            ('boot_identity_changed' if receipt['boot_id']!=boot_id_value() else 'elapsed_time_invalid'),
+        observed_boottime=None,boot_id=boot_id_value(),
+        observed_upper=clock.get('observed_upper'),
+        clock_qualified=qualified,clock_reason=clock['clock_reason'],
         last_usage_observed_boottime=receipt.get('observed_boottime'),
         controller_observed_boottime=controller.get('observed_boottime'),
         controller_generation=controller.get('generation',receipt.get('controller_generation')),
@@ -987,12 +1024,12 @@ def _first_stop(path,receipt,reason):
         cause=receipt.get('observation_error') if reason=='observation_unavailable' else None,
         observation_duration_seconds=receipt.get('observation_duration_seconds') if reason=='observation_unavailable' else None)
     from .goal_time import relative, public_time
-    if relative(receipt):
+    if relative(receipt) and original is None:
         diagnostic=receipt['first_stop']
         diagnostic.update(public_time(receipt), observed_upper=None,
             observed_elapsed_upper=receipt.get('clock_elapsed_upper'),
             clock_qualified=qualified and reason not in ('counter_continuity_lost','authenticated_elapsed_unavailable'),
-            clock_reason=reason if reason in ('counter_continuity_lost','authenticated_elapsed_unavailable') else 'authenticated_host_counter')
+            clock_reason='clock_unqualified' if clock_unqualified else reason if reason in ('counter_continuity_lost','authenticated_elapsed_unavailable') else 'authenticated_host_counter')
     receipt.update(stop_latched=True,state='stop_unverified',reason=reason)
     # The shared ledger is the authority for successor admission. Commit its
     # latch first, so a crash during the caller receipt write cannot reopen it.
@@ -1264,17 +1301,21 @@ def _acknowledge_enrollments(directory,controller,observations):
             if (observed.get('state')=='held' and observed.get('reason')=='idle_session_future_task_isolation_unsupported'
                     and receipt.get('requires_native_guard') and not receipt.get('stop_latched')
                     and receipt.get('accounting',{}).get('state')=='qualified'):
+                clock=_controller_clock()
+                if clock is None:continue
                 receipt['prepared_poll_ack']=dict(enrollment_revision=receipt['enrollment_revision'],receipt_generation=receipt['generation'],
-                    controller_generation=controller['generation'],observed_boottime=time.clock_gettime(time.CLOCK_BOOTTIME))
+                    controller_generation=controller['generation'],observed_boottime=None,clock_observation=clock)
                 _save(path,receipt)
                 continue
             if (observed.get('state') not in ('armed','checkpoint_requested') or
                     receipt.get('state') not in ('armed','checkpoint_requested') or receipt.get('stop_latched')
                     or (receipt.get('accounting') or {}).get('state')!='qualified'):
                 continue
+            clock=_controller_clock()
+            if clock is None:continue
             receipt['poll_ack']=dict(enrollment_revision=receipt.get('enrollment_revision',1),
                 receipt_generation=receipt['generation'],controller_generation=controller['generation'],
-                observed_boottime=time.clock_gettime(time.CLOCK_BOOTTIME))
+                observed_boottime=None,clock_observation=clock)
             receipt['controller_generation']=controller['generation']
             _record_supervision_notice(path,receipt,'engagement',controller)
             _save(path,receipt)
@@ -1302,7 +1343,8 @@ def watch(root,interval=1):
         presenter.start()
         try:
             while running:
-                _save(directory/'controller.json',dict(heartbeat,active=True,observed_boottime=time.clock_gettime(time.CLOCK_BOOTTIME)))
+                _save(directory/'controller.json',dict(heartbeat,active=True,observed_boottime=None,
+                    clock_observation=_controller_clock()))
                 observations=poll(root)
                 _acknowledge_enrollments(directory,heartbeat,observations)
                 from .goal_maintenance import replacement_observed
@@ -1321,7 +1363,8 @@ def watch(root,interval=1):
                                 from .goal_native_guard import expire
                                 expire(path,receipt)
                             else:_stop(path,receipt,'controller_stopped')
-            _save(directory/'controller.json',dict(heartbeat,active=False,observed_boottime=time.clock_gettime(time.CLOCK_BOOTTIME)))
+            _save(directory/'controller.json',dict(heartbeat,active=False,observed_boottime=None,
+                clock_observation=_controller_clock()))
             # Stop control precedes presentation. Drain the newly journaled stop
             # once; stalled native I/O must not hold controller exit indefinitely.
             presentation_stop.set()

@@ -5,12 +5,13 @@ import subprocess
 import sys
 import unittest
 from tests import test_a2a_receipt_authority as fixture
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 
 class ReceiptArmingTests(unittest.TestCase):
     def setUp(self):
         fixture.ConfiguredReceiptTests.setUp(self)
+        self.now = datetime(2026, 9, 14, tzinfo=timezone.utc).timestamp()
         self.environment = dict(os.environ, XDG_STATE_HOME=str(self.root / 'state'))
         from codex_wake.monitor import write_monitor_health
         self.health = write_monitor_health(wake_root=self.wake_root, source='fixture-reader', mode='no-dispatch',
@@ -19,9 +20,25 @@ class ReceiptArmingTests(unittest.TestCase):
     reply = fixture.ConfiguredReceiptTests.reply
     mailbox_counts = fixture.ConfiguredReceiptTests.mailbox_counts
 
+    def child_command(self, executable, module):
+        # Child UTC matches monitor-health metadata and the fixture's expiry
+        # scenarios; no production clock flag or fallback is introduced.
+        bootstrap = """import runpy, sys
+from codex_wake import measurements
+value = float(sys.argv.pop(1))
+measurements.utc_bounds = lambda: (value, value)
+executable, module = sys.argv.pop(1), sys.argv.pop(1)
+if executable:
+    sys.argv[0] = executable
+    runpy.run_path(executable, run_name='__main__')
+else:
+    runpy.run_module(module, run_name='__main__', alter_sys=True)
+"""
+        return [sys.executable, '-c', bootstrap, str(self.now), executable or '', module]
+
     def command(self, *, key='arm-fixture', condition='reply', expires='2099-01-01T00:00:00+00:00'):
         executable = os.environ.get('CODEX_WAKE_RECEIPT_CLI')
-        cmd = [executable] if executable else [sys.executable, '-m', 'codex_wake.cli']
+        cmd = self.child_command(executable, 'codex_wake.cli')
         return subprocess.run(cmd + ['a2a', 'arm-receipt', '--wake-root', str(self.wake_root),
             '--receipt-authority', str(self.config), '--source-instance', self.adapter.source_instance,
             '--condition', condition, '--idempotency-key', key, '--expires-at', expires,
@@ -30,7 +47,7 @@ class ReceiptArmingTests(unittest.TestCase):
 
     def daemon(self):
         executable = os.environ.get('CODEX_WAKE_RECEIPT_DAEMON')
-        cmd = [executable] if executable else [sys.executable, '-m', 'codex_wake.daemon']
+        cmd = self.child_command(executable, 'codex_wake.daemon')
         result = subprocess.run(cmd + ['--once', '--no-dispatch', '--wake-root', str(self.wake_root),
             '--a2a-receipt-authority', str(self.config)], capture_output=True, text=True, timeout=10, env=self.environment)
         self.assertEqual(result.returncode, 0, result.stderr)

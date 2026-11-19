@@ -1,0 +1,29 @@
+{
+  "fixed_point": "a71adb35f7db356595d8f29ae4f210b95cf45da0",
+  "frozen_review_head": "3981edcb0cab123a45cca2fc65a6707fc4533e81",
+  "review_runs": 1,
+  "bounded_remediation_runs": 1,
+  "standards": {
+    "accepted": 1,
+    "highest": "P1",
+    "finding": "Committed Native patch pinned obsolete wirev1 source",
+    "resolution": "Regenerated e728 patch and manifest; exact reconstructed tree14f5a8af7675acd48098ba38c19bba7e94683272; static provenance guard wired"
+  },
+  "spec": {
+    "accepted": 2,
+    "highest": "P1",
+    "findings": [
+      "Same artifact mismatch",
+      "P2 read/delete/capability RPC qualification incorrectly required time authority"
+    ],
+    "resolution": "Original OS transport budget; public clock-outage control RED then20PASS311/312 incl peer/revocation/no-replay controls"
+  },
+  "merge_resolution": "Retain explicit immutable busy policy and main registration_cwd; both harness tests survive; retain both lane catalogs",
+  "validation": {
+    "merged_affected": "51PASS Python3.11/3.12",
+    "reused": "2805PASS1opt-in-skip each version under per-case service-backed reconciliation; unaffected results not rerun",
+    "native": "Exact package/runtime evidence retained; no new Native build"
+  },
+  "working_scope": "Wake frontend/services only; selected Native Grok carry unchanged",
+  "native_cutover_blocker": "e728 and a5806e share upstreamd320 but differ in carry; selecting e728 would drop deployed Grok/worker changes. Combined Native carry integration/qualification required."
+}

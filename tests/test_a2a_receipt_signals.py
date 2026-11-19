@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import json
 
 from codex_wake.a2a_bus import BusStore
@@ -22,6 +23,11 @@ from tests.test_signals import make_intent
 
 class ReceiptBridgeTests(unittest.TestCase):
     def setUp(self):
+        self.now = 1000.
+        clock = patch("codex_wake.measurements.utc_bounds",
+                      side_effect=lambda: (self.now, self.now))
+        clock.start()
+        self.addCleanup(clock.stop)
         temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         self.repo = self.root / 'repo'; self.repo.mkdir()
@@ -33,7 +39,6 @@ class ReceiptBridgeTests(unittest.TestCase):
             cap, _ = self.bus.issue_actor(identity, self.repo, self.operator)
             self.actors.append(self.bus.authenticate(cap, identity, invoking_cwd=self.repo))
         Mailbox.migrate(self.bus, self.operator)
-        self.now = 1000.
         self.mailbox = Mailbox(self.bus, clock=lambda: self.now, monotonic=lambda: self.now)
         self.identifier = self.mailbox.send(self.actors[0], self.identities[1], body='private fixture request',
                     idempotency_key='request', delivery='inbox')['message']['message_id']

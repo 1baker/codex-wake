@@ -1,5 +1,7 @@
 # 0242 — Bounded native history reconciliation (#674)
 
+State: CLOSED
+
 State COMPLETE. Owner ecochran76/root. Branch fix/native-history-pages-674.
 Base main eb14ec93 (PR676 merged). Preserve dirty primary and unrelated checkouts.
 

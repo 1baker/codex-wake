@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "issue": 695,
+  "state": "isolated_default_factory_qualified_parent_open",
+  "source_base": "fd7d54649a36c469c2e46111d828ef1f920e839f",
+  "native_source_commit": "9af0e8e48d0c2dcfe1800a3deaadfcec7e2c0bd7",
+  "validation": {
+    "tier": "focused",
+    "python311": "94PASS56.962s affected8modules",
+    "python312": "51PASS17.322s plus final startup/idempotency2PASS2.534s",
+    "host_gate": "7PASS real Unix sockets including defaultfactory, wrongpeer, oldcaps, tamper/revocation andlostreply",
+    "lint": "54 baseline diagnostics;54current;0introduced",
+    "diff_check": "passed",
+    "full_suite": "NOT rerun; original failed assertion remains unresolved",
+    "commands": [
+      "PYTHONPATH=src:tests python3.11 -m unittest test_bounded_native_delivery test_bounded_native_qualification test_runtime_policies test_wake_mode_runtime test_harness_callers test_wake_policy test_native_intent_recovery test_native_delivery",
+      "PYTHONPATH=src:tests python3.12 -m unittest test_bounded_native_delivery test_bounded_native_qualification test_runtime_policies test_wake_mode_runtime test_harness_callers",
+      "PYTHONPATH=src:tests python3.12 -m unittest test_wake_policy.WakePolicyTests.test_create_load_run_accepts_busy_only_for_qualified_explicit_native_queue test_wake_policy.WakePolicyTests.test_new_wake_freezes_configurable_startup_and_existing_intent_survives_default_change",
+      "pip wheel --no-deps --no-build-isolation .",
+      "git diff --check"
+    ],
+    "environment": "Existing local Python3.11/3.12 validation environments replace unpaid hostedCI; installed acceptance uses LinuxUID1017 on shared WSL kernel and owned localhost Responses provider. Native candidate GNU/glibc; working baseline musl."
+  },
+  "installed": {
+    "uid": 1017,
+    "initial_wheel_sha256": "c774cfdd19a2a4a00e934a98babad7a122d92d3af63144517077bb49e02790ea",
+    "final_wheel_sha256": "341da603d27f2cb575b00e595503b62b9244b62c766e4ca9d439cc2d158d474d",
+    "default_factory": "passed: missing/revoked approval preIO; qualified busy capability; submit originalids/deadline; cancel exact pendingrow; reconcile actual admittedturn",
+    "provider_requests": 2,
+    "external_model_calls": 0,
+    "credential_copies": 0,
+    "stop_exit_code": 0,
+    "final_wheel_delta": [
+      "native_intents.py",
+      "wake_policy.py"
+    ],
+    "final_wheel_installed_delta_checks": "2PASS2.522s",
+    "retained_setup_failure": "first installed delta smoke could not import private-checkout testmodule; copied public existing testfile into owned helper; no daemon started for this smoke"
+  },
+  "runtime_readback": {
+    "state": "passed",
+    "all6_native_hashes_unchanged": true,
+    "working_pid": 1879,
+    "working_sha256": "b452ca20f838a8855a88a41050ee4a694033fff4ea3ecdad5633e6e0e8d13f2b",
+    "owned_activation_processes": []
+  },
+  "remaining": [
+    "Original full Python assertion lacks original traceback/receipt/readiness and causal reproduction",
+    "Working-host approval/configuration and production restart/cooperative protocol are not enabled or qualified"
+  ],
+  "review": "Reuse one completed final batch review/findings pass; no repeat",
+  "source_commit": "aee2e97308fe9dc69f35f757e4c868147aa498a2"
+}

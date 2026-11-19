@@ -312,8 +312,13 @@ def startup_reason(record, observation):
         capability = observation.capabilities.get('active_tab')
         if capability is None or capability.state != 'supported':
             return 'active_tab_not_verified'
-    if observation.state != 'ready' and policy['startup'] == 'create_load_run':
-        return 'recipient_startup_unavailable_or_unsupported'
+    if policy['startup'] == 'create_load_run':
+        from .runtime_policies import native_delivery_ready
+        target = record.get('target', {})
+        ready = (native_delivery_ready(target, observation) if target.get('transport') == 'native'
+                 else observation.state == 'ready')
+        if not ready:
+            return 'recipient_startup_unavailable_or_unsupported'
     return None
 
 
@@ -362,12 +367,15 @@ def command(args, root):
     return 0
 
 
-def guard_registration(function):
+def guard_registration(function=None, *, native=False):
     from functools import wraps
+    if function is None:
+        return lambda selected: guard_registration(selected, native=native)
     @wraps(function)
     def guarded(args, root):
-        from .runtime_policies import require_wait_policy
-        require_wait_policy(getattr(args, "busy_policy", "wait"))
+        from .runtime_policies import require_native_policy, require_wait_policy
+        validator = require_native_policy if native else require_wait_policy
+        validator(getattr(args, "busy_policy", "wait"))
         with registration_guard(root, args):
             return function(args, root)
     return guarded

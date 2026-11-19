@@ -101,6 +101,12 @@ class RaisingOnceAdapter(ScriptedSourceAdapter):
 
 
 class SQLiteSignalModuleTests(unittest.TestCase):
+    def setUp(self):
+        clock = patch("codex_wake.measurements.utc_bounds",
+                      return_value=(NOW.timestamp(), NOW.timestamp()))
+        clock.start()
+        self.addCleanup(clock.stop)
+
     def test_filesystem_baseline_filter_does_not_change_other_state_sources(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             database = Path(tmp) / "signals.sqlite3"
@@ -193,6 +199,19 @@ class SQLiteSignalModuleTests(unittest.TestCase):
             self.assertEqual(replay, reserved)
             self.assertFalse(reopened.expire_unreserved(registration.wake_id, now=NOW + timedelta(seconds=2)))
 
+    def test_missing_qualified_utc_holds_new_journal_but_existing_inspection_is_untimed(self):
+        from codex_wake.measurements import TimeUnavailable
+        with tempfile.TemporaryDirectory() as tmp:
+            database=Path(tmp)/'signals.sqlite3'
+            with patch('codex_wake.measurements.utc_bounds',side_effect=TimeUnavailable('unqualified')):
+                with self.assertRaises(SignalStoreError):SQLiteSignalModule(database)
+            initialized=SQLiteSignalModule(database,lease_clock=lambda:NOW)
+            original=initialized.journal_status()
+            with patch('codex_wake.measurements.utc_bounds',side_effect=TimeUnavailable('unqualified')):
+                reopened=SQLiteSignalModule.open_existing(database)
+                self.assertEqual(reopened.journal_status().journal_uuid,original.journal_uuid)
+                self.assertEqual(reopened.journal_status().schema_version,2)
+
     def test_existing_only_open_never_creates_a_missing_journal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             database = Path(tmp) / "signals.sqlite3"
@@ -278,6 +297,71 @@ class SQLiteSignalModuleTests(unittest.TestCase):
 
             self.assertIsInstance(result, Degraded)
             self.assertNotIn("storage-secret", repr(result))
+
+    def test_unqualified_default_clock_holds_ingest_and_republication_without_guest_fallback(self):
+        from codex_wake.measurements import TimeUnavailable
+        with tempfile.TemporaryDirectory() as tmp,patch('codex_wake.measurements.utc_bounds',return_value=(NOW.timestamp(),NOW.timestamp())):
+            database=Path(tmp)/'signals.sqlite3'
+            crashed=[False]
+            def checkpoint(name):
+                if name=='after_prepared_commit' and not crashed[0]:
+                    crashed[0]=True
+                    raise RuntimeError('interrupted before publication')
+            module=make_module(database,checkpoint=checkpoint)
+            facade=EventWake(module,adapters=[make_adapter()],clock=lambda:NOW,id_factory=lambda:'wake_clock_held')
+            prepared=facade.register(make_intent(),idempotency_key='clock-held-publication')
+            self.assertIsInstance(prepared,Degraded)
+            record=database.parent/'wake'/'pending'/'wake_clock_held.json'
+            self.assertFalse(record.exists())
+            with patch('codex_wake.measurements.utc_bounds',side_effect=TimeUnavailable('unqualified')):
+                self.assertEqual(module.reconcile_publications(),0)
+                self.assertFalse(record.exists())
+                outcome=module.ingest([make_observation()],SourceCommit('memory','contract-test','c1',1,NOW))
+                self.assertIsInstance(outcome,Degraded)
+                self.assertIsNone(module.source_checkpoint('memory','contract-test'))
+            self.assertEqual(module.reconcile_publications(),1)
+            self.assertTrue(record.exists())
+
+    def test_expired_preparation_never_calls_the_source_adapter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            calls=[0]
+            def clock():
+                calls[0]+=1
+                return NOW if calls[0]<=2 else NOW+timedelta(seconds=31)
+            adapter=make_adapter()
+            module=make_module(Path(tmp)/'signals.sqlite3',lease_clock=clock)
+            result=EventWake(module,adapters=[adapter],clock=lambda:NOW,
+                id_factory=lambda:'wake_expired_before_source').register(make_intent(),idempotency_key='expired-before-source')
+            self.assertIsInstance(result,Degraded)
+            self.assertEqual(result.code,'SOURCE_LEASE_LOST')
+            self.assertEqual(adapter.anchor_calls,0)
+
+    def test_qualified_bounds_never_steal_or_continue_an_ambiguous_preparation_lease(self):
+        bounds=[NOW.timestamp(),(NOW+timedelta(seconds=20)).timestamp()]
+        with tempfile.TemporaryDirectory() as tmp,patch('codex_wake.measurements.utc_bounds',side_effect=lambda:tuple(bounds)):
+            database=Path(tmp)/'signals.sqlite3'
+            blocked=BlockingAdapter()
+            facade=EventWake(make_module(database),adapters=[blocked],clock=lambda:NOW,id_factory=lambda:'wake_original')
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                preparing=pool.submit(facade.register,make_intent(),idempotency_key='qualified-lease')
+                try:
+                    self.assertTrue(blocked.entered.wait(timeout=5))
+                    bounds[:]=[(NOW+timedelta(seconds=10)).timestamp(),(NOW+timedelta(seconds=40)).timestamp()]
+                    denied_adapter=make_adapter()
+                    uncertain=EventWake(make_module(database),adapters=[denied_adapter],clock=lambda:NOW,
+                        id_factory=lambda:'wake_not_rebased').register(make_intent(),idempotency_key='qualified-lease')
+                    self.assertIsInstance(uncertain,Degraded)
+                    self.assertEqual(uncertain.code,'REGISTRATION_IN_PROGRESS')
+                    self.assertEqual(denied_adapter.anchor_calls,0)
+                finally:blocked.release.set()
+                late=preparing.result(timeout=5)
+            self.assertIsInstance(late,Degraded)
+            self.assertEqual(late.code,'SOURCE_LEASE_LOST')
+            bounds[:]=[(NOW+timedelta(seconds=31)).timestamp(),(NOW+timedelta(seconds=32)).timestamp()]
+            recovered=EventWake(make_module(database),adapters=[make_adapter()],clock=lambda:NOW,
+                id_factory=lambda:'wake_new_candidate').register(make_intent(),idempotency_key='qualified-lease')
+            self.assertIsInstance(recovered,Registration)
+            self.assertEqual(recovered.wake_id,'wake_original')
 
     def test_stale_preparation_is_taken_over_with_same_reserved_identity(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

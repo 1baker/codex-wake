@@ -50,6 +50,19 @@ class RuntimeObservation:
 
 
 @dataclass(frozen=True)
+class RuntimeSubmissionEnvelope:
+    """Original durable client identity and absolute expiry; never a new lease."""
+    client_user_message_id: str
+    expires_at_unix_micros: int
+
+    def __post_init__(self):
+        from uuid import UUID
+        UUID(self.client_user_message_id)
+        if type(self.expires_at_unix_micros) is not int or not 0 < self.expires_at_unix_micros <= 2**63 - 1:
+            raise ValueError('invalid original native expiry')
+
+
+@dataclass(frozen=True)
 class RuntimeSubmission:
     state: Literal["accepted", "uncertain", "not_sent"]
     receipt_id: str | None = None
@@ -73,6 +86,8 @@ class RuntimeAdapter(Protocol):
     def observe(self, recipient: RuntimeRecipient) -> RuntimeObservation: ...
     def submit(self, recipient: RuntimeRecipient, prompt: str) -> RuntimeSubmission: ...
     def reconcile(self, recipient: RuntimeRecipient, prompt: str) -> RuntimeReconciliation: ...
+    def submit_bounded(self, recipient: RuntimeRecipient, prompt: str, envelope: RuntimeSubmissionEnvelope) -> RuntimeSubmission: ...
+    def reconcile_bounded(self, recipient: RuntimeRecipient, prompt: str, envelope: RuntimeSubmissionEnvelope) -> RuntimeReconciliation: ...
 
 
 def validate_native_submission(submitted, thread_id, *, allow_background=False):
@@ -93,3 +108,58 @@ def validate_native_submission(submitted, thread_id, *, allow_background=False):
             and evidence.get('thread_id') == thread_id and evidence.get('turn_id') == submitted.receipt_id):
         return
     raise WakeError('runtime evidence does not confirm native acceptance')
+
+
+def original_submission_expiry(record):
+    """Project the original deadline without selecting any current clock."""
+    from datetime import UTC, datetime
+    from .records import WakeError
+    from .network_wakes import precise_deadline
+    if record.get('scheduling_intent'):
+        from .native_intents import schedule_projection
+        expiry = schedule_projection(record).get('expires_at')
+        stop = record['scheduling_intent'].get('stop_at')
+    else:
+        expiry = record.get('target', {}).get('expires_at')
+        stop = record.get('stop_at')
+    if not expiry:
+        raise WakeError('bounded_native_absolute_expiry_unavailable')
+    deadline = precise_deadline(expiry)
+    if stop:
+        deadline = min(deadline, precise_deadline(stop))
+    elapsed = deadline - datetime(1970, 1, 1, tzinfo=UTC)
+    return (elapsed.days * 86400 + elapsed.seconds) * 1_000_000 + elapsed.microseconds
+
+
+def submission_envelope(record):
+    delivery = record['native_delivery']
+    return RuntimeSubmissionEnvelope(delivery['submission_id'], delivery['expires_at_unix_micros'])
+
+
+def submit_bounded(adapter, recipient, prompt, envelope):
+    method = getattr(adapter, 'submit_bounded', None)
+    if method is None:
+        return RuntimeSubmission('not_sent', reason='bounded_native_backend_not_qualified', pre_io=True)
+    return method(recipient, prompt, envelope)
+
+
+def reconcile_submission(adapter, recipient, prompt, record):
+    # Historical attempts lacking the persisted bounded discriminator are read
+    # through their original reconciliation contract. Never migrate or resend.
+    if 'expires_at_unix_micros' not in record.get('native_delivery', {}):
+        return adapter.reconcile(recipient, prompt)
+    method = getattr(adapter, 'reconcile_bounded', None)
+    if method is None:
+        return RuntimeReconciliation(None, 'bounded_native_backend_not_qualified')
+    return method(recipient, prompt, submission_envelope(record))
+
+
+def bounded_nonadmitted_terminal(record):
+    """An exact bounded inspection, distinct from a completed native turn."""
+    delivery = record.get('native_delivery', {})
+    reconciliation = delivery.get('reconciliation', {})
+    return (type(delivery.get('expires_at_unix_micros')) is int
+            and delivery['expires_at_unix_micros'] > 0
+            and reconciliation.get('state') == 'resolved'
+            and (record.get('status'), reconciliation.get('reason')) in (
+                ('expired', 'bounded_native_expired'), ('cancelled', 'bounded_native_canceled')))

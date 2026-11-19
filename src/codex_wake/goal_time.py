@@ -5,7 +5,7 @@ anchor is never replaced, and these bounds never become UTC timestamps.
 """
 from __future__ import annotations
 
-import time
+import math
 
 from .native_intents import eligibility, valid_counter, valid_utc
 
@@ -69,10 +69,21 @@ def upper(receipt):
     if relative(receipt):
         from .native_clock import snapshot
         return _elapsed(receipt, snapshot())
-    elapsed = time.clock_gettime(time.CLOCK_BOOTTIME) - receipt['started_boottime']
-    if elapsed < 0:
-        raise GoalTimeUnavailable('elapsed_time_invalid')
-    return receipt['started_upper'] + elapsed
+    # Legacy absolute-UTC receipts retain their original deadline and origin.
+    # Their guest BOOTTIME fields remain historical data, never a QPC anchor.
+    if (receipt.get('time_basis') not in (None, 'qualified_utc')
+            or any(type(receipt.get(key)) not in (int, float)
+                   or not math.isfinite(receipt[key])
+                   for key in ('started_upper', 'time_origin', 'deadline'))):
+        raise GoalTimeUnavailable('clock_unqualified')
+    from .lifecycle_budget import trusted_upper
+    try:
+        current = trusted_upper()
+        if type(current) not in (int, float) or not math.isfinite(current):
+            raise ValueError('qualified UTC upper required')
+        return current
+    except (OSError, ValueError, KeyError, TypeError):
+        raise GoalTimeUnavailable('clock_unqualified') from None
 
 
 def public_time(receipt):

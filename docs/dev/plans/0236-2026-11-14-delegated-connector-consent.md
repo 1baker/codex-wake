@@ -1,6 +1,6 @@
 # P236 | Delegated connector consent
 
-State: DONE
+State: CLOSED
 Work item: #650
 Owner: root / ecochran76
 Branch: fix/connector-consent-delegation

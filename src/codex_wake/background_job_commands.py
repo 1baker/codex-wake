@@ -4,7 +4,7 @@ from __future__ import annotations
 from .cli_output import emit
 import json
 from pathlib import Path
-import time
+from . import measurements
 
 from .background_jobs import BackgroundJobs, BackgroundJobError
 from .permission_commands import verified_cli_principal
@@ -78,16 +78,17 @@ def _fresh_claimant(args, root, caller, managed_agent_id, *, observer, now):
             socket_path=getattr(args, 'tmux_socket', None), timeout=timeout, grok_runtime=runtime,
             bus=bus, capability=capability, operator=caller.role == 'operator', now=now)
     sample = observer(dict(runtime=agent['runtime'], conversation_id=agent['conversation_id'],
-        binding_id=getattr(args, 'binding_id', None), binding_sha256=getattr(args, 'binding_sha256', None))).validated(now())
+        binding_id=getattr(args, 'binding_id', None), binding_sha256=getattr(args, 'binding_sha256', None))).validated(measurements.snapshot() if now is None else now())
     if (sample.runtime != agent['runtime'] or sample.namespace != agent['namespace']
             or sample.conversation_id != agent['conversation_id'] or sample.root != agent['root']
             or sample.process != agent['process'] or sample.state != 'ready'
             or (sample.runtime == 'grok' and caller.role != 'operator' and sample.caller_verified is not True)):
         raise BackgroundJobError('job_claim_owner_changed', 'fresh runtime differs from the enrolled managed generation')
-    return Claimant(managed_agent_id, sample.root, sample.process, sample.observed_at)
+    return Claimant(managed_agent_id, sample.root, sample.process, sample.observed_at,
+                    clock_observation=sample.clock_observation)
 
 
-def execute(args, root, *, principal=None, register_wake=None, observer=None, now=time.time):
+def execute(args, root, *, principal=None, register_wake=None, observer=None, now=None):
     """The injected Principal and wake adapter are trusted host inputs only."""
     from .session_permissions import Principal
     caller = principal if principal is not None else verified_cli_principal(args)

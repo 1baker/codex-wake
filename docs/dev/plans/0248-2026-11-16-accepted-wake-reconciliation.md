@@ -1,6 +1,7 @@
 # Accepted wake completion reconciliation
 
-State: CLOSED (source integrated, dev41 qualified and deployed)
+State: CLOSED
+Outcome: source integrated, dev41 qualified and deployed
 Work item: LOCAL-WAKE-ACCEPTED-RECONCILIATION (DONE for this bounded packet)
 Owner: root / ecochran76
 Priority: P1

@@ -67,7 +67,7 @@ class LifecycleConfigurationTests(unittest.TestCase):
                         if key not in ('source_thread_id', 'profile', 'objective_budget')}
             ledger.configure(selected, 'operator', prior_tokens=10, now=1893456000)
             ledger.record('previous-session', 30, settled=True, now=1893456000)
-            with patch('codex_wake.native_clock.snapshot', return_value={'utc': {'upper': 1893456001}}):
+            with patch('codex_wake.measurements.utc_bounds', return_value=(1893456000, 1893456001)):
                 output = StringIO()
                 with redirect_stdout(output):
                     self.assertEqual(run(['--wake-root', str(root / 'wake'), 'sessions', 'configuration',

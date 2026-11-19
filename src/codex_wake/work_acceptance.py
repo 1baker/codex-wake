@@ -8,13 +8,14 @@ import json
 import os
 from pathlib import Path
 import re
-import time
 import signal
 import subprocess
+import time
 
 from .a2a_bus import private_path
 from .goal_supervision import _save
 from .records import WakeError
+from . import measurements
 from .session_permissions import check_operation
 from .task_briefs import TaskBriefStore
 from .wake_policy import _read
@@ -31,7 +32,7 @@ def _digest(value):
 
 
 class WorkAcceptance:
-    def __init__(self, root, *, now=time.time):
+    def __init__(self, root, *, now=None):
         self.root = Path(root).absolute()
         if self.root != self.root.resolve():
             raise AcceptanceError('acceptance_unavailable', 'canonical Wake root required')
@@ -42,7 +43,8 @@ class WorkAcceptance:
         self.directory = self.root / 'work-acceptance'
         self.directory.mkdir(mode=0o700, exist_ok=True)
         private_path(self.directory, directory=True)
-        self.now = now
+        self.now = measurements.utc_time if now is None else now
+        self._fixture_now = now
 
     @contextmanager
     def _state(self, contract_id, *, write=False):
@@ -182,7 +184,7 @@ class WorkAcceptance:
                 environment = {key:value for key,value in os.environ.items() if not key.startswith('GIT_')}
                 commit = subprocess.check_output(['git', '-C', contract['workspace'], 'rev-parse', '--verify', 'HEAD^{commit}'],
                     env=environment, stderr=subprocess.DEVNULL, timeout=2, text=True).strip()
-            except (OSError, AcceptanceError, subprocess.SubprocessError):
+            except (OSError, AcceptanceError, subprocess.SubprocessError, measurements.TimeUnavailable):
                 pass
             matched = commit == contract['checks']['git_commit']
             valid = valid and matched
@@ -219,7 +221,7 @@ class WorkAcceptance:
                 if not isinstance(claimant, Claimant):
                     raise AcceptanceError('authority_denied', 'fresh verified resource owner required')
                 claim = contract['checks']['claim']
-                guard = ResourceClaims(self.root, now=self.now).guard(claim['claim_id'], claim['generation'], claimant)
+                guard = ResourceClaims(self.root, now=self.now if self._fixture_now is not None else None).guard(claim['claim_id'], claim['generation'], claimant)
             with guard:
                 for verifier in contract['checks']['verifiers'] if valid else []:
                     current_valid, current_snapshot = self._snapshot(contract)
@@ -311,18 +313,18 @@ class WorkAcceptance:
         try:
             if self._executable_hash(Path(verifier['argv'][0])) != verifier['executable_sha256']:
                 return dict(name=verifier['name'], status='unknown', reason='verifier_changed')
+            deadline = measurements.deadline(verifier['timeout'])
             process = subprocess.Popen(verifier['argv'], cwd=cwd, stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-            deadline = time.monotonic() + verifier['timeout']
             while True:
                 # Keep the leader unreaped until group cleanup: its PGID cannot be reused.
                 exited = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
                 if exited is not None:
                     break
-                if time.monotonic() >= deadline:
+                if deadline.expired():
                     timed_out = True
                     break
-                time.sleep(min(.01, max(0, deadline - time.monotonic())))
+                time.sleep(min(.01, deadline.remaining()))
             try:
                 os.killpg(process.pid, signal.SIGKILL)
             except ProcessLookupError:
@@ -332,7 +334,7 @@ class WorkAcceptance:
                       else 'rejected' if code in verifier['fail_codes'] else 'unknown')
             return dict(name=verifier['name'], status=status, exit_code=code,
                         reason='verifier_timeout' if timed_out else 'declared_exit_classification')
-        except (OSError, AcceptanceError, subprocess.SubprocessError):
+        except (OSError, AcceptanceError, subprocess.SubprocessError, measurements.TimeUnavailable):
             if process is not None:
                 try:
                     os.killpg(process.pid, signal.SIGKILL)

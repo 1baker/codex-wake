@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import math
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
+from fractions import Fraction
 from functools import cache, wraps
 from pathlib import Path
 from typing import Callable, Literal, Mapping
@@ -53,16 +55,18 @@ class PollResult:
     submitted: int = 0
     signal_sources: tuple[dict[str, object], ...] = ()
     skip_reason: str | None = None
+    time_held: int = 0
 
 
 def format_poll_result(result: PollResult) -> str:
     if getattr(result, "skip_reason", None):
         return f"skipped={result.skip_reason}"
-    return (
+    text = (
         f"checked={result.checked} fired={result.fired} "
         f"failed={result.failed} pending={result.pending} "
         f"dispatched={result.dispatched} submitted={result.submitted} requeued={result.requeued}"
     )
+    return text + (f" time_held={result.time_held}" if result.time_held else "")
 
 
 def poll_result_has_activity(result: PollResult) -> bool:
@@ -74,6 +78,7 @@ def poll_result_has_activity(result: PollResult) -> bool:
             result.dispatched,
             result.submitted,
             result.requeued,
+            result.time_held,
             getattr(result, "skip_reason", None),
         )
     )
@@ -92,7 +97,24 @@ def poll_result_dict(result: PollResult) -> dict[str, object]:
     }
     if getattr(result, "skip_reason", None):
         payload["skip_reason"] = result.skip_reason
+    if result.time_held:
+        payload["time_held"] = result.time_held
     return payload
+
+
+def _legacy_time_bounds(now):
+    if now is not None:
+        return now, now
+    from . import measurements
+    try:
+        lower, upper = measurements.utc_bounds()
+        epoch = datetime(1970, 1, 1, tzinfo=UTC)
+        # Round outward into datetime's coordinate precision, never toward a
+        # deadline across an uncertain sub-microsecond boundary.
+        return (epoch + timedelta(microseconds=math.floor(Fraction(lower) * 1000000)),
+                epoch + timedelta(microseconds=math.ceil(Fraction(upper) * 1000000)))
+    except (measurements.TimeUnavailable, OverflowError, ValueError):
+        return None, None
 
 
 def default_signal_runners(
@@ -333,10 +355,10 @@ def poll_once(
     time_provider=None,
     lifecycle_supervision=None,
 ) -> PollResult:
-    current = now or utc_now()
     from .agent_handoff import poll_handoffs
     from .wake_control import read_control
     emergency = read_control(root)
+    current = now
     if not emergency['paused'] and (root / 'schedules').is_dir():
         from .recurring_schedules import poll_schedules
         if time_provider is None:
@@ -350,7 +372,7 @@ def poll_once(
                   stop_reason='emergency_interrupt' if emergency['interrupt_requested'] else None)
     from .lifecycle_supervision import poll_spawns
     poll_spawns(root)
-    checked = fired = failed = pending = dispatched = requeued = submitted = 0
+    checked = fired = failed = pending = dispatched = requeued = submitted = time_held = 0
     if signal_runtime is None:
         journal = signal_journal_path(root)
         if journal.is_file():
@@ -365,6 +387,8 @@ def poll_once(
             except Exception:
                 signal_runtime = None
     if signal_runtime is not None:
+        current, _ = _legacy_time_bounds(now)
+    if signal_runtime is not None and current is not None:
         if not signal_runners:
             signal_runners = default_signal_runners(
                 root, signal_runtime, initial_reason=signal_reconcile_reason,
@@ -410,7 +434,7 @@ def poll_once(
     else:
         signal_source_health = []
     terminal_signal_ids: set[str] = set()
-    if signal_runtime is not None:
+    if signal_runtime is not None and current is not None:
         for terminal in iter_records(root):
             status = terminal.record.get("status")
             wake_id = terminal.record.get("id")
@@ -456,10 +480,6 @@ def poll_once(
             failed += int(state == 'failed')
             pending += int(state == 'pending')
             continue
-        from .native_delivery import expire_native
-        if expire_native(root, item, current):
-            failed += 1
-            continue
         if classification == 'network_v3':
             from .network_wakes import evaluate_pending
             try:
@@ -471,6 +491,20 @@ def poll_once(
                 fired += 1
             elif state == 'pending':
                 pending += 1
+            continue
+        current, upper = _legacy_time_bounds(now)
+        if current is None:
+            pending += 1
+            time_held += 1
+            continue
+        from .native_delivery import expire_native
+        if expire_native(root, item, current):
+            failed += 1
+            continue
+        if (item.record.get('target', {}).get('transport') == 'native'
+                and upper >= parse_utc_timestamp(item.record['target']['expires_at'])):
+            pending += 1
+            time_held += 1
             continue
         if classification == "signal_v2":
             if signal_runtime is None:
@@ -505,6 +539,12 @@ def poll_once(
                     else:
                         pending += 1
                     continue
+                if armed.expires_at is not None and current < armed.expires_at <= upper:
+                    authority = signal_runtime.inspect_signal_state(wake_id, record=current_item.record)
+                    if not isinstance(authority, dict) or not authority.get('reservation'):
+                        pending += 1
+                        time_held += 1
+                        continue
                 outcome, source_publishes = _evaluate_signal(
                     signal_runtime,
                     armed,
@@ -570,14 +610,28 @@ def poll_once(
             pending += 1
     if dispatch:
         for item in firing_records(root):
-            if classify_record(item.record) == 'hold':
+            classification = classify_record(item.record)
+            if classification == 'hold':
                 continue
-            dispatch_current = current
-            if classify_record(item.record) == 'network_v3':
+            dispatch_current = None
+            if classification == 'network_v3':
                 from .network_wakes import read_time, evaluation_time
                 try:
                     dispatch_current = evaluation_time(read_time(time_provider))
                 except WakeError:
+                    continue
+            elif classification not in {'native_network_v5', 'native_intent_v6', 'runtime_intent_v7'}:
+                dispatch_current, upper = _legacy_time_bounds(now)
+                if dispatch_current is None:
+                    time_held += 1
+                    continue
+                if not next_attempt_is_due(item.record, dispatch_current)[0]:
+                    time_held += 1
+                    continue
+                target = item.record.get('target', {})
+                if (target.get('transport') == 'native'
+                        and dispatch_current < parse_utc_timestamp(target['expires_at']) <= upper):
+                    time_held += 1
                     continue
             result = dispatch_firing_record(
                 root,
@@ -611,6 +665,7 @@ def poll_once(
         requeued=requeued,
         submitted=submitted,
         signal_sources=tuple(signal_source_health),
+        time_held=time_held,
     )
 
 

@@ -11,6 +11,7 @@ import time
 import tomllib
 from uuid import uuid4
 
+from . import measurements
 from .host_execution import SystemdExecution
 from .records import WakeError,parse_timestamp
 
@@ -98,6 +99,22 @@ def _renewal_actors(root,receipt,old,*,allow_fresh):
     return historical_actors
 
 
+
+def _retained_clock(directory,binding):
+    """An existing executor never acquires a replacement admission anchor."""
+    path=directory/('guard-'+binding['generation']+'.json')
+    try:
+        _private(path)
+        config=json.loads(path.read_text())
+        if (config.get('generation')!=binding['generation']
+                or config.get('configuration',{}).get('revision')!=binding['configuration_revision']):
+            raise ValueError('original clock admission changed')
+        from .strict_executor import admission_clock
+        admission_clock(config)
+    except (OSError,ValueError,KeyError,TypeError):
+        raise WakeError('strict execution requires its original qualified Stable Time anchor; explicit operator renewal required') from None
+
+
 def preflight_execution(root,receipt):
     """Read-only eligibility before reservation; actual effects still follow it."""
     from .lifecycle_budget import objective_identity
@@ -113,11 +130,13 @@ def preflight_execution(root,receipt):
             _renewal_actors(root,receipt,old,allow_fresh=False)
         elif old.get('state')!='running' or old.get('guard',{}).get('state','running')!='running':
             raise WakeError('strict execution is fenced; explicit operator renewal required')
+        else:
+            _retained_clock(directory,old)
 
 
 def ensure_execution(root,receipt):
     """Reserve precedes this call; no shared server is adopted or replaced."""
-    from .lifecycle_budget import objective_identity,trusted_upper
+    from .lifecycle_budget import objective_identity
     profile=receipt['intent']['launch'];cfg=receipt['intent']['configuration']
     policy=receipt['intent']['continuation'];objective=objective_identity(policy)
     directory=location(root,objective)
@@ -130,6 +149,7 @@ def ensure_execution(root,receipt):
             if old['configuration_revision']!=cfg['revision']:
                 historical_actors=_renewal_actors(root,receipt,old,allow_fresh=True)
             elif old.get('state')=='running' and old.get('guard',{}).get('state','running')=='running':
+                _retained_clock(directory,old)
                 receipt['strict_execution']=old
                 return
             else:
@@ -153,9 +173,12 @@ def ensure_execution(root,receipt):
             raise WakeError('strict execution refuses an existing unowned endpoint')
         if not old and (home/'sessions').exists() and any((home/'sessions').rglob('*.jsonl')):
             raise WakeError('strict execution refuses a home containing unowned conversations')
-        if not hasattr(time,'CLOCK_BOOTTIME') or not Path('/sys/fs/cgroup/cgroup.controllers').is_file():
-            raise WakeError('strict execution requires Linux cgroup-v2 and suspend-aware BOOTTIME')
-        upper=trusted_upper();limits=cfg['strict_execution']['limits']
+        if not Path('/sys/fs/cgroup/cgroup.controllers').is_file():
+            raise WakeError('strict execution requires Linux cgroup-v2')
+        clock=measurements.snapshot()
+        if clock.get('reason')!='authenticated_utc' or clock.get('utc') is None:
+            raise WakeError('strict execution admission requires qualified Stable Time UTC')
+        upper=clock['utc']['upper'];limits=cfg['strict_execution']['limits']
         deadline=parse_timestamp(cfg['objective_deadline']).timestamp()
         remaining=deadline-upper-limits['stop_grace_seconds']
         if remaining<=limits['checkpoint_grace_seconds']:raise WakeError('strict execution deadline exhausted')
@@ -167,7 +190,8 @@ def ensure_execution(root,receipt):
         _save(path,binding)
         guard_config=dict(wake_root=str(Path(root).resolve()),objective_id=objective,endpoint=endpoint,
             codex_home=str(home),argv=[profile['codex_path'],'app-server','--listen',endpoint],cwd=profile['cwd'],
-            configuration=cfg,started_upper=upper,started_boottime=time.clock_gettime(time.CLOCK_BOOTTIME),
+            configuration=cfg,started_upper=upper,started_boottime=None,
+            clock_basis='stable_time_host_counter_v1',clock_anchor=clock,remaining_seconds=deadline-upper,
             boot_id=Path('/proc/sys/kernel/random/boot_id').read_text().strip(),deadline=deadline,
             status_path=str(directory/'status.json'),generation=generation,historical_actors=historical_actors)
         config_path=directory/('guard-'+generation+'.json');_save(config_path,dict(state='configured',**guard_config))
@@ -182,13 +206,13 @@ def ensure_execution(root,receipt):
             binding.update(state='uncertain',reason='executor_launch_unverified');_save(path,binding)
             raise
         receipt['strict_execution']=binding
-        until=time.monotonic()+profile['timeout']
-        while time.monotonic()<until:
+        until=measurements.deadline(profile['timeout'])
+        while not until.expired():
             if (directory/'app-server.sock').is_socket():
                 from .native_protocol import native_request
                 try:
                     native_request(endpoint,profile['codex_path'],'thread/list',{'limit':1},
-                        min(2,max(.1,until-time.monotonic())))
+                        min(2,max(.1,until.remaining())))
                     return
                 except Exception as exc:
                     binding['readiness_error']=type(exc).__name__+': '+str(exc)[:240]
@@ -208,6 +232,10 @@ def guard_execution(root,receipt):
     receipt['strict_execution']=observed
     if not observed or observed['state']!='running' or observed.get('guard',{}).get('state','running')!='running':
         receipt.update(state='blocked',reason='strict_execution_not_running');return False
+    try:
+        _retained_clock(location(root,identity),observed)
+    except WakeError:
+        receipt.update(state='blocked',reason='strict_execution_clock_unqualified');return False
     return True
 
 

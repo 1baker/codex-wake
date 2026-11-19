@@ -8,15 +8,77 @@ import tempfile
 import subprocess
 import sys
 import threading
-import time
 import unittest
+from unittest.mock import patch
 from websockets.sync.server import unix_serve
 
 from codex_wake.local_session_operations import LocalSessionControl
 
 
 class OutputModesTests(unittest.TestCase):
+    def test_output_frames_wait_origin_precedes_first_handle_and_terminal_pages_drain(self):
+        from codex_wake.local_control_commands import output_frames
+        counter = [1]
+        timeouts = []
+        class Owner:
+            def output(self, identifier, **options):
+                timeouts.append(options['timeout'])
+                cursor = options['cursor']
+                return dict(terminal=True, phase='terminal', execution='completed', mode='stream',
+                    text='B' if cursor else 'A', next_cursor=cursor+1, latest_cursor=2, reason=None,
+                    retention=dict(history_complete=True, cursor_gap=False, truncated=False))
+        with patch('time.monotonic', side_effect=lambda: counter[0]):
+            frames = output_frames(Owner(), 'one', 'stream', 1)
+            self.assertEqual(next(frames), {'operation_id': 'one'})
+            counter[0] = 10
+            expired = list(frames)
+            self.assertEqual(timeouts, [])
+            self.assertEqual(expired[-1], {'exit_code': 124})
+            counter[0] = 1
+            retained = list(output_frames(Owner(), 'one', 'stream', 1))
+        self.assertEqual([frame['stdout'] for frame in retained if 'stdout' in frame], ['A', 'B'])
+        self.assertEqual(timeouts[-1], 0)
+        self.assertEqual(retained[-1], {'exit_code': 0})
+
+    def test_output_frames_publish_owned_output_without_a_reliable_clock_call(self):
+        from codex_wake import measurements
+        from codex_wake.local_control_commands import output_frames
+        class Owner:
+            def output(self, identifier, **options):
+                return dict(terminal=True, phase='terminal', execution='completed', mode='final',
+                    text='done', next_cursor=1, latest_cursor=1, reason=None,
+                    retention=dict(history_complete=True, cursor_gap=False, truncated=False))
+        with patch('codex_wake.measurements.snapshot', side_effect=measurements.TimeUnavailable('client unavailable')):
+            for timeout in (0, 1):
+                frames = list(output_frames(Owner(), 'one', 'final', timeout))
+                self.assertEqual([frame['stdout'] for frame in frames if 'stdout' in frame], ['done'])
+                self.assertEqual(frames[-1], {'exit_code': 0})
+
+    def test_output_frames_wait_is_not_renewed_by_a_late_owner_reply(self):
+        from codex_wake.local_control_commands import output_frames
+        counter = [1]
+        class Owner:
+            def output(self, identifier, **options):
+                counter[0] = 10
+                return dict(terminal=True, phase='terminal', execution='completed', mode='final',
+                    text='late', next_cursor=1, latest_cursor=1, reason=None,
+                    retention=dict(history_complete=True, cursor_gap=False, truncated=False))
+        with patch('time.monotonic', side_effect=lambda: counter[0]):
+            frames = list(output_frames(Owner(), 'one', 'final', 1))
+        self.assertFalse(any('stdout' in frame or 'output' in frame for frame in frames))
+        self.assertEqual(frames[-1], {'exit_code': 124})
+
+    def test_output_frames_preserve_the_owners_authorization_refusal(self):
+        from codex_wake.local_control_commands import output_frames
+        from codex_wake.managed_inventory import InventoryError
+        class Owner:
+            def output(self, identifier, **options):
+                raise InventoryError('actor_expired', 'actor expired')
+        with self.assertRaisesRegex(InventoryError, 'actor expired'):
+            list(output_frames(Owner(), 'one', 'final', 1))
+
     def test_detached_collector_retains_live_text_order_and_original_retry(self):
+        import time
         release=threading.Event();delta=threading.Event();submissions=[]
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);home=root/'home';home.mkdir();endpoint='unix://'+str(root/'native.sock')
@@ -41,7 +103,7 @@ class OutputModesTests(unittest.TestCase):
                         # Schema-shaped telemetry from the qualified native protocol; not a live capture.
                         event('turn/moderationMetadata',metadata={'decision':'allowed'})
                         event('item/agentMessage/delta',itemId='answer',delta='Hello ');delta.set()
-                        if not release.wait(10):return
+                        release.wait()
                         event('item/started',item={'id':'tool','type':'commandExecution','command':'echo fixture'})
                         event('item/completed',item={'id':'tool','type':'commandExecution','exitCode':0})
                         event('item/agentMessage/delta',itemId='answer',delta='world')
@@ -79,7 +141,7 @@ class OutputModesTests(unittest.TestCase):
                     self.assertIn(identifier,err.getvalue())
                     release.set()
                     final=owner.output(identifier,mode='final',timeout=3)
-                    self.assertEqual(final['text'],'Hello world')
+                    self.assertEqual(final['text'],'Hello world',json.dumps(final,sort_keys=True))
                     transcript=owner.output(identifier,mode='transcript')
                     self.assertEqual([event['kind'] for event in transcript['events']],['turn/started','turn/moderationMetadata','item/agentMessage/delta','item/started','item/completed','item/agentMessage/delta','item/completed','thread/tokenUsage/updated','turn/completed'])
                     self.assertTrue(transcript['retention']['history_complete'])

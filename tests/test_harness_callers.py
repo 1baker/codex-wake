@@ -20,12 +20,15 @@ META = dict(threadId=THREAD, sessionId=THREAD, callId='call-315',
 class HarnessCallerTests(unittest.TestCase):
     def test_inventory_main_cli_and_mcp_share_suppression_and_identity(self):
         from codex_wake.managed_inventory import Observation
-        import time
-        with tempfile.TemporaryDirectory() as temporary:
+        from tests.test_measurements import observation
+        clock = observation(1000)
+        with tempfile.TemporaryDirectory() as temporary, patch(
+                "codex_wake.measurements.snapshot", return_value=clock):
             root = Path(temporary)
-            sample = Observation('codex', 'codex:fixture', THREAD, str(root), 'ready', time.time(),
+            sample = Observation('codex', 'codex:fixture', THREAD, str(root), 'ready', clock['utc']['upper'],
                                  'native_metadata', dict(pid=123, start_ticks=42, boot_id='boot-a'),
-                                 [dict(pane_id='%1', window_id='@1')], {'inspect': 'supported'})
+                                 [dict(pane_id='%1', window_id='@1')], {'inspect': 'supported'},
+                                 clock_observation=clock)
             output = io.StringIO()
             with patch('codex_wake.managed_inventory_commands.RuntimeObserver.__call__', return_value=sample), contextlib.redirect_stdout(output):
                 code = run(['--wake-root', str(root), 'agents', 'enroll', '--operator', '--conversation-id', THREAD, '--json'])
@@ -151,7 +154,7 @@ class HarnessCallerTests(unittest.TestCase):
             root = Path(temporary)
             runner = CommandRunner(wake_root=root)
             body = dict(caller_thread_id=THREAD, trigger='1m', prompt='Continue', idempotency_key='native-mcp', session_mode='background',
-                        wake_lifetime='conversation', owner_end='hold', recipient_startup='background_saved')
+                        wake_lifetime='conversation', owner_end='hold', recipient_startup='background_saved', busy_policy='queue')
             denied, failed = runner.call('wake_native_after', body)
             self.assertTrue(failed)
             self.assertFalse(all_records(root))
@@ -164,6 +167,12 @@ class HarnessCallerTests(unittest.TestCase):
             self.assertEqual(record['wake_policy']['owner'], dict(kind='conversation', id='codex:' + THREAD))
             self.assertEqual(record['wake_policy']['startup'], 'background_saved')
             self.assertEqual(record['target']['resume_policy'], 'same_thread')
+            self.assertEqual(record['target']['busy_policy'], 'queue')
+            with patch('codex_wake.sessions.observe', return_value={'complete':False,'sessions':[]}), patch('codex_wake.app_server.resolve_codex_cmd', return_value=sys.executable), patch(
+                    'codex_wake.native_clock.snapshot', return_value={'utc': None, 'counter': None}):
+                changed, failed = runner.call('wake_native_after', dict(body, busy_policy='wait'), native_context=META)
+            self.assertTrue(failed, changed)
+            self.assertEqual(all_records(root)[0].record['target']['busy_policy'], 'queue')
 
     def test_native_registration_survives_detached_mcp_cwd_without_duplicate_wakes(self):
         import errno
@@ -221,7 +230,10 @@ class HarnessCallerTests(unittest.TestCase):
         from codex_wake.monitor import write_monitor_health
         clock = dict(utc=dict(status='network', sources=['fixture-a', 'fixture-b'],
             lower=1893456000, upper=1893456000.2), counter=None)
-        with tempfile.TemporaryDirectory() as temporary, patch.dict('os.environ', {'XDG_STATE_HOME': temporary}):
+        with tempfile.TemporaryDirectory() as temporary, patch.dict(
+                'os.environ', {'XDG_STATE_HOME': temporary}), patch(
+                'codex_wake.measurements.utc_bounds',
+                side_effect=lambda: (clock['utc']['lower'], clock['utc']['upper'])):
             root = Path(temporary) / 'wake'
             runner = CommandRunner(wake_root=root)
             body = dict(caller_thread_id=THREAD, trigger='3650d', ttl='24h', prompt='Read-only review',

@@ -145,12 +145,13 @@ class Pilot:
 
 def seed(python, root, env, count=1):
     code = '''import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from codex_wake.records import build_record,write_record
 root=Path(sys.argv[1])
 for index in range(int(sys.argv[2])):
  record=build_record(predicate={'type':'not_before','due_at':'2099-01-01T00:00:00Z'},
-  prompt='Synthetic consolidation qualification',cwd=root.parent,
+  prompt='Synthetic consolidation qualification',cwd=root.parent,now=datetime(2026,1,1,tzinfo=UTC),
   target={'transport':'tmux','tmux_socket':'/tmp/synthetic-unconnected','pane':'%1'})
  record['id']='wake_synthetic_'+str(index)
  write_record(root,record)
@@ -371,7 +372,9 @@ def qualify(args):
                 'Process isolation adds IPC/journaling/startup cost; compare numbers before rollout. These figures do not establish lower steady-state production CPU.'}
             receipt['status'] = 'passed'
     except Exception as error:
+        import traceback
         receipt['status'] = 'failed'; receipt['error'] = f'{type(error).__name__}: {error}'
+        receipt['failure_traceback'] = traceback.format_exc()
         if pilot:
             receipt['commands'] = pilot.commands
             receipt['final_owned_processes'] = pilot.cleanup()

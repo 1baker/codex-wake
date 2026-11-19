@@ -17,7 +17,8 @@ class ConsolidationQualificationTests(unittest.TestCase):
                 sys.executable, str(repo / 'scripts/supervisor_consolidation_qualification.py'),
                 '--python', sys.executable, '--source-root', str(repo), '--output', str(output),
             ], capture_output=True, text=True, timeout=55)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            diagnostic = output.read_text() if output.exists() else 'qualification receipt missing'
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr + diagnostic)
             receipt = json.loads(output.read_text())
             self.assertEqual(receipt['status'], 'passed')
             self.assertEqual(receipt['final_owned_processes'], [])

@@ -5,15 +5,16 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import fcntl
 import json
+import math
 import os
 from pathlib import Path
 import re
 import tempfile
-import time
 import uuid
 
 from .a2a_bus import private_path
 from .records import WakeError
+from . import measurements
 
 MAX_BYTES = 4 * 1024 * 1024
 KINDS = ('worktree', 'build_prefix', 'install_prefix')
@@ -45,6 +46,7 @@ class Claimant:
     root: str
     process: dict
     observed_at: float
+    clock_observation: dict | None = None
 
     def validated(self, now):
         if (not isinstance(self.managed_agent_id, str)
@@ -54,8 +56,14 @@ class Claimant:
                 or type(self.process['pid']) is not int or self.process['pid'] <= 0
                 or type(self.process['start_ticks']) is not int or self.process['start_ticks'] < 0
                 or type(self.process['boot_id']) is not str or not self.process['boot_id']
-                or type(self.observed_at) not in (int, float)
-                or not self.observed_at <= now <= self.observed_at + 30):
+                or type(self.observed_at) not in (int, float) or not math.isfinite(self.observed_at)):
+            raise ResourceClaimError('owner_unqualified', 'fresh exact managed process binding required')
+        try:
+            qualified = (measurements.fresh(self.clock_observation, 30, current=now)
+                         if isinstance(now, dict) else self.observed_at <= now <= self.observed_at + 30)
+        except (measurements.TimeUnavailable, TypeError, ValueError):
+            qualified = False
+        if not qualified:
             raise ResourceClaimError('owner_unqualified', 'fresh exact managed process binding required')
         return dict(managed_agent_id=self.managed_agent_id, root=self.root, process=_copy(self.process))
 
@@ -72,7 +80,7 @@ def _resource(kind, path):
 
 class ResourceClaims:
     """One private serialized owner of claims and their retained transition history."""
-    def __init__(self, root, *, now=time.time):
+    def __init__(self, root, *, now=None):
         self.root = Path(root).absolute()
         if self.root != self.root.resolve():
             raise ResourceClaimError('store_unavailable', 'Wake root must not traverse symlinks')
@@ -86,7 +94,8 @@ class ResourceClaims:
         self.path = self.directory / 'claims.json'
         self.lock_path = self.directory / 'claims.lock'
         self.initialized = self.directory / 'initialized'
-        self.now = now
+        self.now = measurements.utc_time if now is None else now
+        self.clock = (lambda: measurements.snapshot()) if now is None else (lambda: self.now())
 
     @contextmanager
     def _transaction(self, *, write=False):
@@ -188,7 +197,7 @@ class ResourceClaims:
         raise ResourceClaimError('claim_not_found', 'resource claim not found')
 
     def claim(self, kind, path, claimant):
-        owner = claimant.validated(self.now())
+        owner = claimant.validated(self.clock())
         resource = _resource(kind, path)
         with self._transaction(write=True) as state:
             for existing in state['claims']:
@@ -215,7 +224,7 @@ class ResourceClaims:
     def _current(self, claim, generation, claimant):
         if type(generation) is not int or generation != claim['generation'] or claim['status'] != 'active':
             raise ResourceClaimError('stale_generation', 'active exact claim generation required')
-        if claim['owner'] != claimant.validated(self.now()):
+        if claim['owner'] != claimant.validated(self.clock()):
             raise ResourceClaimError('owner_changed', 'claim owner or process generation differs')
         if _resource(claim['resource']['kind'], claim['resource']['path']) != claim['resource']:
             raise ResourceClaimError('resource_changed', 'claimed directory identity changed')
@@ -227,7 +236,7 @@ class ResourceClaims:
 
     def transfer(self, claim_id, generation, claimant, *, operator=False, reason=None):
         self._operator(operator, reason)
-        owner = claimant.validated(self.now())
+        owner = claimant.validated(self.clock())
         with self._transaction(write=True) as state:
             claim = self._find(state, claim_id)
             if type(generation) is not int or claim['generation'] != generation or claim['status'] != 'active':

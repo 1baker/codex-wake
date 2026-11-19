@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "issue": 695,
+  "state": "partial_acceptance_not_installable",
+  "native_source_commit": "075639f50a5cf8f8cdfa39b5213cd77a6efa3d53",
+  "package": {
+    "version": "0.169.0-wake695.4+075639f50a",
+    "target": "x86_64-unknown-linux-gnu",
+    "files": {
+      "codex-package.json": "23eeec6b592a935108e402fabb5402e34606d0952f2728dd7322db7c0f81f6b0",
+      "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+      "codex-resources/bwrap": "da1fe1635e7d3f087e65d840e807a9d7f9d2c05ab9af782c1bd6bb5f5f094220",
+      "bin/codex-code-mode-host": "d4be946e489a6b4b10937df891ae4719eb6689348f85c48602fe7565fb6904e9",
+      "bin/codex-exec-server": "5a8bdba9f1b5e9f7f438b7d5b9ebf2dd7dae7ccb16e69ed8586decc4826994e3",
+      "bin/codex": "44f25dea7c6fc65c1745dcbb94782ebd4da404dad1ddff838aa658ba6ff23f5b"
+    }
+  },
+  "environment": {
+    "uid": 1017,
+    "shared_wsl_kernel": true,
+    "provider": "owned localhost Responses stream",
+    "external_model_calls": 0,
+    "material_difference": "Candidate GNU/system glibc; working baseline musl."
+  },
+  "source_validation": {
+    "red": "Managed PID interrupted by local replacement before fix",
+    "green": "Running different-package replacement refused; identical complete package preserves PID and selection",
+    "command": "cargo test --locked --profile dev-small -p codex-app-server-daemon --lib prepare_install::tests",
+    "passed": 8
+  },
+  "installed_validation": {
+    "cross": {
+      "state": "passed",
+      "updater_exit": 1,
+      "active_turn_preserved": true,
+      "selection_preserved": true,
+      "forced_shutdown": false,
+      "seconds": 29.80804875800095
+    },
+    "same": {
+      "state": "passed",
+      "updater_exit": 0,
+      "active_turn_preserved": true,
+      "selection_preserved": true,
+      "forced_shutdown": false,
+      "seconds": 30.37545335800678
+    }
+  },
+  "queue_restart": {
+    "state": "passed",
+    "expired_and_canceled_absent_from_model_and_history": true,
+    "control_reached_model": true,
+    "unknown_time_held": true,
+    "original_deadlines_and_client_ids_survive_restart": true,
+    "restart_expired_absent_from_model_and_history": true,
+    "restart_control_reached_model": true,
+    "provider_requests": 3,
+    "stop_exit_code": 0
+  },
+  "final_owned_processes": [],
+  "working_native_changed": false,
+  "production_bounded_delivery_enabled": false,
+  "remaining": [
+    "Known asynchronous transport delays after native admission: HTTP authentication/preparation and WS lock/send command queue; requires native remediation",
+    "Strict remote model-start vs final native transport-send guarantee requires operator decision",
+    "production restart/cooperative upgrade protocol",
+    "full Python validation, including unreconciled full-suite preflight failure"
+  ],
+  "prepared_expiry": {
+    "state": "passed",
+    "uid": 1017,
+    "external_model_calls": 0,
+    "source": "075639f50a",
+    "candidate_sha256": "44f25dea7c6fc65c1745dcbb94782ebd4da404dad1ddff838aa658ba6ff23f5b",
+    "hook_proof": {
+      "entered_upper": 1794861949.91208,
+      "exited_lower": 1794861959.538318,
+      "original_expiry": 1794861959536118,
+      "clock_reason": "authenticated_utc"
+    },
+    "provider_requests": 2,
+    "eligible_when_hook_entered": true,
+    "expired_before_hook_return": true,
+    "expired_input_and_derived_context_absent_from_all_model_requests": true,
+    "post_reload_control_completed": true,
+    "stop_exit_code": 0,
+    "command": "qualify_prepared_expiry_package4_v2.py 695-package4-prepared2",
+    "seconds": 39.919,
+    "scope": "real UID1017 actual launcher, trusted owned preparation hook, Stable Time, localhost provider; no arbitrary host suspension claim"
+  },
+  "stopped_rollback": {
+    "state": "passed",
+    "uid": 1017,
+    "external_model_calls": 0,
+    "candidate_sha256": "44f25dea7c6fc65c1745dcbb94782ebd4da404dad1ddff838aa658ba6ff23f5b",
+    "history_readiness_holds": 4,
+    "multiple_actual_clients": true,
+    "processes": {
+      "rollback": {
+        "pid": 3751533,
+        "sha256": "b452ca20f838a8855a88a41050ee4a694033fff4ea3ecdad5633e6e0e8d13f2b"
+      },
+      "reupgrade": {
+        "pid": 3754629,
+        "sha256": "44f25dea7c6fc65c1745dcbb94782ebd4da404dad1ddff838aa658ba6ff23f5b"
+      }
+    },
+    "failed_start_exit": 1,
+    "supported_stopped_rollback_and_reupgrade": true,
+    "account_history_prefixes_preserved": true,
+    "native_goals_and_budgets_preserved": true,
+    "old_binary_did_not_consume_bounded_work": true,
+    "failed_start_repair_passed": true,
+    "provider_requests": 2,
+    "qualified_history_layouts": [
+      "account"
+    ],
+    "unqualified_history_layouts": [
+      "default",
+      "shared"
+    ],
+    "stop_exit_code": 0,
+    "seconds": 99.126,
+    "command": "qualify_stopped_rollback_package4_v4.py 695-package4-rollback4",
+    "limitations": "Explicitly stopped account-layout lifecycle; no uninterrupted reconnect, private-client lock, default/shared layout, or production cooperative protocol claim."
+  },
+  "qualification_first_failures": {
+    "prepared_v1": "Hook review prompt prevented readiness; no bounded writes. Exact owned hook trust accepted in v2.",
+    "rollback_v1": "Invalid generated script; compile preflight failed; no runtime effects.",
+    "rollback_v2": "Transient thread/turns/list SQLite readiness; read-only bounded readiness retry in v3.",
+    "rollback_v3": "Qualification TUI Enter selected default Resume goal before asynchronous dialog was detected. V4 waits for dialog, chooses Leave paused, and asserts paused status.",
+    "default_v1": "Long disposable HOME created150-byte UNIX counter socket path; trusted clock unavailable, so native held. Short HOME only change authenticatedUTC, defaultv2 passes.",
+    "shared_v2": "Setup-only directory collision before native start; sharedv3 accepts already-created owned shared directory."
+  },
+  "private_client_ownership": {
+    "state": "passed",
+    "uid": 1017,
+    "external_model_calls": 0,
+    "source": "075639f50a",
+    "candidate_sha256": "44f25dea7c6fc65c1745dcbb94782ebd4da404dad1ddff838aa658ba6ff23f5b",
+    "owner": {
+      "pid": 1133179,
+      "start_ticks": "9829557",
+      "channel": "modded"
+    },
+    "private_native_pids": [
+      1133366
+    ],
+    "refusal_exit": 2,
+    "owner_identified": true,
+    "actionable_recovery": true,
+    "recovered_owner": {
+      "pid": 1134808,
+      "start_ticks": "9829962",
+      "channel": "modded"
+    },
+    "private_lock_refusal_and_normal_exit_recovery": true,
+    "provider_requests": 0,
+    "stop_exit_code": 0,
+    "final_owned_processes": [],
+    "working_native_changed": false,
+    "first_attempt": "Private-owner refusal passed; qualifier attempted second Ctrl-C after first had already exited owner. v2 sends one interrupt, waits for owner exit, then launches replacement.",
+    "limitations": "Account private backend only; normal exit recovery; does not qualify forced crash, default/shared histories, production cooperation or interrupted reconnect."
+  },
+  "default_history": {
+    "state": "passed",
+    "uid": 1017,
+    "candidate_sha256": "44f25dea7c6fc65c1745dcbb94782ebd4da404dad1ddff838aa658ba6ff23f5b",
+    "provider_requests": 2,
+    "stop_exit_code": 0,
+    "supported_stopped_rollback_and_reupgrade": true,
+    "native_goals_and_budgets_preserved": true,
+    "failed_start_repair_passed": true,
+    "qualified_history_layouts": [
+      "default"
+    ],
+    "default_home_selected_without_codex_home": true,
+    "default_history_prefixes_preserved": true,
+    "seconds": 120.172
+  },
+  "legacy_shared_history": {
+    "state": "passed",
+    "uid": 1017,
+    "candidate_sha256": "44f25dea7c6fc65c1745dcbb94782ebd4da404dad1ddff838aa658ba6ff23f5b",
+    "provider_requests": 2,
+    "stop_exit_code": 0,
+    "supported_stopped_rollback_and_reupgrade": true,
+    "native_goals_and_budgets_preserved": true,
+    "failed_start_repair_passed": true,
+    "qualified_history_layouts": [
+      "legacy_shared_native_home"
+    ],
+    "explicit_shared_codex_home": true,
+    "shared_history_prefixes_preserved": true,
+    "old_clients_reconnected_after_stopped_rollback": true,
+    "seconds": 62.753,
+    "scope": "Native explicit shared home only; does not authorize concurrent controller mutable stores."
+  },
+  "installed_cancel_reconnect": {
+    "state": "passed",
+    "uid": 1017,
+    "candidate_sha256": "44f25dea7c6fc65c1745dcbb94782ebd4da404dad1ddff838aa658ba6ff23f5b",
+    "direct_cancel": true,
+    "lost_reply_reconciled_without_second_delete": true,
+    "already_admitted_not_canceled": true,
+    "canceled_inputs_absent_from_provider": true,
+    "provider_requests": 3,
+    "installed_helper_source": "89c639f9",
+    "wheel_sha256": "9f465233dcae78a3557f699719fd2439e1e8c220e1ed88a34d72ba9b071ea72a",
+    "existing_client_reconnect_prompt_reached_provider": true,
+    "reconnect_notice_observed": true,
+    "cancel_tombstone_survives_restart": true,
+    "stop_exit_code": 0,
+    "seconds": 41.51
+  }
+}

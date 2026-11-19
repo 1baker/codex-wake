@@ -7,9 +7,11 @@ import subprocess
 import tempfile
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Protocol
+
+from . import measurements
 
 from .records import (
     WakeError,
@@ -19,7 +21,6 @@ from .records import (
     format_utc,
     find_record,
     replace_record,
-    utc_now,
     codex_client_identity_for_tty,
 )
 
@@ -297,14 +298,16 @@ def ack_path(root: Path, wake_id: str) -> Path:
 
 
 def wait_for_ack(root: Path, wake_id: str, timeout_seconds: float) -> bool:
-    deadline = time.monotonic() + max(0.0, timeout_seconds)
+    """Advisory receipt polling; this is not trusted expiry evidence."""
     path = ack_path(root, wake_id)
+    until = time.monotonic() + max(0.0, timeout_seconds)
     while True:
         if path.exists():
             return True
-        if time.monotonic() >= deadline:
+        remaining = until - time.monotonic()
+        if remaining <= 0:
             return False
-        time.sleep(min(0.1, deadline - time.monotonic()))
+        time.sleep(min(0.1, remaining))
 
 
 def target_from_record(record: dict) -> tuple[str, str]:
@@ -456,13 +459,38 @@ def _dispatch_firing_record_unlocked(
     app_server_client: Any | None = None,
     runtime_adapter=None,
 ) -> DispatchResult:
-    current = now or utc_now()
     record = dict(found.record)
     if record.get("status") != "firing":
         return DispatchResult("skipped", "record is not firing")
     wake_id = record.get("id")
     if not isinstance(wake_id, str) or not wake_id:
         raise WakeError("wake record missing id")
+    if record.get('ack_wait_time_held') is True:
+        # A paste may already have succeeded. Never start another wait/attempt
+        # with a renewed deadline; only reconcile the durable receipt.
+        if not ack_path(root, wake_id).exists():
+            return DispatchResult('skipped', 'ack outcome unknown; prior wait held; no replay')
+        record['status'] = 'submitted'
+        record = append_event(record, 'ack_observed', 'Held wake submission ack observed', now)
+        replace_record(root, found, record)
+        return DispatchResult('submitted', 'ack observed after held wait')
+    if now is not None:
+        current = now
+    else:
+        try:
+            target = record.get('target')
+            if isinstance(target, dict) and target.get('transport') == 'native':
+                from .records import parse_timestamp
+                lower, upper = measurements.utc_bounds()
+                current = datetime.fromtimestamp(upper, UTC)
+                expiry = parse_timestamp(target['expires_at']).timestamp()
+                # Metadata's rounded upper bound cannot prove expiration.
+                if lower < expiry <= max(upper, current.timestamp()):
+                    return DispatchResult('skipped', 'native expiry is uncertain')
+            else:
+                current = measurements.datetime_now()
+        except measurements.TimeUnavailable:
+            return DispatchResult('skipped', 'reliable UTC unavailable to this client; no dispatch authorized')
     if record.get("schema_version") == 2:
         authorized = False
         if signal_authorizer is not None:
@@ -649,6 +677,9 @@ def _dispatch_firing_record_unlocked(
                     current,
                     evidence,
                 )
+            timeout = ack_timeout_override
+            if timeout is None:
+                timeout = float(record.get("ack_timeout_seconds") or 30)
             attempt = int(record.get("attempts") or 0) + 1
             record["attempts"] = attempt
             record["updated_at"] = format_utc(current)
@@ -661,10 +692,8 @@ def _dispatch_firing_record_unlocked(
             )
             replace_record(root, found, record)
             tmux.paste_prompt(socket, pane, wake_id, canonical_prompt(wake_id, root))
-            timeout = ack_timeout_override
-            if timeout is None:
-                timeout = float(record.get("ack_timeout_seconds") or 30)
-            if wait_for_ack(root, wake_id, timeout):
+            acknowledged = wait_for_ack(root, wake_id, timeout)
+            if acknowledged:
                 record["status"] = "submitted"
                 record["updated_at"] = format_utc(current)
                 record = append_event(record, "ack_observed", "Wake prompt submission ack observed", current)

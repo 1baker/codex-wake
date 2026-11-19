@@ -1,5 +1,7 @@
 # 0246 — Installed calendar/timezone/DST acceptance (#691)
 
+State: CLOSED
+
 State COMPLETE. Installed12valid/8rejection replay cases accepted; no product change.
 Evidence: docs/dev/evidence/0246-calendar-dst.md. Owner root/ecochran76, WIP1. Branch test/calendar-dst-691.
 Base91b80b09; one owned checkout protects unrelated dirty primary. Remove after

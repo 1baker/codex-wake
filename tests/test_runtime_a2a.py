@@ -122,6 +122,34 @@ class RuntimeA2ATests(unittest.TestCase):
             self.assertEqual(len(terminal.inputs),2)
             self.assertEqual(self.mailbox.show(sender,second)['state']['recipient'],'unread')
 
+    def test_notification_context_latency_consumes_original_deadline(self):
+        from unittest.mock import patch
+        from types import SimpleNamespace
+        from codex_wake.runtime_a2a import GrokNotificationBinding
+        from codex_wake.runtime_delivery import RuntimeRecipient, RuntimeSubmission
+        from test_measurements import observation
+        clock=[1000]
+        host=SimpleNamespace()
+        recipient=RuntimeRecipient('grok',SESSION,dict(socket='/fixture.sock',pane='%1'))
+        binding=GrokNotificationBinding('grok:'+'a'*64,SESSION,str(self.repo),str(self.root/'wake'),BINDING,'f'*64,123,42,'boot','generation')
+        class Scheduler:
+            lease_seconds=60
+            def notification_context(unused,job,*,attempt_id):
+                self.assertEqual(attempt_id,'original-attempt')
+                clock[0]=4000
+                return dict(dispatch_window_seconds=30)
+        remaining=[]
+        def submit(adapter,recipient,prompt):
+            self.assertIs(adapter.deadline,host.deadline)
+            remaining.append(adapter.deadline.remaining())
+            self.assertIn('WAKE_RUNTIME_SUBMISSION_ID=',prompt)
+            return RuntimeSubmission('not_sent',pre_io=True)
+        with patch('codex_wake.measurements.snapshot',side_effect=lambda:observation(clock[0],rate=0)), patch.object(GrokNotificationBinding,'_recipient',return_value=(SimpleNamespace(host=host),recipient)), patch('codex_wake.grok_runtime.GrokRuntimeAdapter.submit',new=submit), patch('codex_wake.service.user_state_dir',return_value=self.root/'state'):
+            result=binding.deliver({'attempt_id':'original-attempt'},{'message_id':'message'},self.bus.root,scheduler=Scheduler())
+        self.assertEqual(result['status'],'unsent')
+        self.assertGreater(remaining[0],24.99)
+        self.assertLess(remaining[0],25)
+
     def test_cli_grok_actor_ignores_codex_claim_and_mcp_context_is_host_owned(self):
         from unittest.mock import patch
         import io,os
@@ -170,3 +198,17 @@ class RuntimeA2ATests(unittest.TestCase):
         self.assertTrue(failed)
         self.assertEqual(value['error']['code'],'native_caller_attestation_unavailable')
         self.assertEqual(calls,[])
+
+
+def setUpModule():
+    from itertools import count
+    from unittest.mock import patch
+    from test_measurements import observation
+    global _qualified_clock_patch
+    counters=count(1000,100)
+    _qualified_clock_patch=patch('codex_wake.measurements.snapshot', side_effect=lambda:observation(next(counters),rate=0))
+    _qualified_clock_patch.start()
+
+
+def tearDownModule():
+    _qualified_clock_patch.stop()

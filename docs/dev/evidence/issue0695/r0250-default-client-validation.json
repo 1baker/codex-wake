@@ -1,0 +1,56 @@
+{
+  "recorded_at": "2026-11-18T22:15:02.188201+00:00",
+  "timestamp_basis": "incidental OS metadata, not time authority",
+  "base": "9410932979dcf540e5143025c447126637d45b66",
+  "implementation_tip": "79f99c36",
+  "closed_repo_local": [
+    "R0250-OWNER-WAITS",
+    "R0250-STRICT-CLIENT Python scope"
+  ],
+  "design": {
+    "python_decision_basis": "Fresh service_measurement UTC/counter evidence. Never extrapolate with WSL clock or claim client-receipt/final-send accuracy.",
+    "elapsed": "Compare service-host observations with epoch/frequency/order/rate continuity. Earlier current point than retained local origin holds; no rebasing.",
+    "final_send": "Native owns original-expiry final admission. Original service counter/bounds are handed off without Python preadvancement; explicit pure handoff conversion remains compatible."
+  },
+  "validation": {
+    "tier": "focused",
+    "core_selection": "test_native_clock test_stable_time test_time_inspection test_measurements test_native_intent_recovery test_bounded_native_delivery test_native_queue_clock test_native_network_time",
+    "core311": "77 PASS before one additional error regression; final10 measurement controls PASS. Initial misnamed test_native_intents collection error retained separately (53 actual cases passed).",
+    "core312": "78 PASS.",
+    "reader_final": "2 PASS each311/312 after failure-taxonomy correction.",
+    "owner_selection": "test_controller_runtime; two selected SessionResilienceTests public counter/authority checks; test_local_output_modes",
+    "owner": "23 PASS each311/312.",
+    "authority_selection": "test_goal_time test_host_preflight test_controller_product_authorization",
+    "authority311": "20 PASS; exact preflight case after readiness correction also PASS.",
+    "authority312": "Initial20 had19PASS/1 resident-first-poll timing assertion. First failure retained; exact case PASS after private fixture cadence/readiness correction. Full20 selection not relabeled first-run green.",
+    "static": "Ruff F821/F822/F823 changed files; policy wiring; git diff --check PASS.",
+    "environment": "Existing local WSL Python3.11/3.12 venvs; private native peers and synthetic state. Actual authenticated StableTime service reads only; no hosted CI/fullsuite."
+  },
+  "actual_service_proof": {
+    "snapshot_reason": "authenticated_utc",
+    "basis": "service_measurement",
+    "counter_present": true,
+    "utc_status": "network",
+    "selection_status": "network",
+    "helper_called": false,
+    "not_a_receipt_time_or_final_send_claim": true
+  },
+  "retained_failures": [
+    "Initial test_native_intents selection name did not exist; corrected to actual recovery/bounded queue modules, no product failure hidden.",
+    "Owner final-authorization peer fixture initially had2 discovery setup errors and2 real assertion failures; replaced with cheaper real private journal/public admission seam. Four expiry/revocation subcases RED then GREEN.",
+    "Py312 preflight awaited6seconds with default controller poll period5seconds. Corrected only private fixture cadence to50ms and ordinary readiness timer, kept actual engagement checks. Original assertion had no engagement details, so timing risk correction is not retrospective proof of exact original cause; new assertion records state."
+  ],
+  "compatibility": [
+    "No persisted record schema/deadline/usage/unknown-charge reset.",
+    "Default snapshots add explicit basis and preserve exact service counter/UTC point; existing pure explicit-counter from_response remains available.",
+    "Inspection now reports finite network decision at service basis instead of an unnecessary receipt-bound uncertainty gate; receipt_time_bound remains false and production_ready false.",
+    "Clock-reader held state preserved; missing config/client failures now report their actual layer."
+  ],
+  "remaining": [
+    "Native producer/consumer still includes legacy private counter-source wire. No Native source/build/protocol replacement or installed/runtime readiness claim in this slice.",
+    "Other transport-only wait gates remain owner-specific followup; no universal raw-clock migration.",
+    "#695/#628/fullPython/activation and expired live Grok allowance/prior uncertain sample remain open."
+  ],
+  "effects": "No live provider input, credentials copy, working daemon/service change, Native build, comprehensive run, broadreview repeat, merge or deployment.",
+  "review": "Prior single broad review retained; ordinary design/implementation/causal verification only."
+}

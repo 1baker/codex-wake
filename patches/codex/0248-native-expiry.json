@@ -1,0 +1,21 @@
+{
+  "state": "qualified_service_measurement_source",
+  "base": "d32063f96c2dff1dc96af839b3952abb6acfeda4",
+  "source_commit": "e7286ffdc338457ea11b8becb26daa0f7f4855af",
+  "patch_sha256": "7c6063783ed48eabd7a91803074ec96e1d2f315d8cf3aef4159c9659e3cfaeb1",
+  "validation": "Exact e728 complete package six hashes and actual UID1017 prepared/queue/cancel/restart/invalid-reader/control journeys pass; three Rust libtests unexecuted/deferred. Wake Python complete per-case results retained separately.",
+  "native_api": "thread/queue/bounded/{add,list,read,delete,capabilities}",
+  "expiry_field": "expiresAtUnixMicros",
+  "clock_authority": "Stable Time",
+  "wake_busy_queue_enabled": false,
+  "working_installation_authorized": false,
+  "clock_transport_qualification": "Supported service-measurement wirev2; no private bridge or WSL extrapolation. Observe again at final Native admission; observation-to-send suspension gap accepted.",
+  "native_expiry_boundary": "Operator accepted final native transport-send admission. Non-consuming Pending preflight; original atomic record/time consume after HTTP auth/preparation and inside WS sender after queue/lock waits. UNKNOWN remains pending; expired terminal. Bounded WS history waits for send acknowledgement. Real-attempt retry admission remains truthful. No remote model-start guarantee.",
+  "test_uid_clock": "approved narrow shared read-only Stable Time enrollment executed; authenticated UTC observed as UID1017; values withheld",
+  "local_updater": "075639f50a: identical complete running package pinned without restart/retarget; different running package refused before native stop/selection changes. Production restart/cooperative recovery remain unqualified.",
+  "wire_contract": {
+    "contract_version": 2,
+    "basis": "service_measurement",
+    "receipt_time_bound": false
+  }
+}

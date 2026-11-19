@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import sqlite3
 import uuid
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime, timedelta
+from fractions import Fraction
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Sequence
@@ -126,7 +128,7 @@ class SQLiteSignalModule(SignalEngine):
         self._database = Path(database)
         self._busy_timeout_ms = busy_timeout_ms
         self._source_lease_seconds = source_lease_seconds
-        self._lease_clock = lease_clock or (lambda: datetime.now(UTC))
+        self._lease_clock = lease_clock
         self._record_publisher = record_publisher
         self._checkpoint = checkpoint or (lambda _name: None)
         if not create and not self._database.is_file():
@@ -137,6 +139,23 @@ class SQLiteSignalModule(SignalEngine):
         except OSError:
             raise SignalStoreError("signal journal initialization failed") from None
         self._initialize()
+
+    def _clock_bounds(self) -> tuple[datetime, datetime]:
+        if self._lease_clock is not None:
+            point = self._lease_clock()
+            return point, point
+        from .measurements import utc_bounds
+        lower, upper = utc_bounds()
+        epoch = datetime(1970, 1, 1, tzinfo=UTC)
+        # Datetime stores microseconds; round outward so quantization cannot
+        # extend a lease or establish an early reclaim/continuation decision.
+        return (
+            epoch + timedelta(microseconds=math.floor(Fraction(lower) * 1_000_000)),
+            epoch + timedelta(microseconds=math.ceil(Fraction(upper) * 1_000_000)),
+        )
+
+    def _clock_upper(self) -> datetime:
+        return self._clock_bounds()[1]
 
     @classmethod
     def open_existing(
@@ -193,9 +212,9 @@ class SQLiteSignalModule(SignalEngine):
             if user_version == 1:
                 self._migrate_v1_to_v2(connection)
             elif user_version == 0:
+                now = _format_time(self._clock_upper())
                 connection.executescript("BEGIN IMMEDIATE;\n" + _SCHEMA + "\nCOMMIT;")
                 connection.execute("BEGIN IMMEDIATE")
-                now = _format_time(datetime.now(UTC))
                 connection.execute(
                     """
                     INSERT INTO journal_meta(
@@ -229,6 +248,7 @@ class SQLiteSignalModule(SignalEngine):
             _close_quietly(connection)
 
     def _migrate_v1_to_v2(self, connection: sqlite3.Connection) -> None:
+        migrated_at = _format_time(self._clock_upper())
         connection.execute("PRAGMA foreign_keys = OFF")
         connection.execute("BEGIN IMMEDIATE")
         try:
@@ -236,7 +256,7 @@ class SQLiteSignalModule(SignalEngine):
             journal_uuid = uuid.uuid4().hex
             connection.execute(
                 "UPDATE journal_meta SET journal_uuid = ?, schema_version = ?, migrated_at = ? WHERE singleton = 1",
-                (journal_uuid, JOURNAL_SCHEMA_VERSION, _format_time(datetime.now(UTC))),
+                (journal_uuid, JOURNAL_SCHEMA_VERSION, migrated_at),
             )
             _execute_sql_script(connection, _MIGRATION_V2_TABLES)
             rows = connection.execute("SELECT * FROM arms").fetchall()
@@ -483,7 +503,7 @@ class SQLiteSignalModule(SignalEngine):
         contract_fingerprint = _fingerprint(contract_json)
         owner = uuid.uuid4().hex
         try:
-            lease_now = self._lease_clock()
+            lease_now, lease_upper = self._clock_bounds()
             lease_expires = lease_now + timedelta(seconds=self._source_lease_seconds)
         except Exception:
             return Degraded(wake_id, "STORE_UNAVAILABLE", None)
@@ -580,6 +600,9 @@ class SQLiteSignalModule(SignalEngine):
             if state["lease_owner"] is not None and _parse_time(state["lease_expires_at"]) > lease_now:
                 connection.rollback()
                 return Degraded(wake_id, "SOURCE_BUSY", _parse_time(state["lease_expires_at"]))
+            if lease_upper >= lease_expires:
+                connection.rollback()
+                return Degraded(wake_id, "SOURCE_LEASE_LOST", None)
             generation = int(state["lease_generation"]) + 1
             connection.execute(
                 """
@@ -640,6 +663,11 @@ class SQLiteSignalModule(SignalEngine):
             _close_quietly(connection)
 
         try:
+            if self._clock_upper() >= lease_expires:
+                self._best_effort_release_preparation(
+                    arm_id, contract.source, contract.source_instance, owner, generation
+                )
+                return Degraded(wake_id, "SOURCE_LEASE_LOST", None)
             anchor = context.adapter.establish_anchor(spec, context.registered_at)
         except Exception:
             self._best_effort_release_preparation(
@@ -689,6 +717,9 @@ class SQLiteSignalModule(SignalEngine):
                 or int(state["lease_generation"]) != generation
                 or prepared["preparer_token"] != owner
             ):
+                connection.rollback()
+                return Degraded(wake_id, "SOURCE_LEASE_LOST", None)
+            if self._clock_upper() >= lease_expires:
                 connection.rollback()
                 return Degraded(wake_id, "SOURCE_LEASE_LOST", None)
             effective_anchor = replace(
@@ -789,6 +820,9 @@ class SQLiteSignalModule(SignalEngine):
                 (contract.source, contract.source_instance, owner, generation),
             )
             self._checkpoint("before_prepared_commit")
+            if self._clock_upper() >= lease_expires:
+                connection.rollback()
+                return Degraded(wake_id, "SOURCE_LEASE_LOST", None)
             connection.commit()
             self._checkpoint("after_prepared_commit")
             return self._complete_registration_publication(wake_id)
@@ -886,6 +920,7 @@ class SQLiteSignalModule(SignalEngine):
             return Degraded(wake_id, "READER_CAPABILITY_UNAVAILABLE", None)
         connection: sqlite3.Connection | None = None
         try:
+            self._clock_upper()
             connection = self._connect()
             row = connection.execute(
                 """
@@ -965,7 +1000,7 @@ class SQLiteSignalModule(SignalEngine):
             ):
                 connection.rollback()
                 return Degraded(wake_id, "FIRING_AUTHORITY_UNAVAILABLE", None)
-            applied_at = _format_time(self._lease_clock())
+            applied_at = _format_time(self._clock_upper())
             connection.execute(
                 """
                 UPDATE record_outbox
@@ -1004,6 +1039,7 @@ class SQLiteSignalModule(SignalEngine):
             return Degraded(wake_id, capability_code, None)
         connection: sqlite3.Connection | None = None
         try:
+            self._clock_upper()
             connection = self._connect()
             arm = connection.execute(
                 "SELECT * FROM arms WHERE wake_id = ?", (str(wake_id),)
@@ -1062,7 +1098,7 @@ class SQLiteSignalModule(SignalEngine):
             ):
                 connection.rollback()
                 return Degraded(wake_id, "READER_CAPABILITY_UNAVAILABLE", None)
-            applied_at = _format_time(self._lease_clock())
+            applied_at = _format_time(self._clock_upper())
             connection.execute(
                 """
                 UPDATE record_outbox
@@ -1102,7 +1138,7 @@ class SQLiteSignalModule(SignalEngine):
         try:
             connection = self._connect()
             connection.execute("BEGIN IMMEDIATE")
-            now = _format_time(self._lease_clock())
+            now = _format_time(self._clock_upper())
             connection.execute(
                 """
                 UPDATE record_outbox
@@ -1341,7 +1377,7 @@ class SQLiteSignalModule(SignalEngine):
         self,
         record: object,
         *,
-        now: datetime,
+        now: datetime | None,
     ) -> bool | Degraded:
         decoded = decode_signal_record(record)
         terminal_status = decoded.get("status") if decoded else None
@@ -1350,6 +1386,8 @@ class SQLiteSignalModule(SignalEngine):
         }:
             return Degraded(None, "TERMINAL_RECORD_INVALID", None)
         wake_id = WakeId(str(decoded["id"]))
+        if now is None and terminal_status != 'cancelled':
+            return Degraded(wake_id, 'TERMINAL_TIME_UNQUALIFIED', None)
         connection: sqlite3.Connection | None = None
         try:
             connection = self._connect()
@@ -1375,7 +1413,10 @@ class SQLiteSignalModule(SignalEngine):
                 if reservation is not None:
                     connection.rollback()
                     return Degraded(wake_id, "MATCH_RESERVED", None)
-            retired_at = _format_time(now)
+            # This fence is an untimed stop, not a lease or retention deadline.
+            # Empty text means unobserved time; NULL on released_at still means
+            # an unreleased pin. Existing schema and presence checks stay valid.
+            retired_at = '' if now is None else _format_time(now)
             connection.execute(
                 "UPDATE arms SET state = 'tombstoned' WHERE wake_id = ?",
                 (str(wake_id),),
@@ -1647,6 +1688,7 @@ class SQLiteSignalModule(SignalEngine):
             return Invalid(None, "SOURCE_COMMIT_MISMATCH", ("source commit does not match observation batch",))
         connection: sqlite3.Connection | None = None
         try:
+            lease_now, _ = self._clock_bounds()
             connection = self._connect()
             connection.execute("BEGIN IMMEDIATE")
             source_row = connection.execute(
@@ -1663,7 +1705,7 @@ class SQLiteSignalModule(SignalEngine):
                 return Invalid(None, "SOURCE_NOT_CONFIGURED", ("source instance is not configured",))
             if source_row["lease_owner"] is not None:
                 lease_expiry = _parse_time(source_row["lease_expires_at"])
-                if lease_expiry > self._lease_clock():
+                if lease_expiry > lease_now:
                     connection.rollback()
                     return Degraded(None, "SOURCE_BUSY", lease_expiry)
             previous_order = source_row["checkpoint_order"]
@@ -1794,6 +1836,7 @@ class SQLiteSignalModule(SignalEngine):
                 results.append(ReceiptRef(receipt.receipt_id, receipt.local_sequence, duplicate))
                 returned.add(identity)
             self._checkpoint("before_ingest_commit")
+            self._clock_upper()
             connection.commit()
             self._checkpoint("after_ingest_commit")
             return Ingested(tuple(results), source_commit.checkpoint)

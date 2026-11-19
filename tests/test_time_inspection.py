@@ -9,6 +9,16 @@ from codex_wake import cli
 
 
 class InspectionTests(unittest.TestCase):
+    def test_missing_stable_time_configuration_cannot_acquire_alternate_time(self):
+        from codex_wake.time_inspection import network_time_decision
+        with patch.dict(os.environ, {'CODEX_WAKE_STABLE_TIME_CONFIG': ''}), \
+                patch('codex_wake.time_inspection.windows_collect',
+                    side_effect=AssertionError('alternate time acquisition')) as collect:
+            decision = network_time_decision()
+            self.assertEqual(decision.status, 'uncertain')
+            self.assertEqual(decision.reason, 'stable_time_configuration_required')
+            collect.assert_not_called()
+
     def test_offline_command_shows_all_candidates_and_no_trusted_time(self):
         output = io.StringIO()
         with patch.dict(os.environ, {'CODEX_WAKE_STABLE_TIME_CONFIG': ''}), contextlib.redirect_stdout(output):

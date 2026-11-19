@@ -1,0 +1,26 @@
+{
+  "source_commit": "7f1186a0d39ecf33274ead9decb4b9a8ce9c3f3f",
+  "tickets": [
+    "R0250-TRANSPORT-WAITS",
+    "R0250-APP-TRANSPORT-WAITS"
+  ],
+  "validation": {
+    "native_rpc": "13 PASS Python3.11 and3.12",
+    "app_server": "Worker24 PASS each311/312; integration24 PASS311;312 first23PASS/1fixture handshake error; exact framed RPC case PASS311/312 after separate startup allowance. No whole-module rerun claim.",
+    "commands": [
+      "PYTHONPATH=src:tests:. python -m unittest test_native_protocol_large_response",
+      "PYTHONPATH=src python -m unittest discover -s tests -p test_app_server*.py",
+      "python scripts/check_policy_wiring.py",
+      "git diff --check"
+    ],
+    "fixture_remediation": "Private startup allowance2s; original request deadline.08s retained; product unchanged."
+  },
+  "environment": "Local WSL Python3.11/3.12 virtual environments; private synthetic peers. Hosted CI skipped by cost policy.",
+  "limits": "No Native build, broad review, full suite, deployment, provider calls, credential or working daemon changes. Native final-send decision pending; #695 remains open.",
+  "native_contract": {
+    "frozen_source": "9af0e8e48d0c2dcfe1800a3deaadfcec7e2c0bd7",
+    "requirements": "Plan0248 final transport-send expiry admission including suspension",
+    "conflict": "Supported StableTime bounds service measurement instant; Native currently performs private counter read after Python output. Removing it without supported receipt freshness would weaken guarantee.",
+    "decision": "Explicit operator choice pending; no dependent Native implementation."
+  }
+}

@@ -17,6 +17,7 @@ import threading
 import time
 import uuid
 
+from . import measurements
 from .a2a_bus import private_path
 from .process_signals import observe_process_exit
 from .records import WakeError
@@ -231,13 +232,15 @@ class BackgroundJobs:
             job_id = 'job_' + uuid.uuid4().hex
             state = dict(version=1, job_id=job_id, generation=1, intent=intent,
                          intent_sha256=_digest(intent), status='starting', process=None,
-                         supervisor=None, reservation=_identity(os.getpid()), created_at=time.time(),
+                         supervisor=None, reservation=_identity(os.getpid()), created_at=measurements.utc_time(),
                          principal=dict(subject=principal.subject, role=principal.role, tasks=list(principal.tasks)))
             self._authorize(state, principal, 'job.launch')
             with _claim_guard(self, profile['command'], claimant):
                 if claimant is not None:
                     state['claimant'] = dict(managed_agent_id=claimant.managed_agent_id,
-                        root=claimant.root, process=claimant.process, observed_at=claimant.observed_at)
+                        root=claimant.root, process=claimant.process, observed_at=claimant.observed_at,
+                        clock_observation=claimant.clock_observation)
+            deadline = measurements.deadline(3)
             directory = self.directory / job_id
             directory.mkdir(mode=0o700)
             _save(directory / 'state.json', state)
@@ -254,14 +257,18 @@ class BackgroundJobs:
                 _save(directory / 'state.json', state)
                 return self.inspect(job_id)
         # A bounded launch handshake; neither caller nor controller owns execution.
-        deadline = time.monotonic() + 3
-        while time.monotonic() < deadline:
-            value = self.inspect(job_id)
-            if value['status'] != 'starting':
-                return value
-            if supervisor.poll() is not None:
-                break
-            time.sleep(.01)
+        try:
+            while not deadline.expired():
+                value = self.inspect(job_id)
+                if value['status'] != 'starting':
+                    return value
+                if supervisor.poll() is not None:
+                    break
+                time.sleep(.01)
+        except measurements.TimeUnavailable:
+            # The durable job already owns this attempt. Return its original
+            # handle; unavailable timing never authorizes another launch.
+            return self.inspect(job_id)
         return self.inspect(job_id)
 
     def inspect(self, job_id):
@@ -295,8 +302,14 @@ class BackgroundJobs:
                 return current
             path = directory / 'cancel.json'
             if not path.exists():
+                try:
+                    requested_at, clock_status = measurements.utc_time(), 'qualified'
+                except measurements.TimeUnavailable:
+                    # A verified stop-only request needs no invented UTC and
+                    # must not be blocked by failure of timestamp authority.
+                    requested_at, clock_status = None, 'unavailable'
                 _save(path, dict(version=1, job_id=job_id, generation=expected_generation,
-                    actor=principal.subject, requested_at=time.time(),
+                    actor=principal.subject, requested_at=requested_at, clock_status=clock_status,
                     principal=dict(subject=principal.subject, role=principal.role, tasks=list(principal.tasks))))
         return self.inspect(job_id)
 
@@ -319,7 +332,7 @@ def _verify_claimant(claimant):
     from .resource_claims import Claimant
     if type(claimant) is not Claimant:
         _error('job_claim_unverified', 'fresh host-verified claimant required for claimed command')
-    claimant.validated(time.time())
+    claimant.validated(measurements.snapshot())
     sample = observe_process_exit(claimant.process['pid'])
     expected = dict(boot_id=claimant.process['boot_id'], pid=claimant.process['pid'],
                     start_time_ticks=claimant.process['start_ticks'], owner_uid=os.geteuid())
@@ -397,14 +410,15 @@ def _supervise(root, job_id):
                 os.close(stdout_write)
                 os.close(stderr_write)
                 # setsid happens before release; wait until child is group leader.
-                ready_deadline = time.monotonic() + 1
-                while os.getpgid(child) != child and time.monotonic() < ready_deadline:
+                ready_deadline = measurements.deadline(1)
+                while os.getpgid(child) != child and not ready_deadline.expired():
                     time.sleep(.001)
                 state['process'] = _identity(child)
                 if state['process'] is None or os.getpgid(child) != child:
                     _error('job_launch_uncertain', 'child process identity unavailable')
-                state.update(status='running', started_at=time.time(),
-                             deadline_monotonic=time.monotonic() + command['max_seconds'])
+                state.update(status='running', started_at=measurements.utc_time(),
+                             clock_deadline=dict(basis='stable_time_host_counter_v1',
+                                 anchor=measurements.snapshot(), seconds=command['max_seconds']))
                 _save(directory / 'state.json', state)
                 store._authorize(state, principal, 'job.launch')
                 if (directory / 'cancel.json').exists():
@@ -429,7 +443,7 @@ def _supervise(root, job_id):
                         _save(directory / 'result.json', dict(version=1, job_id=job_id,
                             generation=state['generation'], intent_sha256=state['intent_sha256'],
                             process=state['process'], status='cancelled', returncode=None,
-                            stored_log_bytes=0, log_truncated=False, completed_at=time.time(),
+                            stored_log_bytes=0, log_truncated=False, completed_at=measurements.utc_time(),
                             cancellation=request, command_not_released=True))
                         return
                 if claimant is not None:
@@ -448,14 +462,14 @@ def _supervise(root, job_id):
                 selector.register(fd, selectors.EVENT_READ, stream)
             stored = 0
             truncated = False
-            deadline = state['deadline_monotonic']
+            deadline = state['clock_deadline']
             outcome = 'completed'
             stop_at = None
             leader_exit = None
             cancel_checked = False
             cancellation = None
             while True:
-                now = time.monotonic()
+                elapsed = measurements.elapsed_bounds(deadline['anchor'], measurements.snapshot())[1]
                 if not cancel_checked and (directory / 'cancel.json').exists():
                     cancel_checked = True
                     request = _read(directory / 'cancel.json')
@@ -468,12 +482,12 @@ def _supervise(root, job_id):
                     except WakeError as error:
                         _save(directory / 'cancel-refused.json', dict(version=1, job_id=job_id,
                             reason=getattr(error, 'code', 'permission_denied'), request=request))
-                if stop_at is None and (cancellation is not None or now >= deadline):
+                if stop_at is None and (cancellation is not None or elapsed >= deadline['seconds']):
                     outcome = 'cancelled' if cancellation is not None else 'timed_out'
                     os.killpg(child, signal.SIGTERM)
-                    stop_at = now + .2
+                    stop_at = measurements.deadline(.2)
                 leader_exit = os.waitid(os.P_PID, child, os.WEXITED | os.WNOHANG | os.WNOWAIT)
-                if leader_exit is not None or (stop_at is not None and now >= stop_at):
+                if leader_exit is not None or (stop_at is not None and stop_at.expired()):
                     # Leader is still unreaped: its numeric PGID cannot be recycled.
                     os.killpg(child, signal.SIGKILL)
                     break
@@ -491,8 +505,8 @@ def _supervise(root, job_id):
             child = None
             returncode = os.waitstatus_to_exitcode(status)
             # Bound drain even if an unsupported escaped process retains a pipe.
-            drain_until = time.monotonic() + .3
-            while selector.get_map() and time.monotonic() < drain_until:
+            drain_until = measurements.deadline(.3)
+            while selector.get_map() and not drain_until.expired():
                 for key, _ in selector.select(.02):
                     data = os.read(key.fd, 65536)
                     if not data:
@@ -509,7 +523,7 @@ def _supervise(root, job_id):
                 stream.close()
             result = dict(version=1, job_id=job_id, generation=state['generation'],
                 intent_sha256=state['intent_sha256'], process=state['process'], status=outcome,
-                returncode=returncode, stored_log_bytes=stored, log_truncated=truncated, completed_at=time.time())
+                returncode=returncode, stored_log_bytes=stored, log_truncated=truncated, completed_at=measurements.utc_time())
             if outcome == 'cancelled':
                 result['cancellation'] = cancellation
             _save(directory / 'result.json', result)

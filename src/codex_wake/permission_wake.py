@@ -131,6 +131,14 @@ class RouteAdapter:
     def observe(self,recipient):return self.adapter.observe(recipient)
     def submit(self,recipient,prompt):return self.adapter.submit(recipient,prompt)
     def reconcile(self,recipient,prompt):return self.adapter.reconcile(recipient,prompt)
+    def submit_bounded(self, recipient, prompt, envelope):
+        from .runtime_delivery import submit_bounded
+        return submit_bounded(self.adapter, recipient, prompt, envelope)
+    def reconcile_bounded(self, recipient, prompt, envelope):
+        from .runtime_delivery import RuntimeReconciliation
+        method = getattr(self.adapter, 'reconcile_bounded', None)
+        return method(recipient, prompt, envelope) if method else RuntimeReconciliation(None, 'bounded_native_backend_not_qualified')
+
 
 
 def supported(route,observation,runtime='codex'):
@@ -181,7 +189,8 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
             record['runtime_observation']=observation.summary(recipient)
             if not supported(route,observation):
                 reasons.append(route+':unsupported');continue
-            if observation.state!='ready':
+            from .runtime_policies import native_delivery_ready
+            if not native_delivery_ready(record['target'], observation):
                 reasons.append(route+':'+observation.reason);break
             record['permission_check']=check_route(root,record,route)
             verdict=dispatch_gate(record,clock_provider())
@@ -193,7 +202,13 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
             reasons.append(route+':'+exc.code);continue
         except Exception:
             reasons.append(route+':observation_unavailable');break
-        delivery=dict(state='uncertain',execution='not_observed',acknowledgment='not_observed',
+        from .runtime_delivery import original_submission_expiry, submission_envelope, submit_bounded
+        try:
+            original_expiry = original_submission_expiry(record)
+        except (ValueError, TypeError, KeyError):
+            reasons.append(route + ':bounded_native_absolute_expiry_unavailable')
+            break
+        delivery=dict(expires_at_unix_micros=original_expiry, state='uncertain',execution='not_observed',acknowledgment='not_observed',
             submission_id=str(uuid4()),route=route)
         record.pop('policy_outcome',None)
         record['native_delivery']=delivery
@@ -205,7 +220,7 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
         replace_record(root,found,record)
         try:
             record['permission_check']=check_route(root,record,route)
-            submitted=selected.submit(recipient,prompt)
+            submitted=submit_bounded(selected,recipient,prompt,submission_envelope(record))
             from .runtime_delivery import validate_native_submission
             validate_native_submission(submitted, record['target']['thread_id'],
                 allow_background=route == 'background' and record['target'].get('session_mode') == 'background')
@@ -213,6 +228,11 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
             submitted=RuntimeSubmission('not_sent',reason=exc.code,pre_io=True)
         except Exception:
             submitted=RuntimeSubmission('uncertain',reason='adapter_outcome_unknown')
+        if submitted.state=='not_sent' and submitted.pre_io is True and submitted.reason == 'bounded_native_backend_not_qualified':
+            record.pop('native_delivery', None)
+            record.update(status='pending', policy_outcome=dict(state='held', reason=submitted.reason))
+            replace_record(root, found, record)
+            return DispatchResult('requeued', submitted.reason)
         if submitted.state=='not_sent' and submitted.pre_io is True and record['target'].get('session_mode'):
             record.pop('native_delivery', None)
             record.update(status='cancelled' if submitted.reason == 'session_closed' else 'pending',
@@ -232,6 +252,11 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
             delivery['submission_failure']=submitted.failure or {'reason':submitted.reason or 'unknown'}
             replace_record(root,found,record)
             return DispatchResult('skipped',record['last_error'])
+        if 'expires_at_unix_micros' in delivery:
+            delivery.update(queue_id=submitted.receipt_id, queue_accepted=True)
+            record=append_event(record,'native_bounded_pending','bounded queue accepted; admission not yet observed',now)
+            replace_record(root,found,record)
+            return DispatchResult('skipped','bounded native pending; reconcile before delivery')
         record['status']='submitted'
         receipt_field = 'turn_id' if submitted.evidence_kind == 'native_turn_acceptance' else 'queue_id'
         delivery.update(state='accepted', **{receipt_field: submitted.receipt_id}, accepted_at=None)

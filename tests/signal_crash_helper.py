@@ -50,7 +50,8 @@ def register(
         signal_journal_path(root),
         record_publisher=publisher(root, checkpoint),
         checkpoint=checkpoint,
-        source_lease_seconds=0 if checkpoint_name == "before_prepared_commit" else 30,
+        source_lease_seconds=30,
+        lease_clock=lambda: NOW,
     )
     intent = make_intent()
     if expires:

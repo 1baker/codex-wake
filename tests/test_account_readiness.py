@@ -10,6 +10,28 @@ from codex_wake.controller_accounts import ControllerAccounts
 
 
 class AccountReadinessTests(unittest.TestCase):
+    def test_remote_expiry_uses_qualified_upper_and_missing_clock_holds(self):
+        from codex_wake.account_readiness import execute
+        from codex_wake.controller_auth import Actor
+        from codex_wake.measurements import TimeUnavailable
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root/'homes'/'codex-alice').mkdir(parents=True, mode=0o700)
+            config = root/'accounts.toml'
+            config.write_text('[profiles]\nstate_root='+json.dumps(str(root/'homes'))+'\nknown_profiles=["alice"]\n')
+            accounts = ControllerAccounts(config, host='fixture', environment='test')
+            target = accounts.execute('accounts.resolve', {'selector':'alice'})['account']['target']
+            actor = Actor('operator', 'owner', 'client', 'grant', 'local://fixture', 'wake:controller', frozenset({'account.observe'}), [target], 200)
+            with patch('codex_wake.measurements.utc_bounds', return_value=(198,199)), patch('codex_wake.goal_watcher.watcher_status', return_value=dict(reason='fixture', next_action='Inspect')):
+                self.assertEqual(execute(root, {'selector':'alice'}, accounts=accounts, actor=actor, authorize=lambda:actor)['result']['status'], 'incomplete')
+            for bounds, code in (((199,200), 'insufficient_scope'), (TimeUnavailable('private-detail'), 'qualified_time_unavailable')):
+                with self.subTest(code=code), patch('codex_wake.measurements.utc_bounds', return_value=bounds if isinstance(bounds,tuple) else None, side_effect=bounds if isinstance(bounds,Exception) else None), patch('codex_wake.goal_watcher.watcher_status', side_effect=AssertionError('private read forbidden')):
+                    with self.assertRaises(AuthError) as held:
+                        execute(root, {'selector':'alice'}, accounts=accounts, actor=actor, authorize=lambda:actor)
+                    self.assertEqual(held.exception.code, code)
+                    self.assertNotIn('private-detail', str(held.exception))
+
+
     def test_missing_registration_is_actionable_without_claiming_runtime_readiness(self):
         from codex_wake.account_readiness import execute
         with tempfile.TemporaryDirectory() as directory:

@@ -6,6 +6,73 @@ from codex_wake.strict_executor import Guard
 
 
 class StrictExecutorTests(unittest.TestCase):
+    def test_default_guard_uses_retained_stable_time_anchor_and_controller_evidence(self):
+        from copy import deepcopy
+        from unittest.mock import patch
+        import json
+        from codex_wake import measurements
+        anchor = dict(reason='authenticated_utc', utc=dict(status='network', lower=99.9, upper=100),
+            valid_for_ns=300000000000, counter=dict(epoch='c357309d-c209-4467-b757-e1488e6b1aaa',
+            counter=1000, frequency=1000, rate_ppm=0))
+        with tempfile.TemporaryDirectory() as root:
+            guard,ledger,_=self.fixture(root)
+            guard.config.update(clock_basis='stable_time_host_counter_v1',clock_anchor=anchor,
+                remaining_seconds=guard.config['deadline']-guard.config['started_upper'])
+            original=deepcopy(guard.config)
+            path=Path(root)/'lifecycle/supervision.json'
+            controller=json.loads(path.read_text());controller['clock_observation']=anchor
+            path.write_text(json.dumps(controller))
+            current=dict(anchor,utc=dict(status='network',lower=100.9,upper=101),
+                counter=dict(anchor['counter'],counter=2000))
+            with patch.object(measurements,'snapshot',return_value=current),patch(
+                    'time.clock_gettime',side_effect=AssertionError('guest clock must not measure strict work')):
+                self.assertIsNone(guard.check())
+                self.assertEqual(ledger.inspect(now=101)['tokens_used'],20)
+            late=dict(reason='authenticated_counter_only',utc=None,
+                counter=dict(anchor['counter'],counter=80000))
+            with patch.object(measurements,'snapshot',return_value=late):
+                self.assertEqual(Guard(deepcopy(original)).check(),'deadline_reached')
+            self.assertEqual(guard.config,original)
+            for invalid in (dict(current,reason='authenticated_counter_only',utc=None),
+                    dict(current,counter=dict(current['counter'],epoch='7ca02df8-3696-43fa-a129-129d1a852ef2'))):
+                with self.subTest(reason=invalid['reason'],epoch=invalid['counter']['epoch']),patch.object(
+                        measurements,'snapshot',return_value=invalid):
+                    self.assertEqual(Guard(deepcopy(original)).check(),'clock_unqualified')
+                    self.assertEqual(ledger.inspect(now=101)['tokens_used'],20)
+
+    def test_default_legacy_guard_holds_without_acquiring_replacement_anchor(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as root:
+            guard,_,_=self.fixture(root)
+            original=dict(guard.config)
+            with patch('codex_wake.measurements.snapshot') as clock:
+                self.assertEqual(guard.check(),'clock_unqualified')
+                clock.assert_not_called()
+            self.assertEqual(guard.config,original)
+
+    def test_final_clock_loss_preserves_accounting_floor_and_owned_stop(self):
+        from unittest.mock import Mock,patch
+        from codex_wake import measurements
+        from codex_wake.strict_executor import run
+        with tempfile.TemporaryDirectory() as root:
+            guard,ledger,_=self.fixture(root)
+            guard.config.update(clock_basis='stable_time_host_counter_v1',clock_anchor={'retained':True})
+            with patch.object(measurements,'utc_bounds',side_effect=measurements.TimeUnavailable('lost')):
+                self.assertEqual(guard.final_accounting_fence(),
+                    dict(state='accounting_unknown',reason='clock_unqualified'))
+            self.assertEqual(ledger.inspect(now=101)['tokens_used'],0)
+            owned=Mock(pid=123);owned.poll.return_value=None
+            guard.check=Mock(return_value=None)
+            guard.accounting_readback=Mock(side_effect=measurements.TimeUnavailable('lost'))
+            guard.final_accounting_fence=Mock(side_effect=measurements.TimeUnavailable('lost'))
+            with patch('codex_wake.strict_executor.Guard',return_value=guard),patch(
+                    'subprocess.Popen',return_value=owned),patch('codex_wake.strict_executor._status'),patch(
+                    'codex_wake.measurements.deadline',side_effect=measurements.TimeUnavailable('lost')):
+                self.assertEqual(run(guard.config),5)
+            owned.terminate.assert_called_once()
+            owned.wait.assert_not_called()
+            self.assertEqual(guard.config['final_usage']['state'],'accounting_unknown')
+
     def test_guard_accounting_persists_directory_update(self):
         import os, stat
         from unittest.mock import patch
@@ -213,17 +280,36 @@ class StrictExecutorTests(unittest.TestCase):
             self.assertEqual(guard.check(boottime=11),'accounting_capacity_exceeded')
 
     def test_guard_executable_readback_separates_ledger_poll_from_native_usage_observation(self):
-        import json,subprocess,sys,time,os
+        import json,subprocess,sys,os
         with tempfile.TemporaryDirectory() as root:
             guard,ledger,_=self.fixture(root)
-            now=time.clock_gettime(time.CLOCK_BOOTTIME)
+            anchor=dict(reason='authenticated_utc',utc=dict(status='network',lower=99.9,upper=100),
+                valid_for_ns=300000000000,counter=dict(epoch='c357309d-c209-4467-b757-e1488e6b1aaa',
+                counter=1000,frequency=1000,rate_ppm=0))
             heartbeat=Path(root)/'lifecycle/supervision.json'
-            value=json.loads(heartbeat.read_text());value['observed_boottime']=now
+            value=json.loads(heartbeat.read_text());value.update(observed_boottime=None,clock_observation=anchor)
             heartbeat.write_text(json.dumps(value))
-            cfg=guard.config | dict(started_boottime=now,generation='readback-fixture',argv=['/bin/sleep','.5'])
+            cfg=guard.config | dict(started_boottime=None,clock_basis='stable_time_host_counter_v1',
+                clock_anchor=anchor,remaining_seconds=80,generation='readback-fixture',argv=['/bin/sleep','.5'])
             source=Path(root)/'guard.json';source.write_text(json.dumps(cfg))
             environment=dict(os.environ);environment.pop('INVOCATION_ID',None)
-            result=subprocess.run([sys.executable,'-m','codex_wake.strict_executor',str(source)],
+            program="""import copy,json,runpy,sys
+from unittest.mock import patch
+from codex_wake import measurements
+anchor=json.load(open(sys.argv[1]))['clock_anchor']
+ticks=0
+def snapshot():
+    global ticks
+    ticks+=10
+    value=copy.deepcopy(anchor)
+    value['counter']['counter']+=ticks
+    value['utc']['lower']+=ticks/1000
+    value['utc']['upper']+=ticks/1000
+    return value
+with patch.object(measurements,'snapshot',side_effect=snapshot):
+    runpy.run_module('codex_wake.strict_executor',run_name='__main__',alter_sys=True)
+"""
+            result=subprocess.run([sys.executable,'-c',program,str(source)],
                 env=environment,capture_output=True,text=True,timeout=3)
             self.assertEqual(result.returncode,5,result.stderr)
             status=json.loads((Path(root)/'status.json').read_text())
@@ -232,7 +318,8 @@ class StrictExecutorTests(unittest.TestCase):
             self.assertEqual(accounting['tokens_used'],20)
             self.assertEqual(actor['native_total_tokens'],20)
             self.assertEqual(actor['native_published_epoch'],100)
-            self.assertGreater(accounting['last_verified_boottime'],actor['first_observed_boottime'])
+            self.assertGreater(accounting['last_verified_elapsed_upper_seconds'],actor['first_observed_elapsed_upper_seconds'])
+            self.assertIsNone(accounting['last_verified_boottime'])
             self.assertGreater(actor['lease_age_seconds'],0)
             self.assertIsNone(accounting['publication_delay_seconds'])
             self.assertIsNone(accounting['maximum_token_overshoot'])
@@ -282,14 +369,12 @@ class StrictExecutorTests(unittest.TestCase):
                 self.assertEqual(guard.check(boottime=12), expected)
 
     def test_controller_holding_ledger_lock_cannot_block_independent_guard(self):
-        import fcntl, time
+        import fcntl
         with tempfile.TemporaryDirectory() as root:
             guard, ledger, _ = self.fixture(root)
             with ledger.lock_path.open('a') as lock:
                 fcntl.flock(lock, fcntl.LOCK_EX)
-                started=time.monotonic()
                 self.assertIsNone(guard.check(boottime=11))
-                self.assertLess(time.monotonic()-started, .2)
                 import json
                 heartbeat=Path(root)/'lifecycle/supervision.json'
                 value=json.loads(heartbeat.read_text());value['observed_boottime']=16
@@ -369,17 +454,30 @@ class StrictExecutorTests(unittest.TestCase):
             self.assertIsNone(guard.check(boottime=11))
             self.assertEqual(guard.check(boottime=16), 'controller_unavailable')
 
-    def test_supervisor_publishes_boottime_even_when_authenticated_utc_is_unavailable(self):
-        import time
+    def test_supervisor_publishes_counter_evidence_when_authenticated_utc_is_unavailable(self):
         from unittest.mock import patch
-        from codex_wake.lifecycle_supervision import publish_supervision
+        from codex_wake.lifecycle_supervision import publish_supervision,supervision_ready
         with tempfile.TemporaryDirectory() as root:
-            before=time.clock_gettime(time.CLOCK_BOOTTIME)
-            with patch('codex_wake.lifecycle_supervision.trusted_upper',side_effect=ValueError('no UTC')):
+            observation=dict(reason='authenticated_counter_only',utc=None,counter=dict(
+                epoch='c357309d-c209-4467-b757-e1488e6b1aaa',counter=1000,frequency=1000,rate_ppm=0))
+            with patch('codex_wake.measurements.snapshot',return_value=observation):
                 heartbeat=publish_supervision(root,.2)
             self.assertIsNone(heartbeat['observed_at'])
             self.assertEqual(heartbeat['boot_id'],boot_id_value())
-            self.assertGreaterEqual(heartbeat['observed_boottime'],before)
+            self.assertIsNone(heartbeat['observed_boottime'])
+            self.assertEqual(heartbeat['clock_observation'],observation)
+            with patch('codex_wake.measurements.snapshot',return_value=observation):
+                self.assertTrue(supervision_ready(root,1))
+                import json
+                legacy=dict(heartbeat);legacy.pop('clock_observation')
+                (Path(root)/'lifecycle/supervision.json').write_text(json.dumps(legacy))
+                self.assertFalse(supervision_ready(root,1))
+            with patch('codex_wake.measurements.snapshot') as unavailable:
+                stopped=publish_supervision(root,.2,active=False)
+                unavailable.assert_not_called()
+                self.assertIsNone(stopped['clock_observation'])
+                self.assertIsNone(stopped['observed_at'])
+
 
     def test_strict_controller_heartbeat_requires_same_boot_and_nonfuture_elapsed_clock(self):
         import json

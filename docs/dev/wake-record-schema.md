@@ -45,10 +45,19 @@ payloads, but never derives live authority from JSON alone.
 
 ## Required Top-Level Fields
 
+New legacy timer, app-server, file and process records require qualified Stable
+Time UTC before publication. Missing UTC holds creation with
+`stable_time_creation_unqualified`; it does not substitute the guest clock.
+Legacy relative timers round the accepted raw upper UTC bound upward to a whole
+second before adding the duration, so serialization cannot make them due early.
+Their metadata keeps the existing whole-second representation. Explicit trusted
+host-supplied creation times remain supported. This does not change the separate
+native intent clock domains, absolute timestamp parser or protective cancellation.
+
 - `schema_version`: integer schema version.
 - `id`: stable wake id.
 - `created_at`: UTC timestamp.
-- `updated_at`: UTC timestamp.
+- `updated_at`: UTC timestamp; legacy or untimed native records may use `null` when no UTC observation is available. Schema2 retains its required timestamp contract.
 - `cwd`: creating working directory.
 - `target`: dispatch target object.
 - `predicate`: trigger predicate object.
@@ -65,6 +74,42 @@ payloads, but never derives live authority from JSON alone.
 - `ack_timeout_seconds`: ack wait limit.
 - `next_attempt_at`: UTC timestamp for the next dispatch attempt or predicate check.
 - `events`: ordered audit events.
+
+Default event appends and authorized status moves use qualified Stable Time UTC,
+or `at: null` with `time_status: "not_observed"` when UTC is unavailable. A move
+uses one observation for both its `updated_at` and event timestamp. It preserves
+the original creation time, trigger, deadline and identity. Untimed native intent
+events keep their existing null-time shape without acquiring UTC. These metadata
+operations do not grant dispatch authority or replace the separate signal-journal
+terminal fence. Schema2 moves require UTC and hold before publication with
+`signal_move_time_unqualified` instead of writing a null timestamp that its
+existing decoder would reject; its cancellation/terminal-fence path is unchanged.
+
+The daemon uses fresh qualified lower UTC bounds for legacy readiness and retry
+decisions, holds a new signal match while expiry is uncertain, and preserves a
+match already reserved by the journal. `time_held` in a poll result counts legacy
+pending or firing records held by time admission; zero counts retain the existing
+output shape. Relative native intents continue through their own qualified
+counter domain even when UTC is unavailable. This does not establish a new
+transport-side final-send guarantee for legacy targets.
+
+Signal-journal preparation leases use the lower UTC bound to prove previous
+ownership expired and anchor a new fixed lease. Continuation requires the fresh
+upper bound to remain before that original expiry. Unknown or ambiguous time
+holds new timed work, while inspection of an existing current-schema journal
+remains available. New journal and migration timestamps require qualified time;
+no schema or terminal-retirement timestamp contract changes here.
+
+### Legacy cancellation audit time
+
+Operator cancellation of schema-1 and schema-4 wakes uses qualified Stable Time
+UTC when available. If UTC is unavailable or unqualified, cancellation remains
+available: `updated_at` and the new cancellation event's `at` are `null`, and that
+event carries `time_status: "not_observed"`. This is the same explicit unknown-time
+shape used by network-time cancellation; a WSL timestamp or an old timestamp is
+never substituted. Original creation time, trigger, deadline, target, identity and
+attempt counters remain unchanged. These audit fields do not establish expiry,
+authorize dispatch, renew a deadline or change terminal-state checks.
 
 ## Status Vocabulary
 
@@ -225,7 +270,26 @@ Current optional fields include:
 - `evidence_paths`: log, marker, or evidence paths related to the wake.
 - `last_error`: terminal failure detail.
 - `previous_status`: status before archival.
-- `archived_at`: archive timestamp.
+- `archived_at`: archive observation timestamp, or unknown UTC. Legacy schema1/4
+  operator archival remains available without time authority and records null
+  timestamps plus an event with `time_status: not_observed`.
+- `archive_time_bounds`: optional archival UTC evidence for timed schemas,
+  `{basis: qualified_utc, lower: number, upper: number}`, or
+  `{basis: not_observed, lower: null, upper: null}`. These bounds describe the
+  archive operation's observation; they never renew a wake or its original
+  scheduling anchor. Retention compares qualified current UTC lower against
+  this retained upper plus the requested age, without rounding interval edges.
+  Missing current UTC or an unqualified legacy archive age holds cleanup with
+  an explicit error before deletion. Bare schema1/2/4/5 historical timestamps
+  are retained as metadata and cannot supply qualified age. Older schema3
+  network archives used an accepted upper truncated to whole seconds; its next
+  whole second is a conservative upper for retention. Signal cleanup still
+  requires durable terminal fencing and released retention pins. Untimed
+  schema6/7/8 archival keeps its existing unknown-time cleanup policy.
+
+  Older cleanup executables do not understand these evidence requirements. Keep
+  them quiesced before adopting this retention policy on a root; source validation
+  does not authorize mixed-reader deployment or working-root adoption.
 - `dispatch_result`: accepted app-server `thread_id` and `turn_id` metadata
   when returned; for OpenClaw Gateway dispatch, sanitized Gateway metadata
   such as `run_id`, `status`, `summary`, `session_id`, provider/model, payload
@@ -517,3 +581,35 @@ See [wake policy](../wake-policy.md#record-compatibility) for the exact fields,
 legacy preservation and reader requirements. New native and managed Grok intent
 registrations write schema8, retaining base intent version6/7 semantics. Older
 records remain unchanged; unknown policy/record versions hold without delivery.
+
+### Held acknowledgement outcomes
+
+Historical firing tmux records may carry `ack_wait_time_held: true` from an
+older clock-gated receipt wait. Their submission outcome remains unknown. The
+current reader never pastes those records again; it can reconcile an existing
+submission receipt into submitted status. Keep this no-replay fence during
+correction and before downgrade to readers that do not understand the field.
+
+Ordinary receipt polling uses a protective OS wait and does not need an extra
+StableTime observation. Its timeout is not proof that a permission, lease, or
+original wake expiry elapsed. Scheduling/retry anchors and genuine expiry checks
+keep their own reliable-time requirements. A client/helper failure must not be
+reported as a StableTime service outage.
+
+Monitor health `checked_at` can be null with `time_status: not_observed`; such
+health is never fresh. No wake record schema revision is introduced here.
+
+### Signal cancellation without an observed timestamp
+
+Schema2 cancellation remains available without qualified UTC. The record retains
+its last observed nonempty `updated_at` and sets `updated_at_time_status` to `not_observed`; this retained value is not evidence of cancellation time. The
+cancelled event has null `at` and `time_status: not_observed`. The decoder and
+identity remain unchanged. A qualified cancellation records its qualified time.
+
+The existing journal schema uses empty text for the unobserved retirement and
+pin-release timestamps of this untimed cancellation. Empty text is not UTC or
+retention evidence; NULL `released_at` still means the pin is unreleased. Arm
+tombstones, terminal lifecycle status and released-pin presence fence replay.
+Only cancellation supports untimed retirement: other terminal statuses return
+`TERMINAL_TIME_UNQUALIFIED` when no timestamp is supplied. Archival and cleanup
+keep their existing qualified-time and retention requirements.

@@ -4,9 +4,8 @@ Local operator calls use account_commands directly. MCP and OAuth callers retain
 host-approved grants; selectors never grant filesystem inspection authority.
 """
 from pathlib import Path
-import time
 
-from .controller_auth import AuthError
+from .controller_auth import AuthError, _qualified_upper
 from .managed_inventory import InventoryError
 
 OPERATIONS = {'stores.register', 'stores.resolve', 'stores.list',
@@ -20,7 +19,7 @@ def execute(root, operation, arguments, *, accounts, actor, authorize):
                 else 'configuration.observe' if operation.startswith('configuration.sync.') else 'account.observe')
 
     def guard():
-        if actor.expires_at <= time.time() or authorize() != actor or required not in actor.scopes:
+        if actor.expires_at <= _qualified_upper() or authorize() != actor or required not in actor.scopes:
             raise AuthError('insufficient_scope')
     guard()
 

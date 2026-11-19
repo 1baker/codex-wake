@@ -1,0 +1,49 @@
+{
+  "recorded_at": "2026-11-18T20:41:27.677977+00:00",
+  "base": "7c09353a89eb189380dd0b04b17dac70df22060a",
+  "implementation_tip": "1054d949",
+  "states": "five_tickets_implemented_integrated_validated_closed_repo_local",
+  "tickets": {
+    "ST04-SIGNAL-CANCEL": "ffa2ac25",
+    "ST04-INJECTOR-METADATA": "3dc12f2b",
+    "ST04-HOST-STDIN": "afad1968",
+    "ST04-OUTPUT-FRAMES": "1054d949",
+    "ST04-GROK-EVENT-WAIT": "88213eb4"
+  },
+  "validation": {
+    "tier": "focused",
+    "terminal_input_command": "PYTHONPATH=src:tests:. <validation-python> -m unittest test_injector test_native_delivery test_records test_signal_records test_host_commands test_daemon.DaemonTests.test_signal_cancellation_wins_before_evaluation_and_cannot_be_republished",
+    "terminal_input": "85 PASS Python3.11/3.12",
+    "network_command": "PYTHONPATH=src:tests:. <validation-python> -m unittest test_native_network_time",
+    "network": "10 PASS Python3.11/3.12",
+    "final_stream_custody_selection": "test_local_grok_events; test_host_commands; OutputModesTests.test_detached_collector_retains_live_text_order_and_original_retry and four test_output_frames_* public regressions",
+    "final_stream_custody": "12 PASS Python3.11/3.12",
+    "static": "Ruff F821/F822/F823 changed source/tests, policy wiring, git diff --check PASS",
+    "material_environment": "Local WSL Python3.11/3.12; shared kernel. Private native/ACP peers and explicit qualified test clocks; separate Windows governor fixture control. No hosted CI."
+  },
+  "failure_disposition": {
+    "injector": "Retained14 creation setup errors,2 native clock fixture assertions,2 signal fixture setup errors; minimal explicit time-boundary fixtures repaired; final56 worker PASS each311/312. No production gate weakened.",
+    "joint311": "Earlier11-case selection failed2: Windows governor startup WSL UtilAcceptVsock accept4 timeout; detached output empty text without original phase evidence. Joint31211 PASS.",
+    "host_retry": "Qualified preflight then exact Windows control retry311 PASS; prior infrastructure failure retained, not first-run success.",
+    "output_retry": "One exact diagnostic rerun passed unchanged source. Original cause remains unproven/pass-on-retry. Synthetic peer arbitrary10s release barrier was a concrete readiness risk; replaced with explicit release guaranteed in finally, no product budget increase. Existing test raw live-poll5s migrated to qualified Deadline. Final same scenario +4 frame regressions PASS311/312 worker and root combined12 PASS each.",
+    "remaining_risk": "Original empty-output failure cause not proven; comprehensive gate must retain this flake history and requalify actual detached collection. No claim of full-suite clean or installed runtime readiness.",
+    "root_setup": "New regression initially named nonexistent reconcile_records; AttributeError log retained, corrected to public reconcile_publications before passing records controls."
+  },
+  "contracts": [
+    "Schema2 cancellation retains last observed updated_at plus not_observed marker/event; untimed journal fence uses empty text, only cancellation accepts absent terminal time. No retention/expiry proof fabricated.",
+    "Default injector UTC qualified before route/attempt/input; Native4 uncertainty holds original expiry. No new final transport-send guarantee.",
+    "SSH frame and presentation waits retain original qualified deadlines through I/O/publication; zero presentation wait and established terminal-page drain untimed.",
+    "Grok custody wait holds uncertain/no replay on missing/lost counter before connection; actor acquisition remains separate pre-custody UTC authorization, no unvalidated-target mutation."
+  ],
+  "inventory": {
+    "as_of": "ffa2ac25",
+    "direct_raw_calls": 305,
+    "direct_files": 83,
+    "callable_bindings": 29,
+    "legacy_wrapper_calls": 16,
+    "limit": "Static pre-packet candidates only; current seven direct-call removals are not a new complete inventory. OpenClaw parked.",
+    "next_scope": "Freeze coupled tabs/terminal numeric deadline contract before coordinated adoption; remaining callable defaults/shared utc_now require owner-specific qualification."
+  },
+  "review": "Existing single broad review and bounded findings pass retained; no broad repeat. Ordinary source integration/causal checks only.",
+  "limits": "Global ST04/#695/#628/fullPython/runtime/activation remain open. Expired live Grok window/unknown prior sample unchanged. No new live provider request, credential copy, installed daemon change, Native build, fullsuite, merge or deploy."
+}

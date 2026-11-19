@@ -1,5 +1,7 @@
 # Historical native receipt reconciliation
 
+State: CLOSED
+
 Work item WAKE-HISTORICAL-HARNESS. State DONE (source repair only); priority P1; owner current
 Codex repair agent; WIP one. User requested repair after an approved Auth event
 was retained but no native delivery attempted. Branch

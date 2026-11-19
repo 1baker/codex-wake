@@ -3,11 +3,10 @@ import json
 
 from .cli_output import emit
 import os
-import time
 import hashlib
 from pathlib import Path
 
-from .controller_auth import Actor, AuthError
+from .controller_auth import Actor, AuthError, _qualified_upper
 from .controller_daemons import ControllerDaemons
 from .managed_inventory import InventoryError
 
@@ -18,16 +17,21 @@ def owner_from_root(root):
 
 
 def local_operator(target, capabilities=('control', 'observe')):
+    from . import measurements
+    try:
+        lower, _ = measurements.utc_bounds()
+    except measurements.TimeUnavailable:
+        raise AuthError('qualified_time_unavailable') from None
     return Actor('uid:' + str(os.getuid()), 'owner', 'local-cli', 'local-cli',
-                 'local://uid/' + str(os.getuid()), 'wake:controller', frozenset(capabilities), [target], time.time() + 120)
+                 'local://uid/' + str(os.getuid()), 'wake:controller', frozenset(capabilities), [target], lower + 120)
 
 
 def execute(root, operation, arguments, *, actor=None, authorize=None, owner=None):
-    from .controller_runtime import ControllerRuntime
+    from .controller_runtime import ControllerRuntime, _local_stop_capability
     owner = owner or owner_from_root(root)
     if operation in ('daemons.list', 'daemons.status'):
         def guard():
-            if actor is not None and (not isinstance(actor, Actor) or actor.expires_at <= time.time()
+            if actor is not None and (not isinstance(actor, Actor) or actor.expires_at <= _qualified_upper()
                     or authorize is None or authorize() != actor or 'observe' not in actor.scopes):
                 raise AuthError('insufficient_scope')
         guard()
@@ -48,21 +52,25 @@ def execute(root, operation, arguments, *, actor=None, authorize=None, owner=Non
     target = arguments.get('expected_target')
     if not isinstance(target, dict) or not {'home', 'home_generation', 'build_sha256', 'process', 'socket_generation'} <= target.keys():
         raise InventoryError('stale_target', 'previously observed exact daemon target required')
-    if actor is None:
+    local_stop = actor is None and operation == 'daemons.stop'
+    stop_capability = _local_stop_capability(root, arguments) if local_stop else None
+    if actor is None and not local_stop:
         actor = local_operator(target)
         authorize = lambda: actor
-    elif not any(set(target) <= set(scope) and scope == target for scope in actor.targets):
+    elif actor is not None and not any(set(target) <= set(scope) and scope == target for scope in actor.targets):
         raise AuthError('insufficient_scope')
     runtime = ControllerRuntime(root)
     request = arguments.get('_request', {})
-    try:
-        runtime.operation(actor, 'operations.result', {'operation_id': request.get('operation_id')}, authorize=authorize)
-    except InventoryError as error:
-        if error.code != 'operation_not_found':
-            raise
-        current = owner.execute('daemons.status', {k: v for k, v in arguments.items() if k in ('account', 'channel')})
-        if current['daemon']['target'] != target:
-            raise InventoryError('stale_target', 'daemon account/build/process target changed')
+    if not local_stop:
+        runtime.check_authority(actor, target, 'control', authorize=authorize)
+        try:
+            runtime.operation(actor, 'operations.result', {'operation_id': request.get('operation_id')}, authorize=authorize)
+        except InventoryError as error:
+            if error.code != 'operation_not_found':
+                raise
+            current = owner.execute('daemons.status', {k: v for k, v in arguments.items() if k in ('account', 'channel')})
+            if current['daemon']['target'] != target:
+                raise InventoryError('stale_target', 'daemon account/build/process target changed')
     directory = Path(root) / 'controller-daemon-errors'
     diagnostic = directory / (hashlib.sha256(str(request.get('operation_id')).encode()).hexdigest() + '.json')
     def dispatch(op, payload):
@@ -76,7 +84,8 @@ def execute(root, operation, arguments, *, actor=None, authorize=None, owner=Non
             with os.fdopen(fd, 'w') as stream:
                 json.dump(dict(code=getattr(error, 'code', 'daemon_held'), message=str(error)[:4000]), stream)
             raise
-    value = runtime.execute(actor, operation, arguments, authorize=authorize, dispatch=dispatch)
+    value = (runtime.execute_local_stop(stop_capability, arguments, dispatch=dispatch) if local_stop
+             else runtime.execute(actor, operation, arguments, authorize=authorize, dispatch=dispatch))
     if diagnostic.is_file() and not diagnostic.is_symlink() and not diagnostic.stat().st_mode & 0o077:
         value['result']['diagnostic'] = json.loads(diagnostic.read_text())
     return value

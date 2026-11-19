@@ -13,14 +13,21 @@ from pathlib import Path
 import re
 import socket
 import stat
-import time
 
+from . import measurements
 from .controller_accounts import ControllerAccounts
 from .controller_auth import Actor, AuthError
 from .managed_inventory import InventoryError
 
 _MAX_CACHE = 131072
 _TARGET_FIELDS = frozenset(('host', 'environment', 'provider', 'account', 'home', 'home_generation', 'configuration_revision'))
+
+
+def _actor_is_current(actor):
+    try:
+        return actor.expires_at > measurements.utc_time()
+    except measurements.TimeUnavailable:
+        raise AuthError('qualified_time_unavailable') from None
 
 
 def _object(pairs):
@@ -114,8 +121,12 @@ def _observation(home, target, store):
                 result['plan'] = plan
         result['identity'] = identity or None
         expires = claims.get('exp')
-        if type(expires) in (int, float) and expires <= time.time():
-            result['freshness'] = 'stale'
+        if type(expires) in (int, float):
+            try:
+                if expires <= measurements.utc_time():
+                    result['freshness'] = 'stale'
+            except measurements.TimeUnavailable:
+                result['reason'] = 'qualified_time_unavailable'
         return result
     finally:
         os.close(directory)
@@ -134,7 +145,7 @@ def execute(root, arguments, *, actor=None, authorize=None, accounts=None):
     target = account['target']
     def guard():
         if actor is not None:
-            if (not isinstance(actor, Actor) or actor.expires_at <= time.time() or authorize is None
+            if (not isinstance(actor, Actor) or not _actor_is_current(actor) or authorize is None
                     or authorize() != actor or 'account.observe' not in actor.scopes
                     or not any(_TARGET_FIELDS <= scope.keys() and all(target.get(k) == v for k, v in scope.items()) for scope in actor.targets)):
                 raise AuthError('insufficient_scope')

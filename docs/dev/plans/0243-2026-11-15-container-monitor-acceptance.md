@@ -1,5 +1,7 @@
 # 0243 — Whole-container and monitor-restart acceptance (#681)
 
+State: CLOSED
+
 State COMPLETE. Run03 accepts whole-container loss; run04 independently accepts
 owned-monitor restart. Product repair PR683 merged/deployeddev37; evidence0243
 retains failures, qualification, independent acceptance and cleanup.

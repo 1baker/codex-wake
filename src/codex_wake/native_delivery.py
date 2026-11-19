@@ -50,10 +50,10 @@ def add_native_parser(subparsers):
 from .wake_policy import guard_registration
 
 
-@guard_registration
+@guard_registration(native=True)
 def create_native(args, root):
-    from .runtime_policies import require_wait_policy
-    require_wait_policy(getattr(args,"busy_policy","wait"))
+    from .runtime_policies import require_native_policy
+    require_native_policy(getattr(args,"busy_policy","wait"))
     from .app_server import resolve_codex_cmd
     from .cli import create_record
     try:
@@ -100,7 +100,8 @@ def create_native(args, root):
     target = {'transport': 'native', 'thread_id': args.thread_id,
               'codex_cmd': resolve_codex_cmd(args.codex_path, required=True),
               'endpoint': args.endpoint, 'expires_at': (due + ttl).isoformat().replace('+00:00', 'Z'),
-              'resume_policy': 'same_thread' if args.resume_missing else 'hold'}
+              'resume_policy': 'same_thread' if args.resume_missing else 'hold',
+              'busy_policy': getattr(args, 'busy_policy', 'wait')}
     return create_record(args.prompt, predicate, root, now, args, target=target,
                          time_observation=observation)
 
@@ -126,9 +127,13 @@ def expire_native(root, found, now):
 
 
 def _codex_adapter():
+    from .bounded_native import BoundedNativeAdapter
+    from .bounded_native_qualification import QualifiedBoundedNativeRequest
+    qualified = QualifiedBoundedNativeRequest(request=native_request)
     return CodexRuntimeAdapter(
         read_thread=read_native_thread, request=native_request,
         run=subprocess.run, project_failure=submission_failure,
+        bounded_adapter=BoundedNativeAdapter(request=qualified, qualification=qualified.capability),
     )
 
 
@@ -178,8 +183,9 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
         record['runtime_observation'] = observation.summary(recipient)
         from .wake_policy import startup_reason
         policy_reason = startup_reason(record, observation)
-        ready = observation.state == 'ready' and policy_reason is None
-        if policy_reason or (target.get('session_mode') and observation.state != 'ready'):
+        from .runtime_policies import native_delivery_ready
+        ready = native_delivery_ready(target, observation) and policy_reason is None
+        if policy_reason or (target.get('session_mode') and not ready):
             record['policy_outcome'] = dict(state='held', reason=policy_reason or observation.reason)
         if observation.resumed:
             record = append_event(record, 'native_same_thread_resumed',
@@ -212,9 +218,16 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
             record = append_event(record, 'native_time_held', verdict['reason'], None)
             replace_record(root, found, record)
             return DispatchResult('failed' if record['status'] == 'failed' else 'requeued', verdict['reason'])
+    from .runtime_delivery import original_submission_expiry, submission_envelope, submit_bounded
+    try:
+        original_expiry = original_submission_expiry(record)
+    except (ValueError, TypeError, KeyError):
+        record.update(status='pending', policy_outcome=dict(state='held', reason='bounded_native_absolute_expiry_unavailable'))
+        replace_record(root, found, record)
+        return DispatchResult('requeued', 'bounded_native_absolute_expiry_unavailable')
     # Persist ambiguity BEFORE making the external effect. A crashed caller must
     # never assume the queue did not accept its submission.
-    record['native_delivery'] = {'state': 'uncertain', 'execution': 'not_observed',
+    record['native_delivery'] = {'expires_at_unix_micros': original_expiry, 'state': 'uncertain', 'execution': 'not_observed',
                                  'acknowledgment': 'not_observed',
                                  'submission_id': str(uuid4())}
     if target.get('session_mode'):
@@ -231,7 +244,7 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
     record = append_event(record, 'native_submission_started', 'native queue submission started', now)
     replace_record(root, found, record)
     try:
-        submitted = adapter.submit(recipient, prompt)
+        submitted = submit_bounded(adapter, recipient, prompt, submission_envelope(record))
         from .runtime_delivery import validate_native_submission
         validate_native_submission(submitted, target['thread_id'], allow_background=target.get('session_mode') == 'background')
     except Exception as exc:
@@ -253,6 +266,11 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
         record = append_event(record, 'native_uncertain', record['last_error'], now)
         replace_record(root, found, record)
         return DispatchResult('skipped', record['last_error'])
+    if 'expires_at_unix_micros' in record['native_delivery']:
+        record['native_delivery'].update(queue_id=submitted.receipt_id, queue_accepted=True)
+        record = append_event(record, 'native_bounded_pending', 'bounded queue accepted; admission not yet observed', now)
+        replace_record(root, found, record)
+        return DispatchResult('skipped', 'bounded native pending; reconcile before delivery')
     record['status'] = 'submitted'
     receipt_field = 'turn_id' if submitted.evidence_kind == 'native_turn_acceptance' else 'queue_id'
     record['native_delivery'].update(state='accepted', **{receipt_field: submitted.receipt_id}, accepted_at=None if intent else format_utc(now))
@@ -276,6 +294,40 @@ def native_evidence(target, prompt):
     return observed.evidence, observed.reason
 
 
+def cancel_native_pending(root, found, *, runtime_adapter=None):
+    """Cancel only an exact bounded native entry; ambiguous legacy effects hold."""
+    from .runtime_delivery import submission_envelope
+    record = dict(found.record)
+    delivery = dict(record.get('native_delivery', {}))
+    if delivery.get('state') != 'uncertain' or 'expires_at_unix_micros' not in delivery:
+        raise WakeError('submission uncertain; reconcile original effect before cancellation')
+    prompt = native_prompt(root, record)
+    if delivery.get('prompt_sha256') != hashlib.sha256(prompt.encode()).hexdigest():
+        raise WakeError('native submission payload changed')
+    adapter = runtime_adapter or _codex_adapter()
+    recipient = adapter.resolve(record['target'])
+    if (recipient.version != 1 or recipient.runtime != 'codex'
+            or recipient.session_id != record['target']['thread_id']):
+        raise WakeError('cancellation recipient changed')
+    method = getattr(adapter, 'cancel_bounded', None)
+    if method is None:
+        raise WakeError('submission uncertain; reconcile original effect before cancellation')
+    try:
+        observed = method(recipient, prompt, submission_envelope(record), delivery.get('queue_id'))
+    except Exception as exc:
+        raise WakeError('native cancellation evidence unavailable: ' + type(exc).__name__) from exc
+    if (not isinstance(observed, RuntimeReconciliation) or observed.evidence is not None
+            or observed.reason not in ('bounded_native_canceled', 'bounded_native_expired')):
+        reason = observed.reason if isinstance(observed, RuntimeReconciliation) else 'invalid cancellation outcome'
+        raise WakeError('submission uncertain; reconcile original effect before cancellation: ' + str(reason))
+    record['status'] = 'cancelled' if observed.reason == 'bounded_native_canceled' else 'expired'
+    delivery['reconciliation'] = dict(state='resolved', reason=observed.reason)
+    record['native_delivery'] = delivery
+    record = append_event(record, 'native_bounded_terminal', observed.reason + '; no replay', None)
+    replace_record(root, found, record)
+    return record['status']
+
+
 def reconcile_native(root, found, now, *, force=False, runtime_adapter: RuntimeAdapter | None = None):
     from .injector import DispatchResult
     record = dict(found.record)
@@ -288,14 +340,16 @@ def reconcile_native(root, found, now, *, force=False, runtime_adapter: RuntimeA
     try:
         if delivery.get('prompt_sha256') and delivery['prompt_sha256'] != hashlib.sha256(prompt.encode()).hexdigest():
             raise WakeError('native submission payload changed')
-        if runtime_adapter is None:
+        if runtime_adapter is None and 'expires_at_unix_micros' not in delivery:
             evidence, reason = native_evidence(record['target'], prompt)
         else:
+            runtime_adapter = runtime_adapter or _codex_adapter()
             recipient = runtime_adapter.resolve(record['target'])
             if (recipient.version != 1 or recipient.runtime != 'codex'
                     or recipient.session_id != record['target']['thread_id']):
                 raise WakeError('reconciliation recipient changed')
-            observed = runtime_adapter.reconcile(recipient, prompt)
+            from .runtime_delivery import reconcile_submission
+            observed = reconcile_submission(runtime_adapter, recipient, prompt, record)
             if not isinstance(observed, RuntimeReconciliation):
                 raise WakeError('invalid runtime reconciliation outcome')
             evidence, reason = observed.evidence, observed.reason
@@ -309,6 +363,13 @@ def reconcile_native(root, found, now, *, force=False, runtime_adapter: RuntimeA
                 raise WakeError('incomplete native acceptance evidence')
     except Exception as exc:
         evidence, reason = None, 'native_evidence_unavailable:' + type(exc).__name__
+    if evidence is None and 'expires_at_unix_micros' in delivery and reason in ('bounded_native_expired', 'bounded_native_canceled'):
+        record.update(status='expired' if reason == 'bounded_native_expired' else 'cancelled')
+        delivery['reconciliation'] = dict(state='resolved', reason=reason)
+        record['native_delivery'] = delivery
+        record = append_event(record, 'native_bounded_terminal', reason + '; no replay', now)
+        replace_record(root, found, record)
+        return DispatchResult('failed', reason)
     if evidence is None:
         previous_reason = delivery.get('reconciliation', {}).get('reason')
         delivery.update(reconciliation=dict(state='unresolved', reason=reason, checked_at=format_utc(now) if now else None),

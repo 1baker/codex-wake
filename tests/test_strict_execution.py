@@ -101,8 +101,9 @@ class StrictLaunchRefusalTests(unittest.TestCase):
         from codex_wake.lifecycle_supervision import publish_supervision
         from codex_wake.objective_ledger import ObjectiveLedger
         from codex_wake.records import WakeError
-        for shared in (True,False):
-            with self.subTest(shared=shared),tempfile.TemporaryDirectory() as tmp:
+        for mode in ('shared','unsupported_host','clock_unqualified'):
+            shared=mode=='shared'
+            with self.subTest(mode=mode),tempfile.TemporaryDirectory() as tmp:
                 root=Path(tmp);wake=root/'wake';wake.mkdir(mode=0o700)
                 home=location(wake,'goal')/'home';home.mkdir(parents=True,mode=0o700)
                 home.parent.chmod(0o700)
@@ -120,9 +121,18 @@ class StrictLaunchRefusalTests(unittest.TestCase):
                     max_correction_cycles=1),continuations={'source':dict(objective_id='goal',objective='work',
                     approval='operator fixture',started_at='1970-01-01T00:01:40Z')})
                 profiles=root/'profiles.json';profiles.write_text(json.dumps(config))
-                expected='objective-owned home and endpoint' if shared else 'cgroup-v2 and suspend-aware BOOTTIME'
-                with patch('codex_wake.native_clock.snapshot',return_value={'utc':{'lower':100,'upper':101}}), \
-                        patch('codex_wake.strict_runtime.time',SimpleNamespace()), \
+                expected={'shared':'objective-owned home and endpoint','unsupported_host':'Linux cgroup-v2',
+                    'clock_unqualified':'admission requires qualified Stable Time UTC'}[mode]
+                qualified=dict(reason='authenticated_utc',utc=dict(status='network',lower=100,upper=101),
+                    valid_for_ns=300000000000,counter=dict(epoch='c357309d-c209-4467-b757-e1488e6b1aaa',
+                        counter=1000,frequency=1000,rate_ppm=0))
+                unavailable=dict(qualified,reason='authenticated_counter_only',utc=None)
+                original_is_file=Path.is_file
+                def available(path):
+                    return False if mode=='unsupported_host' and str(path)=='/sys/fs/cgroup/cgroup.controllers' else original_is_file(path)
+                with patch('codex_wake.measurements.snapshot',return_value=qualified), \
+                        patch('codex_wake.strict_runtime.measurements',SimpleNamespace(snapshot=lambda: unavailable)), \
+                        patch('codex_wake.strict_runtime.Path.is_file',available), \
                         patch('codex_wake.native_protocol.native_request') as native, \
                         patch('codex_wake.host_execution.subprocess.run') as host:
                     publish_supervision(wake,1)

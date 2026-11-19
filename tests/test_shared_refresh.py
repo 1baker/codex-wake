@@ -6,14 +6,63 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from codex_wake.cli import run
+from codex_wake import measurements
 
 
 THREAD = '00000000-0000-7000-8000-000000000168'
 
 
+def refresh_fixture_clock(path):
+    import time
+    from tests.test_measurements import observation
+    value = observation(int(time.monotonic() * 1000), rate=0)
+    utc = float(Path(path).read_text())
+    value['utc'].update(lower=utc, upper=utc)
+    return value
+
+
+REFRESH_CLOCK_BOOTSTRAP = """import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv.pop(1))
+from tests.test_shared_refresh import refresh_fixture_clock
+from codex_wake import measurements
+path = Path(sys.argv.pop(1))
+measurements.snapshot = lambda: refresh_fixture_clock(path)
+from codex_wake.cli import main
+raise SystemExit(main())
+"""
+
+
 class SharedRefreshTests(unittest.TestCase):
+    def test_refresh_poll_uses_absolute_qualified_utc_and_holds_unknown_time(self):
+        from codex_wake.shared_refresh import poll
+        from codex_wake.process import boot_id_value
+        from codex_wake.measurements import TimeUnavailable
+        for unavailable in (False, True):
+            with self.subTest(unavailable=unavailable), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp) / 'runtime'
+                directory = root / 'shared-refresh'
+                directory.mkdir(parents=True, mode=0o700)
+                root.chmod(0o700)
+                record = dict(state='queued', boot_id=boot_id_value(), started_upper=1000,
+                    started_boottime=100, deadline=1120, policy_path=str(root / 'unread-policy'))
+                path = directory / 'receipt.json'
+                path.write_text(json.dumps(record))
+                path.chmod(0o600)
+                with patch('codex_wake.lifecycle_budget.trusted_upper', return_value=1200,
+                        side_effect=TimeUnavailable('unqualified') if unavailable else None), \
+                        patch('time.clock_gettime', return_value=100), \
+                        patch('codex_wake.native_protocol.native_request') as native:
+                    poll(root)
+                    native.assert_not_called()
+                saved = json.loads(path.read_text())
+                self.assertEqual(saved['state'], 'blocked' if unavailable else 'expired')
+                self.assertEqual(saved['deadline'], record['deadline'])
+                self.assertEqual(saved['started_upper'], record['started_upper'])
+
     def test_refresh_configuration_does_not_require_or_create_an_objective_allocation(self):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -139,7 +188,14 @@ class SharedRefreshTests(unittest.TestCase):
                         expected_content=[dict(type='text',text='v2')])})})))
             policy.chmod(0o600)
             from datetime import datetime, timezone
-            wall_anchor, elapsed_anchor = time.time(), time.monotonic()
+            fixture_clock = base / 'explicit-utc-fixture'
+            if stale_mcp:
+                fixture_clock.write_text('1000')
+                clock = patch('codex_wake.measurements.snapshot',
+                              side_effect=lambda: refresh_fixture_clock(fixture_clock))
+                clock.start()
+                self.addCleanup(clock.stop)
+            wall_anchor = 1000 if stale_mcp else measurements.utc_time()
             expiry=datetime.fromtimestamp(wall_anchor+2,timezone.utc).isoformat() if stale_mcp else '2030-01-01T00:00:00Z'
             argv=['--wake-root',str(runtime),'sessions','refresh','--profiles',str(policy),
                 '--profile','self','--intent','self-refresh','--thread-id',THREAD,
@@ -158,22 +214,30 @@ class SharedRefreshTests(unittest.TestCase):
                 output=StringIO()
                 # Keep this injected authority continuous when guest UTC steps;
                 # the independent watcher still enforces the original expiry.
-                with patch('codex_wake.lifecycle_budget.trusted_upper',return_value=wall_anchor+time.monotonic()-elapsed_anchor),redirect_stdout(output):
+                with patch('codex_wake.lifecycle_budget.trusted_upper',
+                        side_effect=lambda: float(fixture_clock.read_text()) if stale_mcp else measurements.utc_time()), redirect_stdout(output):
                     code=run(argv)
                 return code,json.loads(output.getvalue())
             env=dict(os.environ,PYTHONPATH=str(Path(__file__).resolve().parents[1]/'src'))
-            watcher=subprocess.Popen([sys.executable,'-m','codex_wake','--wake-root',str(runtime),
-                'sessions','refresh-watch','--interval','0.05'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+            watch_args=['--wake-root',str(runtime),'sessions','refresh-watch','--interval','0.05']
+            if stale_mcp:
+                # Explicit host clock injection crosses this test's process seam;
+                # production has no fixture environment flag or clock fallback.
+                watch_command=[sys.executable,'-c',REFRESH_CLOCK_BOOTSTRAP,
+                    str(Path(__file__).resolve().parents[1]),str(fixture_clock),*watch_args]
+            else:
+                watch_command=[sys.executable,'-m','codex_wake',*watch_args]
+            watcher=subprocess.Popen(watch_command,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
             try:
-                deadline=time.monotonic()+5
+                deadline=measurements.deadline(5)
                 while True:
                     try:
                         code,receipt=invoke()
                         if code != 2:break
-                        if time.monotonic()>=deadline:self.fail(receipt)
+                        if deadline.expired():self.fail(receipt)
                         time.sleep(.05)
                     except Exception as exc:
-                        if time.monotonic()>=deadline:raise
+                        if deadline.expired():raise
                         time.sleep(.05)
                 self.assertEqual(code,0)
                 self.assertEqual(receipt['state'],'queued')
@@ -184,7 +248,7 @@ class SharedRefreshTests(unittest.TestCase):
                         PermissionStore(runtime).configure({'version':1,'mandatory':['refresh.shared']},Principal('op','operator'),expected_revision=1)
                     else:
                         data=json.loads(policy.read_text());data['callers'][THREAD]=[];policy.write_text(json.dumps(data));policy.chmod(0o600)
-                    while time.monotonic()<deadline:
+                    while not deadline.expired():
                         files=list((runtime/'shared-refresh').glob('*.json'))
                         saved=next((json.loads(f.read_text()) for f in files if 'fingerprint' in json.loads(f.read_text())),{})
                         if saved.get('state')=='blocked':break
@@ -197,7 +261,7 @@ class SharedRefreshTests(unittest.TestCase):
                 native['active']=False
                 native['peer_active']=False
                 if racing_peer:
-                    while not native['raced'] and time.monotonic()<deadline:time.sleep(.02)
+                    while not native['raced'] and not deadline.expired():time.sleep(.02)
                     time.sleep(.15)
                     self.assertNotIn('config/mcpServer/reload',requests)
                     native['peer_active']=False
@@ -205,8 +269,10 @@ class SharedRefreshTests(unittest.TestCase):
                     watcher.wait(timeout=3)
                     self.assertNotIn('config/mcpServer/reload',requests)
                     return
-                while time.monotonic()<deadline:
+                while not deadline.expired():
                     code,receipt=invoke()
+                    if stale_mcp and receipt.get('reload_acknowledged') and receipt.get('resource_status'):
+                        fixture_clock.write_text('1003')
                     if receipt['state'] in ('completed','expired','blocked'):break
                     time.sleep(.05)
                 if cwd_mismatch:

@@ -11,6 +11,18 @@ from codex_wake.work_acceptance import WorkAcceptance
 
 class WorkAcceptanceTests(unittest.TestCase):
     def setUp(self):
+        from unittest.mock import patch
+        from codex_wake import measurements
+        self._ticks = 0
+        def clock():
+            self._ticks += 10000
+            return dict(reason='authenticated_utc', utc=dict(status='network', lower=100, upper=100),
+                valid_for_ns=300000000000, counter=dict(
+                epoch='c357309d-c209-4467-b757-e1488e6b1aaa', counter=self._ticks,
+                frequency=1000000, rate_ppm=0))
+        clock_patch = patch.object(measurements, 'snapshot', side_effect=clock)
+        clock_patch.start()
+        self.addCleanup(clock_patch.stop)
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name) / 'wake'

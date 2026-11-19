@@ -1,4 +1,5 @@
 import contextlib
+import json
 from datetime import UTC, datetime
 import io
 from pathlib import Path
@@ -122,4 +123,14 @@ class NetworkWakeTests(unittest.TestCase):
             with patch('codex_wake.time_inspection.network_time_decision', return_value=reading):
                 path = archive_record(root, identifier)
                 self.assertEqual(cleanup_archived_records(root, older_than=timedelta(seconds=1), now=datetime(2099,1,1,tzinfo=UTC), delete=True), [])
+            self.assertTrue(path.exists())
+
+            # The old accepted upper was truncated by its UTC string formatter.
+            stored=json.loads(path.read_text())
+            stored.pop('archive_time_bounds',None)
+            path.write_text(json.dumps(stored))
+            later=TimeDecision('network',('a','b'),1800000001.5,1800000001.7)
+            with patch('codex_wake.time_inspection.network_time_decision',return_value=later):
+                self.assertEqual(cleanup_archived_records(root,older_than=timedelta(seconds=1),
+                    now=datetime(2099,1,1,tzinfo=UTC),delete=True),[])
             self.assertTrue(path.exists())

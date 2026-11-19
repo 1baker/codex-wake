@@ -17,6 +17,15 @@ class NativeDeliveryTests(unittest.TestCase):
         provider = patch('codex_wake.time_inspection.network_time_decision', return_value=reading)
         provider.start()
         self.addCleanup(provider.stop)
+        clock = patch('codex_wake.native_clock.snapshot', return_value=dict(utc=dict(status='network', sources=['a','b'], lower=1791504000, upper=1791504000.2), counter=None))
+        clock.start()
+        self.addCleanup(clock.stop)
+        from test_measurements import observation
+        qualified = observation(1000)
+        qualified['utc'] = dict(status='network', lower=1791504000, upper=1791504000.2)
+        stable = patch('codex_wake.measurements.snapshot', return_value=qualified)
+        stable.start()
+        self.addCleanup(stable.stop)
 
     def test_file_wake_expires_even_if_file_never_appears(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -32,6 +41,7 @@ class NativeDeliveryTests(unittest.TestCase):
     def native_record(self, root, executable):
         record = build_record(predicate={'type': 'not_before', 'due_at': '2026-10-09T00:00:00Z'},
                               prompt='Execute the task', cwd=root,
+                              now=datetime(2026, 10, 9, tzinfo=UTC),
                               target={'transport': 'native', 'thread_id': '01a1227e-a041-7b72-9c36-18349e7dd22c',
                                       'endpoint': 'unix://', 'codex_cmd': str(executable),
                                       'expires_at': '2026-10-09T00:10:00Z'})
@@ -88,8 +98,8 @@ class NativeDeliveryTests(unittest.TestCase):
             def observe(self, recipient):
                 return RuntimeObservation('ready', 'fixture_recipient_idle', {})
 
-            def submit(self, recipient, prompt):
-                delivered.append((recipient.session_id, prompt))
+            def submit_bounded(self, recipient, prompt, envelope):
+                delivered.append((recipient.session_id, prompt, envelope))
                 return RuntimeSubmission('accepted', receipt_id=receipt,
                                          evidence_kind='native_queue_acceptance')
 
@@ -108,7 +118,10 @@ class NativeDeliveryTests(unittest.TestCase):
                     runtime_adapter=Runtime(),
                 )
             saved = all_records(root)[0].record
-            self.assertEqual(result.status, 'submitted')
+            self.assertEqual(result.status, 'skipped')
+            self.assertEqual(saved['status'], 'firing')
+            self.assertEqual(delivered[0][2].client_user_message_id, saved['native_delivery']['submission_id'])
+            self.assertEqual(delivered[0][2].expires_at_unix_micros, 1791504600000000)
             self.assertEqual(saved['native_delivery']['queue_id'], receipt)
             self.assertEqual(saved['attempts'], 1)
             self.assertEqual(len(delivered), 1)
@@ -131,11 +144,11 @@ class NativeDeliveryTests(unittest.TestCase):
             def observe(self, recipient):
                 return RuntimeObservation('ready', 'fixture_recipient_idle', {})
 
-            def submit(self, recipient, prompt):
+            def submit_bounded(self, recipient, prompt, envelope):
                 deliveries.append(prompt)
                 raise OSError('accepted but response lost: PRIVATE_TRANSPORT_DETAIL')
 
-            def reconcile(self, recipient, prompt):
+            def reconcile_bounded(self, recipient, prompt, envelope):
                 if deliveries != [prompt]:
                     raise AssertionError('reconciliation changed the original submission')
                 return RuntimeReconciliation({
@@ -248,10 +261,10 @@ class NativeDeliveryTests(unittest.TestCase):
             adapter = Mock()
             adapter.resolve.return_value = RuntimeRecipient('codex', found.record['target']['thread_id'], {})
             adapter.observe.return_value = RuntimeObservation('ready', 'idle', {})
-            adapter.submit.return_value = RuntimeSubmission(
+            adapter.submit_bounded.return_value = RuntimeSubmission(
                 'accepted', '01a12280-80ef-7772-a00a-c68bd32ecbba', 'terminal_observation',
             )
-            adapter.reconcile.return_value = RuntimeReconciliation(
+            adapter.reconcile_bounded.return_value = RuntimeReconciliation(
                 {'source': 'terminal_observation', 'execution': 'turn_completed'},
             )
             for minute in (0, 1):
@@ -262,96 +275,35 @@ class NativeDeliveryTests(unittest.TestCase):
                 self.assertEqual(result.status, 'skipped')
                 self.assertEqual(all_records(root)[0].record['native_delivery']['state'], 'uncertain')
             self.assertEqual(all_records(root)[0].record['attempts'], 1)
-            adapter.submit.assert_called_once()
+            adapter.submit_bounded.assert_called_once()
 
-    def test_uncertain_acceptance_is_not_resubmitted_on_another_poll(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            executable = root / 'codex'
-            counter = root / 'calls'
-            executable.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\nimport sys\n'
-                                  'if sys.argv[1] != "queue": sys.exit(2)\n'
-                                  f'with Path({str(counter)!r}).open("a") as f: f.write("call\\n")\n'
-                                  'print("Unknown result")\n')
-            executable.chmod(0o700)
-            self.native_record(root, executable)
-            with patch('codex_wake.native_delivery.read_native_thread',
-                       return_value={'id': '01a1227e-a041-7b72-9c36-18349e7dd22c', 'status': {'type': 'idle'}}):
-                poll_once(root, datetime(2026, 10, 9, tzinfo=UTC))
-                poll_once(root, datetime(2026, 10, 9, 0, 1, tzinfo=UTC))
-            self.assertEqual(counter.read_text(), 'call\n')
-            self.assertEqual(all_records(root)[0].record['native_delivery']['state'], 'uncertain')
-            self.assertEqual(all_records(root)[0].record['native_delivery']['reconciliation']['state'], 'unresolved')
-            self.assertEqual(all_records(root)[0].record['attempts'], 1)
-
-    def test_rejected_queue_retains_safe_diagnostics_without_resend(self):
-        import json
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            executable = root / 'codex'
-            counter = root / 'calls'
-            executable.write_text('#!/usr/bin/env python3\nimport sys\nfrom pathlib import Path\n'
-                'if sys.argv[1] != "queue": sys.exit(2)\n'
-                f'with Path({str(counter)!r}).open("a") as f: f.write("call\\n")\n'
-                'print("PRIVATE_STDOUT")\n'
-                'print("Error: thread not found; Bearer PRIVATE_TOKEN", file=sys.stderr)\n'
-                'sys.exit(7)\n')
-            executable.chmod(0o700)
-            self.native_record(root, executable)
-            with patch('codex_wake.native_delivery.read_native_thread',
-                return_value={'id': '01a1227e-a041-7b72-9c36-18349e7dd22c', 'status': {'type': 'idle'}}):
-                poll_once(root, datetime(2026, 10, 9, tzinfo=UTC))
-                initial = all_records(root)[0].record
-                diagnostic = initial['native_delivery']['submission_failure']
-                self.assertEqual(diagnostic['reason'], 'queue_exit_nonzero')
-                self.assertEqual(diagnostic['returncode'], 7)
-                self.assertEqual(diagnostic['stderr']['hints'], ['thread_not_found'])
-                self.assertNotIn('PRIVATE_TOKEN', json.dumps(initial))
-                self.assertNotIn('PRIVATE_STDOUT', json.dumps(initial))
-                self.assertLess(len(json.dumps(diagnostic)), 1024)
-                poll_once(root, datetime(2026, 10, 9, 0, 1, tzinfo=UTC))
-            final = all_records(root)[0].record
-            self.assertEqual(counter.read_text(), 'call\n')
-            self.assertEqual(final['attempts'], 1)
-            self.assertEqual(final['native_delivery']['state'], 'uncertain')
-            self.assertEqual(final['native_delivery']['submission_failure'], diagnostic)
-
-    def test_queue_timeout_and_unconfirmed_output_keep_bounded_failure_evidence(self):
+    def test_operator_unbounded_queue_retains_safe_diagnostics(self):
+        """Operator queue compatibility remains separate from durable Wake dispatch."""
         import json
         import subprocess
+        from codex_wake.codex_runtime import CodexRuntimeAdapter, submission_failure
         outcomes = [
             (subprocess.TimeoutExpired(['queue', 'PRIVATE_ARG'], 30,
                 output=b'PRIVATE_OUTPUT', stderr=b'PRIVATE_SECRET' * 1000), 'queue_timeout'),
-            (subprocess.CompletedProcess(['PRIVATE_ARG'], 0, 'PRIVATE_STDOUT',
-                'PRIVATE_UNKNOWN_ERROR'), 'queue_acceptance_unconfirmed'),
+            (subprocess.CompletedProcess(['PRIVATE_ARG'], 0, 'PRIVATE_STDOUT', 'PRIVATE_UNKNOWN_ERROR'), 'queue_acceptance_unconfirmed'),
+            (subprocess.CompletedProcess(['PRIVATE_ARG'], 7, 'PRIVATE_STDOUT', 'Error: thread not found; Bearer PRIVATE_TOKEN'), 'queue_exit_nonzero'),
             (PermissionError('PRIVATE_PATH'), 'queue_os_error'),
         ]
+        from unittest.mock import Mock
         for outcome, reason in outcomes:
-            with self.subTest(reason=reason), tempfile.TemporaryDirectory() as tmp:
-                root = Path(tmp)
-                self.native_record(root, root / 'must-not-run')
-                options = {'side_effect': outcome} if isinstance(outcome, Exception) else {'return_value': outcome}
-                with patch('codex_wake.native_delivery.read_native_thread',
-                    return_value={'id': '01a1227e-a041-7b72-9c36-18349e7dd22c', 'status': {'type': 'idle'}}), patch(
-                    'codex_wake.native_delivery.subprocess.run', **options) as submit, patch(
-                    'codex_wake.native_delivery.native_request', side_effect=RuntimeError('unavailable')):
-                    poll_once(root, datetime(2026, 10, 9, tzinfo=UTC))
-                    initial = all_records(root)[0].record
-                    diagnostic = initial['native_delivery']['submission_failure']
-                    self.assertEqual(diagnostic['reason'], reason)
-                    self.assertLess(len(json.dumps(diagnostic)), 1024)
-                    self.assertNotIn('PRIVATE_', json.dumps(initial))
-                    if reason == 'queue_timeout':
-                        self.assertTrue(diagnostic['stderr']['truncated'])
-                        self.assertEqual(diagnostic['stderr']['hints'], [])
-                    poll_once(root, datetime(2026, 10, 9, 0, 1, tzinfo=UTC))
-                self.assertEqual(submit.call_count, 1)
-                final = all_records(root)[0].record
-                self.assertEqual(final['attempts'], 1)
-                self.assertEqual(final['native_delivery']['state'], 'uncertain')
-                self.assertEqual(final['native_delivery']['submission_failure'], diagnostic)
+            with self.subTest(reason=reason):
+                runner = Mock(side_effect=outcome) if isinstance(outcome, Exception) else Mock(return_value=outcome)
+                adapter = CodexRuntimeAdapter(read_thread=Mock(), request=Mock(), run=runner, project_failure=submission_failure)
+                recipient = adapter.resolve(dict(transport='native', thread_id='thread', endpoint='unix://', codex_cmd='/codex'))
+                result = adapter.submit(recipient, 'operator input')
+                self.assertEqual((result.state, result.reason), ('uncertain', reason))
+                self.assertLess(len(json.dumps(result.failure)), 1024)
+                self.assertNotIn('PRIVATE_', json.dumps(result.failure))
+                if reason == 'queue_timeout': self.assertTrue(result.failure['stderr']['truncated'])
+                if reason == 'queue_exit_nonzero': self.assertEqual(result.failure['stderr']['hints'], ['thread_not_found'])
+                runner.assert_called_once()
 
-    def test_persisted_due_wake_uses_native_queue_and_records_acceptance(self):
+    def test_registered_due_wake_holds_without_qualified_bounded_backend(self):
         thread = '01a1227e-a041-7b72-9c36-18349e7dd22c'
         queue = '01a12280-80ef-7772-a00a-c68bd32ecbba'
         with tempfile.TemporaryDirectory() as tmp:
@@ -369,12 +321,11 @@ class NativeDeliveryTests(unittest.TestCase):
                        'codex_wake.injector.SubprocessTmuxRunner') as tmux:
                 result = poll_once(root, datetime(2026, 10, 9, tzinfo=UTC), time_provider=lambda: TimeDecision('network', ('a', 'b'), 1791504001, 1791504001.1))
             tmux.assert_not_called()
-            self.assertEqual(result.submitted, 1)
+            self.assertEqual(result.submitted, 0)
             record = all_records(root)[0].record
-            self.assertEqual(record['attempts'], 1)
-            self.assertEqual(record['native_delivery']['queue_id'], queue)
-            self.assertEqual(record['native_delivery']['execution'], 'not_observed')
-            self.assertEqual(record['native_delivery']['acknowledgment'], 'not_observed')
+            self.assertEqual(record['status'], 'pending')
+            self.assertNotIn('native_delivery', record)
+            self.assertEqual(record['policy_outcome']['reason'], 'bounded_native_backend_not_qualified')
 
     def test_reconcile_recovers_exact_native_turn_without_resending(self):
         from codex_wake.records import replace_record
@@ -492,7 +443,8 @@ class NativeDeliveryTests(unittest.TestCase):
                     'codex_wake.native_delivery.native_request',return_value={'thread':{'id':thread}}) as native, patch(
                     'codex_wake.injector.SubprocessTmuxRunner') as tmux:
                 result=poll_once(root,datetime(2026,10,9,tzinfo=UTC), time_provider=lambda: TimeDecision('network', ('a', 'b'), 1791504001, 1791504001.1))
-            self.assertEqual(result.submitted,1)
+            self.assertEqual(result.submitted,0)
+            self.assertEqual(all_records(root)[0].record['policy_outcome']['reason'], 'bounded_native_backend_not_qualified')
             self.assertEqual(native.call_args.args[2:4],('thread/resume',{'threadId':thread}))
             tmux.assert_not_called()
             self.assertEqual(all_records(root)[0].record['target']['thread_id'],thread)

@@ -1,5 +1,7 @@
 # 0240 — Reconcile native input completion
 
+State: CLOSED
+
 Local ticket CW-0240. Owner primary. Priority P1. State DONE. Dependencies none. WIP one.
 Branch fix/native-input-result-reconciliation; isolated checkout until integration and runtime acceptance.
 

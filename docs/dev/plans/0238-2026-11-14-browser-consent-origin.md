@@ -1,6 +1,6 @@
 # P238 | Browser consent Origin
 
-State: DONE
+State: CLOSED
 Owner: root / ecochran76
 Work item: #654
 Branch: fix/connector-consent-origin

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import fcntl
 import json
+import math
 from itertools import islice
 import os
 import stat
@@ -14,6 +15,7 @@ import tempfile
 from pathlib import Path
 import time
 
+from . import measurements
 from .objective_ledger import ObjectiveLedger
 from .records import parse_timestamp
 from .lifecycle_budget import objective_identity
@@ -25,6 +27,27 @@ MAX_ACCOUNTING_BYTES = 32 * 1024 * 1024
 class _NonblockingLedger(ObjectiveLedger):
     # Keep the ledger's persistence protocol; only lock acquisition differs.
     _lock_flags = fcntl.LOCK_EX | fcntl.LOCK_NB
+
+
+def admission_clock(configuration):
+    """Validate the immutable clock evidence recorded at executor admission."""
+    anchor=configuration.get('clock_anchor')
+    if (configuration.get('clock_basis')!='stable_time_host_counter_v1'
+            or not isinstance(anchor,dict) or anchor.get('reason')!='authenticated_utc'
+            or not isinstance(anchor.get('utc'),dict)
+            or anchor['utc'].get('status')!='network'
+            or type(anchor.get('valid_for_ns')) is not int
+            or not 0<anchor['valid_for_ns']<=300000000000
+            or any(type(anchor['utc'].get(key)) not in (int,float)
+                   or not math.isfinite(anchor['utc'][key]) for key in ('lower','upper'))
+            or anchor['utc']['lower']>anchor['utc']['upper']
+            or any(type(configuration.get(key)) not in (int,float)
+                   or not math.isfinite(configuration[key]) for key in ('started_upper','deadline','remaining_seconds'))
+            or anchor['utc']['upper']!=configuration['started_upper']
+            or not 0<=configuration['remaining_seconds']<=configuration['deadline']-configuration['started_upper']):
+        raise measurements.TimeUnavailable('strict_clock_anchor_unqualified')
+    measurements.elapsed_bounds(anchor,anchor)
+    return anchor
 
 
 class Guard:
@@ -43,28 +66,44 @@ class Guard:
         self.accounting_verified = False
         self.native_observed_elapsed = {}
         self.invalidated_actors = set()
+        self.clock_observation = None
+        self.elapsed_upper = None
+        self.fixture_boottime = None
+        self.clock_qualified = False
 
     def accounting_readback(self, *, boottime=None):
-        current = time.clock_gettime(time.CLOCK_BOOTTIME) if boottime is None else boottime
-        elapsed = current - self.config['started_boottime']
+        # Rendering/cleanup must never reacquire a failed clock and prevent stop.
+        elapsed = self.elapsed_upper if self.clock_qualified else None
+        fixture = self.fixture_boottime is not None
+        if boottime is not None:
+            elapsed = boottime - self.config['started_boottime']
+            fixture = True
+        epoch = self.config.get('started_boottime') if fixture else None
         view = self.accounting_view or {}
         actors = {}
         for actor_id, actor in view.get('actors', {}).items():
             observation = self.usage_observations.get(actor_id)
             fingerprint, lease = observation if observation else ((None, None), None)
             first, latest = self.native_observed_elapsed.get(actor_id, (None, None))
-            epoch = self.config['started_boottime']
             actors[actor_id] = dict(known=actor['known'], settled=actor['settled'],
                 historical=actor_id in self.config.get('historical_actors', {}),
                 native_total_tokens=fingerprint[0], native_published_epoch=fingerprint[1],
-                first_observed_boottime=None if first is None else epoch + first,
-                last_observed_boottime=None if latest is None else epoch + latest,
-                lease_started_boottime=None if lease is None else epoch + lease,
-                lease_age_seconds=None if lease is None else elapsed - lease)
+                first_observed_boottime=None if epoch is None or first is None else epoch + first,
+                last_observed_boottime=None if epoch is None or latest is None else epoch + latest,
+                lease_started_boottime=None if epoch is None or lease is None else epoch + lease,
+                first_observed_elapsed_upper_seconds=first,
+                last_observed_elapsed_upper_seconds=latest,
+                lease_started_elapsed_upper_seconds=lease,
+                lease_age_seconds=None if lease is None or elapsed is None else elapsed - lease)
         return dict(tokens_used=view.get('tokens_used'), accounting_known=view.get('accounting_known'),
             actors=actors, metric='native_cumulative_total_tokens_including_cached_input',
-            last_verified_boottime=(self.config['started_boottime'] + self.last_verified_accounting_elapsed
+            last_verified_boottime=(epoch + self.last_verified_accounting_elapsed
+                if epoch is not None and self.accounting_verified else None),
+            last_verified_elapsed_upper_seconds=(self.last_verified_accounting_elapsed
                 if self.accounting_verified else None),
+            clock_basis='explicit_boottime_fixture' if fixture else self.config.get('clock_basis'),
+            clock_status='qualified' if self.clock_qualified else 'unavailable',
+            clock_observation=self.clock_observation,
             observation_lease_seconds=self.limits['accounting_max_age_seconds'],
             detection_interval_seconds=self.limits['poll_seconds'],
             publication_delay_seconds=None, publication_delay_status='unmeasured_independent_clock',
@@ -73,10 +112,12 @@ class Guard:
     def final_accounting_fence(self):
         """A forced stop does not turn the last sampled floor into final usage."""
         from .strict_final_usage import fence_final_usage
-        upper=self.config['started_upper']
-        if boot_id_value()==self.config['boot_id']:
-            upper+=max(0,time.clock_gettime(time.CLOCK_BOOTTIME)-self.config['started_boottime'])
+        if boot_id_value() != self.config['boot_id']:
+            return dict(state='accounting_unknown',reason='boot_identity_changed')
+        if self.config.get('clock_basis') != 'stable_time_host_counter_v1' or not self.config.get('clock_anchor'):
+            return dict(state='accounting_unknown',reason='clock_unqualified')
         try:
+            upper=measurements.utc_bounds()[1]
             ledger=_NonblockingLedger(self.config['wake_root'],self.config['objective_id'])
             view=ledger.inspect(now=upper)
             if self.accounting_view is None:
@@ -90,30 +131,68 @@ class Guard:
             result=fence_final_usage(ledger,actor_ids,now=upper)
             self.accounting_view=ledger.inspect(now=upper)
             return result
+        except measurements.TimeUnavailable:
+            return dict(state='accounting_unknown',reason='clock_unqualified')
         except BlockingIOError:
             return dict(state='accounting_unknown',reason='ledger_lock_busy')
         except (OSError,ValueError,KeyError,TypeError):
             return dict(state='accounting_unknown',reason='ledger_unavailable')
 
     def check(self, *, boottime=None):
+        self.clock_qualified = False
         if boot_id_value() != self.config['boot_id']:
             return 'boot_identity_changed'
-        current_boottime = time.clock_gettime(time.CLOCK_BOOTTIME) if boottime is None else boottime
-        elapsed = current_boottime - self.config['started_boottime']
-        if elapsed < 0:
-            return 'elapsed_time_invalid'
-        upper = self.config['started_upper'] + elapsed
-        if upper >= self.config['deadline'] - self.limits['stop_grace_seconds'] - self.limits['checkpoint_grace_seconds']:
-            return 'deadline_reached'
+        try:
+            if boottime is not None:
+                # This is an explicit host-injected deterministic fixture seam.
+                if type(boottime) not in (int, float) or not math.isfinite(boottime):
+                    return 'elapsed_time_invalid'
+                elapsed = boottime - self.config['started_boottime']
+                if elapsed < 0:
+                    return 'elapsed_time_invalid'
+                upper = self.config['started_upper'] + elapsed
+                self.fixture_boottime = boottime
+                self.clock_observation = None
+            else:
+                anchor = admission_clock(self.config)
+                current = measurements.snapshot()
+                elapsed = measurements.elapsed_bounds(anchor, current)[1]
+                if self.clock_observation is not None:
+                    measurements.elapsed_bounds(self.clock_observation, current)
+                self.clock_observation = current
+                self.fixture_boottime = None
+                self.elapsed_upper = max(self.elapsed_upper or 0, elapsed)
+                elapsed = self.elapsed_upper
+                remaining = min(self.config['remaining_seconds'],
+                    self.config['deadline'] - self.config['started_upper'])
+                graces = self.limits['stop_grace_seconds'] + self.limits['checkpoint_grace_seconds']
+                if elapsed >= remaining - graces:
+                    self.clock_qualified = True
+                    return 'deadline_reached'
+                # Counter-qualified elapsed is not itself a fresh UTC estimate.
+                if current.get('reason') != 'authenticated_utc' or current.get('utc') is None:
+                    return 'clock_unqualified'
+                upper = current['utc']['upper']
+            self.elapsed_upper = elapsed
+            self.clock_qualified = True
+            if upper >= self.config['deadline'] - self.limits['stop_grace_seconds'] - self.limits['checkpoint_grace_seconds']:
+                return 'deadline_reached'
+        except (measurements.TimeUnavailable, KeyError, TypeError, ValueError):
+            return 'clock_unqualified'
         try:
             controller = json.loads((Path(self.config['wake_root']) / 'lifecycle/supervision.json').read_text())
             pid = controller['pid']
             if (controller.get('active') is not True or not process_exists(pid)
                     or process_identity(pid) != controller['identity']
                     or Path('/proc', str(pid), 'stat').read_text().rsplit(')', 1)[1].split()[0] == 'Z'
-                    or controller.get('boot_id') != self.config['boot_id']
-                    or type(controller.get('observed_boottime')) not in (int, float)
-                    or not 0 <= current_boottime - controller['observed_boottime'] <= self.limits['accounting_max_age_seconds']):
+                    or controller.get('boot_id') != self.config['boot_id']):
+                return 'controller_unavailable'
+            if boottime is not None:
+                if (type(controller.get('observed_boottime')) not in (int, float)
+                        or not 0 <= boottime - controller['observed_boottime'] <= self.limits['accounting_max_age_seconds']):
+                    return 'controller_unavailable'
+            elif not measurements.fresh(controller.get('clock_observation'),
+                    self.limits['accounting_max_age_seconds'], current=current):
                 return 'controller_unavailable'
         except (OSError, ValueError, KeyError, TypeError, IndexError):
             return 'controller_unavailable'
@@ -256,8 +335,8 @@ class Guard:
                     pending_initial.add(actor_id)
                     continue
                 # Native wall time is not an elapsed-time authority. Lease the
-                # immutable native observation against this guard's BOOTTIME
-                # epoch; first observation gets only admission's original grace.
+                # immutable native observation against this guard's retained elapsed
+                # origin; first observation gets only admission's original grace.
                 previous = self.usage_observations.get(actor_id)
                 fingerprint = (usage, observed)
                 if previous is None:
@@ -329,7 +408,10 @@ def _status(config, state, reason=None, child_pid=None, accounting=None):
                 service_identity=service_identity,
                 accounting=accounting,
                 final_usage=config.get('final_usage'),
-                observed_boottime=time.clock_gettime(time.CLOCK_BOOTTIME),
+                observed_boottime=None,
+                clock_basis=(accounting or {}).get('clock_basis',config.get('clock_basis')),
+                clock_status=(accounting or {}).get('clock_status','unavailable'),
+                clock_observation=(accounting or {}).get('clock_observation'),
                 accounting_error=config.get('accounting_error')), stream, sort_keys=True)
             stream.flush()
             os.fsync(stream.fileno())
@@ -368,21 +450,29 @@ def run(config):
         reason = 'guard_observation_failed'
     finally:
         config['accounting_error']=guard.last_accounting_error
-        config['final_usage']=guard.final_accounting_fence()
-        _status(config, 'stopping', reason, child_pid=child.pid if child else None,
-            accounting=guard.accounting_readback())
-        if child is not None and child.poll() is None:
-            # Allow native shutdown to persist what it can within the original
-            # allowance. This is no new model turn or invented semantic checkpoint.
-            child.terminate()
-            try:
-                child.wait(timeout=guard.limits['checkpoint_grace_seconds'])
-            except subprocess.TimeoutExpired:
-                pass
-        _status(config, 'stopped', reason, child_pid=child.pid if child else None,
-            accounting=guard.accounting_readback())
-        # Exiting the service main makes systemd stop all descendants under its
-        # separate bounded stop grace, even when native shutdown did not finish.
+        try:
+            config['final_usage']=guard.final_accounting_fence()
+        except Exception:
+            config['final_usage']=dict(state='accounting_unknown',reason='final_accounting_unavailable')
+        try:
+            accounting=guard.accounting_readback()
+        except Exception:
+            accounting=dict(clock_status='unavailable',clock_basis=config.get('clock_basis'))
+        try:
+            _status(config, 'stopping', reason, child_pid=child.pid if child else None, accounting=accounting)
+        finally:
+            # Timestamp/readback failure cannot keep owned work running.
+            if child is not None and child.poll() is None:
+                try:
+                    child.terminate()
+                    grace=measurements.deadline(guard.limits['checkpoint_grace_seconds'])
+                    while child.poll() is None and not grace.expired():
+                        time.sleep(min(.025,grace.remaining()))
+                except (ProcessLookupError,measurements.TimeUnavailable):
+                    # Service exit still delegates owned group cleanup to systemd.
+                    pass
+            _status(config, 'stopped', reason, child_pid=child.pid if child else None, accounting=accounting)
+        # Service exit lets systemd enforce its independent control-group stop.
     return 5
 
 

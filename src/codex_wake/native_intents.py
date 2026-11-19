@@ -52,6 +52,15 @@ def _request(args, root):
         target = dict(args._schedule_target)
     else:
         bind_mode(args, root, target)
+    from .runtime_policies import require_native_policy
+    busy_policy = getattr(args, 'busy_policy', 'wait')
+    require_native_policy(busy_policy)
+    # Absence is the historical immutable wait default. Preserve old request
+    # fingerprints on replay; queue must be retained explicitly.
+    if busy_policy == 'queue':
+        target['busy_policy'] = busy_policy
+    else:
+        target.pop('busy_policy', None)
     cwd = args._registration_cwd if hasattr(args, "_registration_cwd") else Path.cwd().resolve()
     content = {"root": str(root), "cwd": str(cwd), "target": target,
                "schedule": schedule, "ttl_seconds": ttl, "prompt": prompt,
@@ -233,6 +242,7 @@ def valid_record(record):
 
 def _valid_native_target(target):
     return (target['transport'] == 'native' and str(UUID(target['thread_id'])) == target['thread_id']
+            and target.get('busy_policy', 'wait') in ('wait', 'queue')
             and target['endpoint'].startswith('unix://') and Path(target['codex_cmd']).is_absolute())
 
 

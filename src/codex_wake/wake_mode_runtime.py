@@ -161,6 +161,36 @@ class ModeRuntimeAdapter:
                 return RuntimeSubmission('uncertain', reason='background_turn_acceptance_unverified')
         return self.adapter.submit(routed, prompt)
 
+    def submit_bounded(self, recipient, prompt, envelope):
+        # Bounded pending input must never use the background turn/start route.
+        from .runtime_delivery import submit_bounded
+        from .runtime_policies import native_delivery_ready
+        if recipient.binding.get('session_mode') is None:
+            return submit_bounded(self.adapter, recipient, prompt, envelope)
+        if recipient.binding.get('session_mode') == 'session_only':
+            from .wake_session_modes import session_state
+            state = session_state(recipient.binding)
+            if state != 'live':
+                return RuntimeSubmission('not_sent', reason='session_closed' if state == 'closed' else 'session_owner_unverified', pre_io=True)
+        selected = self._selected.get(recipient.session_id)
+        if selected is None:
+            return RuntimeSubmission('not_sent', reason='mode_route_not_observed', pre_io=True)
+        routed, route, resumed = selected
+        try:
+            if self._presence(routed.binding, resumed=resumed) != ('existing_tab' if route == 'new_tab' else route):
+                return RuntimeSubmission('not_sent', reason='recipient_ownership_changed', pre_io=True)
+            recheck = self.adapter.resolve(dict(routed.binding, resume_policy='hold'))
+            if not native_delivery_ready(routed.binding, self.adapter.observe(recheck)):
+                return RuntimeSubmission('not_sent', reason='recipient_busy_or_unavailable', pre_io=True)
+        except Exception:
+            return RuntimeSubmission('not_sent', reason='recipient_ownership_unknown', pre_io=True)
+        return submit_bounded(self.adapter, routed, prompt, envelope)
+
+    def reconcile_bounded(self, recipient, prompt, envelope):
+        from .runtime_delivery import RuntimeReconciliation
+        method = getattr(self.adapter, 'reconcile_bounded', None)
+        return method(recipient, prompt, envelope) if method else RuntimeReconciliation(None, 'bounded_native_backend_not_qualified')
+
     def reconcile(self, recipient, prompt):
         # Reconciliation never restores a tab, resumes a thread, or submits work.
         return self.adapter.reconcile(recipient, prompt)
@@ -250,12 +280,14 @@ def registration_harness_readiness(root, record):
             return dict(state='unavailable', reason='recipient_identity_unverified')
         if thread.get('status', {}).get('type') not in ('idle', 'active', 'notLoaded'):
             return dict(state='unavailable', reason='recipient_state_unverified')
+        from .runtime_delivery import bounded_nonadmitted_terminal
         for peer in _peer_records(root, time.monotonic() + 5):
             other = peer.get('target', {})
             if (peer.get('id') != record['id'] and other.get('transport') == 'native'
                     and other.get('thread_id') == target['thread_id']
                     and other.get('endpoint') == target['endpoint']
                     and peer.get('native_delivery', {}).get('state') in ('accepted', 'uncertain')
+                    and not bounded_nonadmitted_terminal(peer)
                     and _terminal_receipt(root, peer) is None):
                 return dict(state='held', reason='peer_history_reconciliation_required')
         return dict(state='ready', reason='exact_native_read_verified',
@@ -278,6 +310,9 @@ def _pending_peer(root, record, adapter):
                 continue
             if other.get('transport') != 'native' or other.get('endpoint') != target['endpoint']:
                 continue
+            from .runtime_delivery import bounded_nonadmitted_terminal
+            if bounded_nonadmitted_terminal(peer):
+                continue
             delivery = peer.get('native_delivery', {})
             if delivery.get('state') not in ('accepted', 'uncertain'):
                 continue
@@ -287,7 +322,8 @@ def _pending_peer(root, record, adapter):
                     return True, background_owned
                 remote_reads += 1
                 recipient = adapter.resolve(_peer_read_target(other, target))
-                evidence = adapter.reconcile(recipient, native_prompt(root, peer)).evidence
+                from .runtime_delivery import reconcile_submission
+                evidence = reconcile_submission(adapter, recipient, native_prompt(root, peer), peer).evidence
                 if recipient.runtime != 'codex' or recipient.session_id != target['thread_id'] or not _terminal_evidence(evidence):
                     return True, background_owned
                 _terminal_receipt(root, peer, evidence)

@@ -1,0 +1,44 @@
+{
+  "review_passes": 1,
+  "wake_base": "f8e879c291c172add80211b83de2b3c581fa2295",
+  "wake_tip": "f28a2b6e23a5d041e00a2cc2833fd09b716219b8",
+  "native_base": "075639f50a5cf8f8cdfa39b5213cd77a6efa3d53",
+  "native_tip": "9af0e8e48d0c2dcfe1800a3deaadfcec7e2c0bd7",
+  "standards": {
+    "S-BATCH-01": {
+      "severity": "low",
+      "disposition": "nonblocking_backlog",
+      "finding": "Existing private queue helper expanded string scenario switching; possible PrimitiveObsession/RepeatedSwitches",
+      "verified_hunks": "queue_service.rs1693,1721,1725,1760,1823,1848",
+      "reason": "Typed scenario enum may improve maintainability; no demonstratedbehavioralbug. Defer to avoid test-harness-only rewrite contrary user testingeconomics.",
+      "owner": "root/#695"
+    }
+  },
+  "spec": {
+    "SOURCE": {
+      "findings": 0
+    },
+    "PACKAGE": {
+      "disposition": "needs_evidence",
+      "finding": "New exact Native bytes require complete package5/UID1017; historical package4 not qualifying. Original fullPython failure retained."
+    }
+  },
+  "bounded_tdd_findings_pass": {
+    "passes": 1,
+    "accepted_behavioral_blockers": 0,
+    "new_tests_or_source_edits": false,
+    "reason": "No accepted behavioral finding has a red-capable regression to fix. Existing249 source redgreencontrols remain valid; no manufacturedfixture work."
+  },
+  "review_agents": [
+    "/root/final695_standards",
+    "/root/final695_spec"
+  ],
+  "native_source_remains_frozen": true,
+  "subsequent_runtime_blocker": {
+    "source": "ff9b9c01",
+    "scope": "bounded_native.py admitted wire clock validation only",
+    "verification": "public reproduction red; exactnative response causalreplay;10focusedPASS311/312; installed failedstage only rerunPASS25.147s",
+    "broad_review_repeated": false,
+    "native_source_changed": false
+  }
+}

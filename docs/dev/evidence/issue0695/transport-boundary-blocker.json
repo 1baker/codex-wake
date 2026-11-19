@@ -1,0 +1,39 @@
+{
+  "ticket": "695-TIMING",
+  "state": "blocked_not_qualified",
+  "native_commit": "075639f50a5cf8f8cdfa39b5213cd77a6efa3d53",
+  "package_codex_sha256": "44f25dea7c6fc65c1745dcbb94782ebd4da404dad1ddff838aa658ba6ff23f5b",
+  "qualified_existing": {
+    "prepared_expiry": "Installed UID1017 proof: eligible at hook entry, expiry before hook return, no expired prompt/derived context in either provider request, including reload; scope before core request admission.",
+    "clock_projection": "StableTimeClock fresh same-UID private host-counter read projects helper sample forward, validates counter monotonicity/frequency, bounds reader age <=2s and remaining lease. Does not continuously update projected bounds after return.",
+    "recovery": "HTTP opaque retry max_attempts=1 and explicit HTTP/auth/WS request rechecks preserve original record/turn/deadline/epoch."
+  },
+  "source_counterexample": {
+    "http": "core/client.rs2118-2125 admits, then endpoint/responses.rs84 prepares encoded request; endpoint/session.rs145-153 subsequently awaits AuthProvider.apply_auth before transport.stream. Async auth may delay after the authoritative check; no expiry check below it.",
+    "websocket": "core/client.rs2473-2487 admits before ResponsesWebsocketConnection.stream_request; endpoint/responses_websocket.rs327 serializes,330 spawns,362-370 awaits stream mutex,178 queues WsCommand,122 sends from a separate pump. No admission handle is passed through options/command to recheck after these waits.",
+    "observation": "A qualifying sample at t0 plus delayed mutex/pump/auth completion at t1>=expiry can still initiate provider send using t0 permission. This is source evidence, not an executed red/green regression or observed installed violation."
+  },
+  "minimal_remediation": {
+    "scope": [
+      "codex-rs/core/src/client.rs",
+      "codex-rs/codex-api/src/endpoint/responses.rs",
+      "codex-rs/codex-api/src/endpoint/responses_websocket.rs",
+      "codex-rs/codex-api/src/endpoint/session.rs",
+      "shared transport/request-admission contract as needed"
+    ],
+    "action": "Carry optional bounded admission callback across API boundary; recheck after HTTP auth/request preparation and after WS stream-lock/command-queue waiting inside actual sender, before sending the first provider message. Preserve existing outer checks and explicit retries. Rejected admission must emit a distinct pre-send outcome without leaking staged input/history or clearing independent socket state.",
+    "test_seam": "Reuse queue_service bounded-input integration and core_test_support WebSocketTestServer wait_for_request. Freeze qualified clock, block public AuthProvider.apply_auth or an actual occupied WS stream, cross deadline while blocked, release and assert zero newly expired bounded provider requests; allow an unexpired control and check reload history. Direct API-only/private-mutex tests cannot alone establish full bounded queue contract.",
+    "tests_not_run": true
+  },
+  "residual_semantics": "Moving the check into sender removes known asynchronous gaps; it cannot guarantee strict remote model execution deadline through arbitrary OS suspension between final trusted counter read and network syscall, or network/provider delay. Literal remote-start guarantee requires provider-side enforcement of the original expiry. Otherwise operator must explicitly accept an application-admission boundary or bounded trusted-send contract; do not silently weaken existing Plan0248 language.",
+  "effects": {
+    "native_modified": false,
+    "wake_modified": false,
+    "native_builds": 0,
+    "uid1017_journeys": 0,
+    "credential_reads_or_copies": 0,
+    "working_daemon_signals": 0,
+    "memory_writes": 0
+  },
+  "next_action": "Root adjudicate application-send vs remote-execution semantics and authorize serialized minimal native seam red/green if removal of known async gaps is required; keep activation/695 closure blocked."
+}

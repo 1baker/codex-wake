@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "issue": 695,
+  "state": "captured_background_job_failure_diagnosed_environment_clock_discontinuity",
+  "source_commit": "e1c046ff42b5acd45703d6f8b66a8e1ca6f6c984",
+  "comprehensive_attempt": {
+    "tests_run": 389,
+    "seconds": 377.36311016598484,
+    "exit_code": 1,
+    "full_suite_pass": false,
+    "failed_test": "test_background_jobs.BackgroundJobsTests.test_public_mutation_profile_uses_fresh_host_claimant_at_each_launch",
+    "assertion": "unknown != completed",
+    "original_handoff_method": "passed within discovery; historical originalfailure not causally explained"
+  },
+  "focused": {
+    "first_method": "PASS1.604s",
+    "first_bounded_probe": "FAIL first repetition0.839s",
+    "instrumented_probe": "FAIL repetition9/7.366s at same legacyprofile assertion",
+    "supervisor_reason": "launch_not_released",
+    "supervisor_exception": {
+      "code": "owner_unqualified",
+      "message": "fresh exact managed process binding required",
+      "notes": [
+        "{\"observed_at\": 1794916830.437962, \"now\": 1794916821.72332, \"monotonic\": 149977.994787822}"
+      ],
+      "type": "ResourceClaimError"
+    },
+    "controlled_continuous_clock": {
+      "tests": 10,
+      "seconds": 7.301679130003322,
+      "success": true
+    },
+    "clock_substitution": "Temporary diagnostic only: shared wall anchor plus process monotonic, inherited by isolated test supervisors. No production acceptance or host clock change."
+  },
+  "independent_kernel_clock_observation": {
+    "samples": 392,
+    "seconds": 8,
+    "discontinuities": [
+      {
+        "realtime_delta_ns": 8392511055,
+        "monotonic_delta_ns": 20191008
+      },
+      {
+        "realtime_delta_ns": -8852708725,
+        "monotonic_delta_ns": 20395825
+      },
+      {
+        "realtime_delta_ns": 8525662373,
+        "monotonic_delta_ns": 22550321
+      },
+      {
+        "realtime_delta_ns": -8851361557,
+        "monotonic_delta_ns": 20340256
+      }
+    ]
+  },
+  "conclusion": "Observed claimant timestamp1794916830.437962 then supervisor wall1794916821.72332: backward8.714642s. Freshness guard correctly rejects future evidence before childcreation. Independent CLOCK_REALTIME vs CLOCK_MONOTONIC sampling confirms repeated8-9second host realtime discontinuities. Stable diagnostic clock removes this captured failure. This does not prove cause of the older handoff assertion.",
+  "safety": {
+    "product_guards_unchanged": true,
+    "temporary_instrumentation_removed": true,
+    "working_daemon_changed": false,
+    "credentials_copied": false,
+    "native_rebuilds": 0,
+    "broad_reviews_repeated": 0,
+    "synthetic_provider_calls": 0
+  },
+  "next_action": "Decide and qualify a stable cross-process claimant freshness clock (or repair host realtime); preserve fail-closed guards. Do not repeatedly rerun comprehensive discovery on discontinuous realtime. Retain historical handofffailure as unresolved; parent695 OPEN."
+}

@@ -1,5 +1,7 @@
 # 0244 — Installed recurrence acceptance (#685)
 
+State: CLOSED
+
 State COMPLETE after installed acceptance and cleanup reconciliation. Owner root/ecochran76; WIP1. Branch test/recurrence-685, base8b429c80.
 Evidence: docs/dev/evidence/0244-recurrence-acceptance.md.
 Prior #674/#681 accepted and dev37 installed. Preserve dirty primary and unknown

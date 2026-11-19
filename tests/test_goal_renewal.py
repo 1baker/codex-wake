@@ -271,14 +271,25 @@ class GoalRenewalTests(unittest.TestCase):
                 )
 
     def test_approved_resume_waits_for_new_revision_first_poll(self):
+        import json
         from codex_wake.goal_renewal import propose, apply
 
         with tempfile.TemporaryDirectory() as directory:
-            root, policy, _, native, _ = self.fixture(directory)
+            root, policy, _, native, request = self.fixture(directory)
             native["goal"]["status"] = "paused"
             native["active"] = []
+            clock=dict(reason='authenticated_utc',utc=dict(status='network',lower=NOW,upper=NOW),
+                valid_for_ns=300000000000,counter=dict(epoch='c357309d-c209-4467-b757-e1488e6b1aaa',
+                    counter=1000,frequency=1000,rate_ppm=0))
+            controller=dict(fresh=True,generation='controller',interval=1)
+            def native_call(endpoint,executable,method,params,timeout):
+                if method=='thread/goal/set' and params.get('status')=='active':
+                    native['calls'].append((method,params));native['goal']['status']='active';return {}
+                return request(endpoint,executable,method,params,timeout)
             with (
-                self.controller(root),
+                patch('codex_wake.goal_supervision._heartbeat',return_value=controller),
+                patch('codex_wake.measurements.snapshot',return_value=clock),
+                patch('codex_wake.goal_supervision.native_request',side_effect=native_call),
                 patch("codex_wake.lifecycle_budget.trusted_upper", return_value=NOW),
             ):
                 enroll(root, policy, THREAD, 40, 120)
@@ -316,6 +327,71 @@ class GoalRenewalTests(unittest.TestCase):
                     expected_fingerprint=packet["fingerprint"],
                 )
                 self.assertEqual(retry["resume_state"], "awaiting_first_poll")
+                receipt_path=next(path for path in (root/'goal-supervision').glob('*.json')
+                    if path.name!='controller.json')
+                retained=json.loads(receipt_path.read_text())
+                original_deadline=retained['deadline']
+                acknowledgement=dict(enrollment_revision=retained['enrollment_revision'],
+                    receipt_generation=retained['generation'],controller_generation=controller['generation'],
+                    observed_boottime=10)
+                retained['poll_ack']=acknowledgement
+                receipt_path.write_text(json.dumps(retained))
+                legacy=apply(root,policy,THREAD,packet['proposal_id'],principal=operator,
+                    expected_fingerprint=packet['fingerprint'])
+                self.assertEqual(legacy['resume_state'],'awaiting_first_poll')
+                self.assertFalse(any(method=='thread/goal/set' for method,_ in native['calls']))
+                acknowledgement.update(observed_boottime=None,clock_observation=clock)
+                receipt_path.write_text(json.dumps(retained))
+                fresh=apply(root,policy,THREAD,packet['proposal_id'],principal=operator,
+                    expected_fingerprint=packet['fingerprint'])
+                self.assertTrue(fresh['resumed'])
+                again=apply(root,policy,THREAD,packet['proposal_id'],principal=operator,
+                    expected_fingerprint=packet['fingerprint'])
+                self.assertTrue(again['resumed'])
+                self.assertEqual(sum(method=='thread/goal/set' for method,_ in native['calls']),1)
+                after=json.loads(receipt_path.read_text())
+                self.assertEqual(after['poll_ack'],acknowledgement)
+                self.assertEqual(after['deadline'],original_deadline)
+
+
+    def test_existing_allowance_resume_requires_structured_first_poll_without_refreshing_it(self):
+        import json
+        from codex_wake.goal_renewal import resume_existing
+        clock=dict(reason='authenticated_utc',utc=dict(status='network',lower=NOW,upper=NOW),
+            valid_for_ns=300000000000,counter=dict(epoch='c357309d-c209-4467-b757-e1488e6b1aaa',
+                counter=1000,frequency=1000,rate_ppm=0))
+        controller=dict(fresh=True,generation='controller',interval=1)
+        with tempfile.TemporaryDirectory() as directory:
+            root,policy,_,native,request=self.fixture(directory)
+            native['goal']['status']='paused';native['active']=[]
+            def native_call(endpoint,executable,method,params,timeout):
+                if method=='thread/goal/set' and params.get('status')=='active':
+                    native['calls'].append((method,params));native['goal']['status']='active';return {}
+                return request(endpoint,executable,method,params,timeout)
+            with patch('codex_wake.goal_supervision._heartbeat',return_value=controller),patch(
+                    'codex_wake.lifecycle_budget.trusted_upper',return_value=NOW),patch(
+                    'codex_wake.measurements.snapshot',return_value=clock),patch(
+                    'codex_wake.goal_supervision.native_request',side_effect=native_call):
+                first=enroll(root,policy,THREAD,100,120)
+                path=next(path for path in (root/'goal-supervision').glob('*.json') if path.name!='controller.json')
+                receipt=json.loads(path.read_text())
+                acknowledgement=dict(enrollment_revision=receipt['enrollment_revision'],
+                    receipt_generation=receipt['generation'],controller_generation=controller['generation'],
+                    observed_boottime=10)
+                receipt['poll_ack']=acknowledgement
+                path.write_text(json.dumps(receipt))
+                principal=Principal(THREAD,'operator')
+                held=resume_existing(root,policy,THREAD,principal=principal,operation_id='existing-resume')
+                self.assertEqual(held['resume_state'],'awaiting_first_poll')
+                self.assertFalse(any(method=='thread/goal/set' for method,_ in native['calls']))
+                acknowledgement.update(observed_boottime=None,clock_observation=clock)
+                path.write_text(json.dumps(receipt))
+                accepted=resume_existing(root,policy,THREAD,principal=principal,operation_id='existing-resume')
+                self.assertTrue(accepted['resumed'])
+                after=json.loads(path.read_text())
+                self.assertEqual(after['poll_ack'],acknowledgement)
+                self.assertEqual(after['deadline'],first['deadline'])
+                self.assertEqual(sum(method=='thread/goal/set' for method,_ in native['calls']),1)
 
     def test_interrupted_state_publication_reconciles_same_operation_without_new_authority(
         self,

@@ -8,10 +8,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
+from codex_wake import measurements
 from codex_wake.monitor import (
     health_is_recent,
     monitor_health_path,
     monitor_readiness,
+    read_monitor_health,
     parse_unit_exec_start_wake_root,
     write_monitor_health,
 )
@@ -42,6 +44,35 @@ class FakeRunner:
 
 
 class MonitorTests(unittest.TestCase):
+    def test_default_health_uses_qualified_time_without_overstating_freshness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root, state = Path(tmp) / "wake", Path(tmp) / "monitors"
+            # The observation may have happened at 00:00:00.25, not at its upper bound.
+            with patch("codex_wake.measurements.utc_bounds", return_value=(1767225600.25, 1767225602.0)):
+                write_monitor_health(wake_root=root, source="test", mode="loop", state_dir=state)
+            health = read_monitor_health(root, state)
+            self.assertEqual(health["checked_at"], "2026-01-01T00:00:00Z")
+            for bounds, expected in (((1767225719.0, 1767225720.0), True),
+                                     ((1767225719.0, 1767225720.01), False),
+                                     ((1767225599.0, 1767225601.0), False)):
+                with self.subTest(bounds=bounds), patch("codex_wake.measurements.utc_bounds", return_value=bounds):
+                    self.assertEqual(health_is_recent(health), expected)
+
+    def test_unqualified_time_keeps_diagnostics_but_cannot_prove_health_freshness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root, state = Path(tmp) / "wake", Path(tmp) / "monitors"
+            with patch("codex_wake.measurements.utc_bounds", side_effect=measurements.TimeUnavailable("test unavailable")):
+                write_monitor_health(wake_root=root, source="test", mode="loop", state_dir=state)
+                health = read_monitor_health(root, state)
+                self.assertIsNone(health["checked_at"])
+                self.assertEqual(health["time_status"], "not_observed")
+                self.assertFalse(health_is_recent(health))
+                self.assertFalse(health_is_recent({"checked_at": "2026-01-01T00:00:00Z"}))
+                # An explicit trusted host point remains usable without a default clock.
+                point = datetime(2026, 1, 1, tzinfo=UTC)
+                write_monitor_health(wake_root=root, source="test", mode="loop", state_dir=state, now=point)
+                self.assertTrue(health_is_recent(read_monitor_health(root, state), now=point))
+
     def test_health_advertises_a_live_identity_bound_signal_reader(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)

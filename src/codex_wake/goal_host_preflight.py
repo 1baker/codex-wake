@@ -11,13 +11,21 @@ import os
 from pathlib import Path
 import socket
 import struct
-import time
 
 from . import goal_supervision as supervision
+from . import measurements
 from .records import WakeError
 
 
 MODES = {'hard_admission', 'sampled_stop', 'manual'}
+
+
+def _time_metadata():
+    """Inspection and existing protective controls survive missing UTC."""
+    try:
+        return dict(observed_at=measurements.utc_time(),time_status='qualified_utc')
+    except measurements.TimeUnavailable:
+        return dict(observed_at=None,time_status='not_observed')
 
 
 def _digest(value):
@@ -98,7 +106,7 @@ def _static(root, profile, options, thread):
                 notice_read = 'unsupported'
             except (OSError, ValueError, WakeError):
                 pass
-            saved = dict(version=1, receipt_id=key, observed_at=time.time(), binding=binding,
+            saved = dict(version=1, receipt_id=key, **_time_metadata(), binding=binding,
                 capabilities=dict(hard_admission=False, notice_read=notice_read,
                     request_path='unqualified', client_server_same_binary=binding['client']['sha256'] == peer['binary']['sha256']),
                 limitations=['Client executable and connected server executable are identified separately; neither proves model request-path admission.',
@@ -121,7 +129,7 @@ def inspect_host(root, profile, caller):
     from .goal_governance import snapshot
     control = snapshot(root, thread)
     result = dict(version=1, thread_id=thread, requested_mode=options['requested_mode'],
-        observed_at=time.time(), mode='degraded', admitted=False, governance=control,
+        **_time_metadata(), mode='degraded', admitted=False, governance=control,
         static=None, dynamic=None, effect_attempted=False, resources_renewed=False,
         native_admission='unsupported', maximum_token_overshoot=None)
     try:
@@ -165,12 +173,12 @@ def inspect_host(root, profile, caller):
             except (OSError, ValueError, KeyError, TypeError, WakeError):
                 notice['current_model_context'] = False
             notices[name] = notice
-        result['dynamic'] = dict(observed_at=time.time(), accounting=diagnosis['accounting'],
+        result['dynamic'] = dict(**_time_metadata(), accounting=diagnosis['accounting'],
             controller=diagnosis['controller'], engagement=status.get('engagement'),
             state=status.get('state'), stop_latched=status.get('stop_latched', False),
             notice_surfaces=notices, controls=governor.get('controls', []))
     except (OSError, ValueError, KeyError, TypeError, WakeError) as error:
-        result['dynamic'] = dict(observed_at=time.time(), state='unavailable', reason=type(error).__name__, message=str(error)[:256])
+        result['dynamic'] = dict(**_time_metadata(), state='unavailable', reason=type(error).__name__, message=str(error)[:256])
     control = snapshot(root, thread)
     result['governance'] = control
     manual = options.get('manual_authorization')

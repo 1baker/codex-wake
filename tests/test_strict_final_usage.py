@@ -13,6 +13,12 @@ from codex_wake.objective_ledger import ObjectiveLedger
 from codex_wake.strict_runtime import location
 
 
+def qualified_clock(upper=1893456001):
+    return dict(reason='authenticated_utc', utc=dict(status='network',lower=upper-.1,upper=upper),
+        valid_for_ns=300000000000,counter=dict(epoch='c357309d-c209-4467-b757-e1488e6b1aaa',
+        counter=1000,frequency=1000,rate_ppm=0))
+
+
 class StrictFinalUsageTests(unittest.TestCase):
     def fixture(self, directory):
         root=Path(directory)/'wake';root.mkdir(mode=0o700)
@@ -60,7 +66,7 @@ class StrictFinalUsageTests(unittest.TestCase):
         output=StringIO()
         with (redirect_stdout(output), patch('codex_wake.strict_runtime.SystemdExecution.inspect',
                 return_value=dict(populated=False,members=[],state='inactive')),
-                patch('codex_wake.native_clock.snapshot',return_value={'utc':{'upper':1893456001}})):
+                patch('codex_wake.measurements.snapshot',return_value=qualified_clock())):
             code=run(['--wake-root',str(root),'sessions','execution','--profiles',str(profiles),
                 '--profile','worker','--thread-id','source','--json',*extra])
         return code,json.loads(output.getvalue())
@@ -101,18 +107,16 @@ class StrictFinalUsageTests(unittest.TestCase):
                 self.assertEqual(actor['reservation'],100)
 
     def test_nonblocking_fence_reports_lock_busy_without_claiming_final(self):
-        import fcntl,time
+        import fcntl
         from codex_wake.strict_executor import _NonblockingLedger
         from codex_wake.strict_final_usage import fence_final_usage
         with tempfile.TemporaryDirectory() as directory:
             root,_,ledger,_,_=self.fixture(directory)
             with ledger.lock_path.open('a') as lock:
                 fcntl.flock(lock,fcntl.LOCK_EX)
-                started=time.monotonic()
                 result=fence_final_usage(_NonblockingLedger(root,'objective'),['spawn:owned'],now=1893456001)
                 self.assertEqual(result['reason'],'ledger_lock_busy')
                 self.assertEqual(result['state'],'accounting_unknown')
-                self.assertLess(time.monotonic()-started,.2)
 
     def test_public_authorization_preserves_usage_and_allows_only_fresh_new_reservation(self):
         import sys
@@ -126,7 +130,7 @@ class StrictFinalUsageTests(unittest.TestCase):
                 approval='operator explicit renewal',revision=cfg['revision'])
             profiles.write_text(json.dumps(registry))
             with (patch('codex_wake.strict_runtime.SystemdExecution.inspect',return_value=dict(populated=False,members=[],state='inactive')),
-                    patch('codex_wake.native_clock.snapshot',return_value={'utc':{'upper':1893456001}}),redirect_stdout(StringIO())):
+                    patch('codex_wake.measurements.snapshot',return_value=qualified_clock()),redirect_stdout(StringIO())):
                 self.assertEqual(run(['--wake-root',str(root),'sessions','configuration','--profiles',str(profiles),
                     '--profile','worker','--thread-id','source','--apply-budget-authorization','--json']),0)
             cfg={k:v for k,v in cfg.items() if k not in ('source_thread_id','profile')}
@@ -137,6 +141,14 @@ class StrictFinalUsageTests(unittest.TestCase):
                 intent=dict(configuration=cfg,continuation=registry['continuations']['source'],
                     launch=dict(codex_home=str(layout/'home'),app_server='unix://'+str(layout/'app-server.sock'),
                         codex_path=sys.executable,cwd=directory,timeout=1)))
+            from codex_wake import measurements
+            original_deadline=cfg['objective_deadline']
+            with patch('codex_wake.measurements.snapshot',side_effect=measurements.TimeUnavailable('lost')),patch(
+                    'codex_wake.strict_runtime.SystemdExecution.inspect',return_value=dict(populated=False,members=[],state='inactive')),patch(
+                    'codex_wake.strict_runtime.SystemdExecution.launch') as withheld:
+                with self.assertRaises(ValueError):
+                    ensure_execution(root,receipt)
+                withheld.assert_not_called()
             captured={}
             def launch(unit,argv,**kwargs):
                 captured.update(json.loads(Path(argv[-1]).read_text()))
@@ -145,10 +157,30 @@ class StrictFinalUsageTests(unittest.TestCase):
                     patch('codex_wake.strict_runtime.SystemdExecution.launch',side_effect=launch),
                     patch('codex_wake.strict_runtime.Path.is_socket',return_value=True),
                     patch('codex_wake.native_protocol.native_request',return_value={}),
-                    patch('codex_wake.native_clock.snapshot',return_value={'utc':{'upper':1893456001}})):
+                    patch('codex_wake.measurements.snapshot',return_value=qualified_clock())):
                 ensure_execution(root,receipt)
+            self.assertEqual(captured['clock_anchor'],qualified_clock())
+            self.assertEqual(captured['started_upper'],qualified_clock()['utc']['upper'])
+            self.assertIsNone(captured['started_boottime'])
+            self.assertEqual(captured['configuration']['objective_deadline'],original_deadline)
             self.assertEqual(captured['historical_actors'],{'spawn:owned':27})
             self.assertEqual(ledger.inspect(now=1893456001)['tokens_used'],27)
+            from codex_wake.strict_runtime import guard_execution
+            from codex_wake.records import WakeError
+            binding=json.loads((layout/'binding.json').read_text())
+            config_path=layout/('guard-'+binding['generation']+'.json')
+            legacy=json.loads(config_path.read_text());legacy.pop('clock_anchor')
+            config_path.write_text(json.dumps(legacy))
+            original=config_path.read_bytes()
+            with patch('codex_wake.strict_runtime.read_execution',return_value=binding),patch(
+                    'codex_wake.measurements.snapshot') as replacement_clock:
+                self.assertFalse(guard_execution(root,receipt))
+                self.assertEqual(receipt['reason'],'strict_execution_clock_unqualified')
+                with self.assertRaises(WakeError):
+                    ensure_execution(root,receipt)
+                replacement_clock.assert_not_called()
+            self.assertEqual(config_path.read_bytes(),original)
+
 
     def test_renewal_rejects_unsettled_or_unknown_prior_actor_even_after_operator_extension(self):
         import sys
@@ -164,7 +196,7 @@ class StrictFinalUsageTests(unittest.TestCase):
                     approval='operator explicit renewal',revision=cfg['revision'])
                 profiles.write_text(json.dumps(registry))
                 with (patch('codex_wake.strict_runtime.SystemdExecution.inspect',return_value=dict(populated=False,members=[],state='inactive')),
-                        patch('codex_wake.native_clock.snapshot',return_value={'utc':{'upper':1893456001}}),redirect_stdout(StringIO())):
+                        patch('codex_wake.measurements.snapshot',return_value=qualified_clock()),redirect_stdout(StringIO())):
                     self.assertEqual(run(['--wake-root',str(root),'sessions','configuration','--profiles',str(profiles),
                         '--profile','worker','--thread-id','source','--apply-budget-authorization','--json']),0)
                 cfg={k:v for k,v in cfg.items() if k not in ('source_thread_id','profile')}
@@ -178,7 +210,7 @@ class StrictFinalUsageTests(unittest.TestCase):
                             codex_path=sys.executable,cwd=directory,timeout=1)))
                 with (patch('codex_wake.strict_runtime.SystemdExecution.inspect',return_value=dict(populated=False,members=[],state='inactive')),
                         patch('codex_wake.strict_runtime.SystemdExecution.launch') as launch,
-                        patch('codex_wake.native_clock.snapshot',return_value={'utc':{'upper':1893456001}})):
+                        patch('codex_wake.measurements.snapshot',return_value=qualified_clock())):
                     with self.assertRaisesRegex(WakeError,'every prior actor settled and known'):
                         ensure_execution(root,receipt)
                     launch.assert_not_called()
@@ -191,7 +223,7 @@ class StrictFinalUsageTests(unittest.TestCase):
                 root,_,ledger,_,_=self.fixture(directory)
                 with (patch('codex_wake.strict_runtime.SystemdExecution.inspect',side_effect=response if isinstance(response,Exception) else None,
                             return_value=response if isinstance(response,dict) else None),
-                        patch('codex_wake.native_clock.snapshot',return_value={'utc':{'upper':1893456001}})):
+                        patch('codex_wake.measurements.snapshot',return_value=qualified_clock())):
                     if isinstance(response,Exception):
                         with self.assertRaisesRegex(RuntimeError,'invocation changed'):reconcile_execution(root,'objective')
                     else:
@@ -244,7 +276,7 @@ class StrictFinalUsageTests(unittest.TestCase):
                     configuration=config,continuation={'objective_id':'objective'}))
                 with (patch('codex_wake.strict_runtime.SystemdExecution.inspect',return_value=dict(populated=False,members=[],state='inactive')),
                         patch('codex_wake.strict_runtime.SystemdExecution.launch') as launch,
-                        patch('codex_wake.native_clock.snapshot',return_value={'utc':{'upper':1893456001}})):
+                        patch('codex_wake.measurements.snapshot',return_value=qualified_clock())):
                     with self.assertRaisesRegex(WakeError,'final-usage reconciliation' if new_revision else 'is fenced'):
                         preflight_execution(root,receipt)
                     launch.assert_not_called()

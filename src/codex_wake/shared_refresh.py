@@ -1,5 +1,6 @@
 """Explicitly approved shared-server MCP reload, without replacing conversations."""
 from pathlib import Path
+import math
 from uuid import UUID
 
 from .records import WakeError
@@ -125,7 +126,6 @@ def _validate_profile(profile):
 def command(args, root, config, profile, checkpoint, content, *, permission_context=None, emit_result=None):
     import hashlib
     import json
-    import time
     from .goal_supervision import _heartbeat, _lock, _private, _save
     from .lifecycle_budget import trusted_upper
     from .process import boot_id_value
@@ -182,7 +182,7 @@ def command(args, root, config, profile, checkpoint, content, *, permission_cont
                 raise WakeError('shared refresh expiry reached')
             receipt = dict(intent, fingerprint=fingerprint, intent_key=args.intent,
                            refresh_scope=info['refresh_scope'], state='queued', reason='waiting_for_idle',
-                           started_upper=upper, started_boottime=time.clock_gettime(time.CLOCK_BOOTTIME),
+                           started_upper=upper, started_boottime=None, clock_basis='qualified_utc',
                            boot_id=boot_id_value(), deadline=deadline)
             if profile['refresh_mode']==THREAD_MODE:
                 receipt['native_scope']=info['native_scope']
@@ -218,14 +218,18 @@ def command(args, root, config, profile, checkpoint, content, *, permission_cont
 
 
 def _remaining(receipt):
-    import time
     from .process import boot_id_value
+    from .lifecycle_budget import trusted_upper
     if boot_id_value() != receipt['boot_id']:
         raise WakeError('boot identity changed')
-    elapsed = time.clock_gettime(time.CLOCK_BOOTTIME)-receipt['started_boottime']
-    if elapsed < 0:
-        raise WakeError('elapsed time invalid')
-    return receipt['deadline']-receipt['started_upper']-elapsed
+    if (receipt.get('clock_basis', 'qualified_utc') != 'qualified_utc'
+            or any(type(receipt.get(key)) not in (int, float) or not math.isfinite(receipt[key])
+                   for key in ('started_upper', 'deadline'))):
+        raise WakeError('shared_refresh_clock_unqualified')
+    try:
+        return receipt['deadline'] - trusted_upper()
+    except (ValueError, OSError):
+        raise WakeError('shared_refresh_clock_unqualified') from None
 
 
 def _request(receipt, method, params):
@@ -465,7 +469,7 @@ def watch(root, interval=1):
     import signal
     import time
     from uuid import uuid4
-    from .goal_supervision import _save
+    from .goal_supervision import _controller_clock, _save
     from .process import boot_id_value, process_identity
     if type(interval) not in (int, float) or not math.isfinite(interval) or not .05 <= interval <= 5:
         raise WakeError('refresh interval must be between 0.05 and 5 seconds')
@@ -485,10 +489,10 @@ def watch(root, interval=1):
         try:
             while running:
                 _save(directory/'controller.json', dict(heartbeat, active=True,
-                    observed_boottime=time.clock_gettime(time.CLOCK_BOOTTIME)))
+                    observed_boottime=None, clock_observation=_controller_clock()))
                 poll(root)
                 time.sleep(interval)
         finally:
             _save(directory/'controller.json', dict(heartbeat, active=False,
-                observed_boottime=time.clock_gettime(time.CLOCK_BOOTTIME)))
+                observed_boottime=None, clock_observation=_controller_clock()))
             for sig, handler in prior.items():signal.signal(sig, handler)

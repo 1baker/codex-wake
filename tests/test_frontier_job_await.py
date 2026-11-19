@@ -4,6 +4,7 @@ import io
 import os
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import time
 import unittest
@@ -15,11 +16,12 @@ from codex_wake.mcp_server import CommandRunner
 from codex_wake.records import all_records
 from codex_wake.session_permissions import PermissionStore, Principal
 from codex_wake.task_briefs import BriefAuthority, TaskBriefStore
+from tests.test_measurements import observation
 
 THREAD = '00000000-0000-7000-8000-000000000336'
 PEER = '00000000-0000-7000-8000-000000000337'
-CLOCK = {'utc': None, 'counter': {'epoch': 'fixture-host', 'counter': 1000,
-                                'frequency': 1000, 'rate_ppm': 0}}
+def fixture_clock():
+    return observation(int(time.monotonic() * 1000), rate=0)
 
 
 def metadata(thread):
@@ -40,6 +42,28 @@ class FrontierJobAwaitTests(unittest.TestCase):
             'XDG_CONFIG_HOME': str(base / 'config'), 'CODEX_WAKE_STABLE_TIME_CONFIG': ''})
         environment.start()
         self.addCleanup(environment.stop)
+        clock = patch('codex_wake.measurements.snapshot', side_effect=fixture_clock)
+        clock.start()
+        self.addCleanup(clock.stop)
+        original_popen = subprocess.Popen
+        def launch(argv, *args, **kwargs):
+            if argv[:4] == [sys.executable, '-m', 'codex_wake.background_jobs', '--supervise']:
+                # Explicit fixture authority crosses only the existing owned
+                # supervisor boundary; all subprocess options remain intact.
+                bootstrap = """import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv.pop(1))
+from tests.test_frontier_job_await import fixture_clock
+from codex_wake import measurements
+measurements.snapshot = fixture_clock
+from codex_wake.background_jobs import _supervise
+_supervise(Path(sys.argv[2]), sys.argv[3])
+"""
+                argv = [sys.executable, '-c', bootstrap, str(Path(__file__).resolve().parents[1]), *argv[3:]]
+            return original_popen(argv, *args, **kwargs)
+        supervisor = patch('codex_wake.background_jobs.subprocess.Popen', side_effect=launch)
+        supervisor.start()
+        self.addCleanup(supervisor.stop)
         self.operator = Principal('operator', 'operator')
         self.worker = Principal(THREAD, tasks=('task-job',))
         PermissionStore(self.root).configure({'version': 1, 'global': {'actions': {'job.launch': 'allow'}}},
@@ -60,7 +84,7 @@ class FrontierJobAwaitTests(unittest.TestCase):
         self.runner = CommandRunner(wake_root=self.root, app_server='unix:///fixture-no-provider')
 
     def await_job(self, caller=THREAD, ttl='24h'):
-        with patch('codex_wake.native_clock.snapshot', return_value=CLOCK), \
+        with patch('codex_wake.native_clock.snapshot', side_effect=fixture_clock), \
              patch('codex_wake.app_server.resolve_codex_cmd', return_value=sys.executable):
             return self.runner.call('wake_jobs_await', dict(caller_thread_id=caller,
                 job_id=self.job['job_id'], ttl=ttl), native_context=metadata(caller))
@@ -88,7 +112,7 @@ class FrontierJobAwaitTests(unittest.TestCase):
         self.assertFalse(failed, again)
         self.assertEqual(again['wake']['id'], original['id'])
         self.assertEqual(all_records(self.root)[0].record['scheduling_intent'], original['scheduling_intent'])
-        with patch('codex_wake.native_clock.snapshot', return_value=CLOCK):
+        with patch('codex_wake.native_clock.snapshot', side_effect=fixture_clock):
             first = poll_once(self.root, dispatch=False)
             second = poll_once(self.root, dispatch=False)
         self.assertEqual(first.fired, 1)
@@ -99,7 +123,7 @@ class FrontierJobAwaitTests(unittest.TestCase):
             self.assertEqual(run(['--wake-root', str(self.root), 'wake-policy', 'owner-complete',
                 '--operator', '--owner-kind', 'task', '--owner-id', 'task-job',
                 '--event-id', 'fixture-owner-completed']), 0)
-        with patch('codex_wake.native_clock.snapshot', return_value=CLOCK):
+        with patch('codex_wake.native_clock.snapshot', side_effect=fixture_clock):
             poll_once(self.root, dispatch=False)
         retired = all_records(self.root)[0].record
         self.assertEqual(retired['status'], 'cancelled')

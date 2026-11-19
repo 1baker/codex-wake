@@ -1,10 +1,10 @@
 """Owned resident lifecycle supervision; a one-shot poll cannot admit model work."""
 import json
 import os
-import time
 import fcntl
 from pathlib import Path
 
+from . import measurements
 from .agent_lifecycle import save
 from .lifecycle_budget import trusted_upper
 from .process import process_exists,process_identity,boot_id_value
@@ -13,11 +13,13 @@ from .process import process_exists,process_identity,boot_id_value
 def publish_supervision(root,interval,active=True):
     path=Path(root)/'lifecycle/supervision.json'
     path.parent.mkdir(mode=0o700,parents=True,exist_ok=True)
-    try:observed_at=trusted_upper() if active else None
-    except ValueError:observed_at=None
+    try:clock=measurements.snapshot() if active else None
+    except measurements.TimeUnavailable:clock=None
+    observed_at=clock['utc']['upper'] if clock and clock.get('reason')=='authenticated_utc' else None
     current=dict(state='active' if active else 'stopped',pid=os.getpid(),identity=process_identity(os.getpid()),interval=interval,
                  active=active,observed_at=observed_at,
-                 observed_boottime=time.clock_gettime(time.CLOCK_BOOTTIME),boot_id=boot_id_value())
+                 observed_boottime=None,clock_observation=clock,
+                 clock_status='qualified' if clock else 'unavailable',boot_id=boot_id_value())
     if not current['identity']:raise ValueError('supervisor process generation unavailable')
     with path.with_suffix('.lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX)
@@ -36,11 +38,11 @@ def supervision_ready(root,timeout):
         info=path.lstat()
         if path.is_symlink() or info.st_uid!=os.geteuid() or info.st_mode&0o777!=0o600:return False
         proof=json.loads(path.read_text())
-        now=trusted_upper()
         return (proof.get('active') is True and 0<proof['interval']<=5
             and process_exists(proof['pid']) and process_identity(proof['pid'])==proof['identity']
             and Path('/proc',str(proof['pid']),'stat').read_text().rsplit(')',1)[1].split()[0]!='Z'
-            and 0<=now-proof['observed_at']<=5*proof['interval']+4*timeout)
+            and proof.get('boot_id')==boot_id_value()
+            and measurements.fresh(proof.get('clock_observation'),5*proof['interval']+4*timeout))
     except (OSError,ValueError,KeyError,TypeError,IndexError):return False
 
 

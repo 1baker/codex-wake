@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from .cli_output import emit
-import time
+from . import measurements
 
 from .goal_supervision import verified_native_caller
 from .managed_inventory import ManagedInventory, InventoryError
@@ -10,7 +10,7 @@ from .records import WakeError
 
 
 def execute(action, arguments, root, *, native_context=None, observer=None,
-            operator=False, now=time.time):
+            operator=False, now=None):
     if type(operator) is not bool:
         raise InventoryError('policy_denied', 'operator authority must come from the host')
     inventory = ManagedInventory(root, now=now)
@@ -42,9 +42,9 @@ def execute(action, arguments, root, *, native_context=None, observer=None,
                 or previous['conversation_id'] != arguments['conversation_id']):
             raise InventoryError('identity_changed', 'unavailable source does not match managed identity')
         sample = Observation(previous['runtime'], previous['namespace'], previous['conversation_id'],
-                             previous['root'], 'unavailable', now(), previous['evidence_kind'],
+                             previous['root'], 'unavailable', measurements.utc_time() if now is None else now(), previous['evidence_kind'],
                              None, [], {name: 'unavailable' for name in previous['capabilities']},
-                             profile=previous['profile'])
+                             profile=previous['profile'], clock_observation=measurements.snapshot() if now is None else None)
     if sample.runtime != arguments.get('runtime', 'codex') or sample.conversation_id != arguments['conversation_id']:
         raise InventoryError('identity_changed', 'observed identity differs from requested identity')
     if sample.runtime == 'grok' and not operator and sample.caller_verified is not True:
@@ -58,10 +58,18 @@ def execute(action, arguments, root, *, native_context=None, observer=None,
 class RuntimeObserver:
     """Read existing runtime evidence without any terminal input or native turn."""
     def __init__(self, *, endpoint='unix://', socket_path=None, timeout=10,
-                 grok_runtime=None, bus=None, capability=None, operator=False, now=time.time):
+                 grok_runtime=None, bus=None, capability=None, operator=False, now=None):
         self.endpoint, self.socket_path, self.timeout = endpoint, socket_path, timeout
         self.grok_runtime, self.bus, self.capability = grok_runtime, bus, capability
         self.operator, self.now = operator, now
+
+    def _time_observation(self):
+        if self.now is not None:
+            return self.now(), None
+        clock = measurements.snapshot()
+        if clock.get('utc') is None:
+            raise measurements.TimeUnavailable('stable_time_utc_unqualified')
+        return clock['utc']['upper'], clock
 
     def __call__(self, arguments):
         from .sessions import SelectionError
@@ -127,10 +135,12 @@ class RuntimeObserver:
         projected = [{key: pane[key] for key in ('pane_id', 'window_id', 'session_id',
                      'window_index', 'pane_index', 'window_name', 'session_name') if key in pane}
                      for pane in attachments]
+        observed_at, clock = self._time_observation()
         return Observation('codex', identity.namespace, conversation_id, identity.cwd,
-                           state, self.now(), 'native_metadata', process, projected,
+                           state, observed_at, 'native_metadata', process, projected,
                            {'inspect': 'supported', 'lifecycle_control': 'not_qualified',
-                            'saved_resume': 'supported' if not attachments and current.get('status', {}).get('type') == 'notLoaded' else 'not_qualified'})
+                            'saved_resume': 'supported' if not attachments and current.get('status', {}).get('type') == 'notLoaded' else 'not_qualified'},
+                           clock_observation=clock)
 
     def _grok(self, arguments):
         from .managed_inventory import Observation
@@ -153,11 +163,12 @@ class RuntimeObserver:
         if identity.thread_id != arguments['conversation_id']:
             raise InventoryError('identity_changed', 'Grok conversation identity changed')
         process = {key: binding[key] for key in ('pid', 'start_ticks', 'boot_id')}
+        observed_at, clock = self._time_observation()
         return Observation('grok', identity.namespace, identity.thread_id, identity.cwd,
-                           'ready', self.now(), 'host_bound_runtime', process,
+                           'ready', observed_at, 'host_bound_runtime', process,
                            [{'pane_id': binding['pane']}],
                            {'inspect': 'supported', 'lifecycle_control': 'not_qualified'},
-                           caller_verified=caller_verified)
+                           caller_verified=caller_verified, clock_observation=clock)
 
 
 def register_parser(subparsers):
@@ -199,7 +210,7 @@ def register_parser(subparsers):
     return parser
 
 
-def run(args, root, *, native_context=None, observer=None):
+def run(args, root, *, native_context=None, observer=None, now=None):
     import json
     from pathlib import Path
     try:
@@ -234,9 +245,9 @@ def run(args, root, *, native_context=None, observer=None):
                     runtime = GrokMailboxRuntime.from_actor(bus, capability)
             observer = RuntimeObserver(endpoint=args.app_server, socket_path=args.tmux_socket,
                                        timeout=args.timeout, grok_runtime=runtime, bus=bus,
-                                       capability=capability, operator=operator)
+                                       capability=capability, operator=operator, now=now)
         value = execute(action, arguments, root, native_context=native_context,
-                        observer=observer, operator=operator)
+                        observer=observer, operator=operator, now=now)
         emit(value, args)
         return 0
     except (ValueError, KeyError, TypeError, OSError, WakeError) as error:

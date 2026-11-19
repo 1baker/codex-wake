@@ -1,6 +1,34 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: native-expiry-695
+    owner: root / ecochran76
+    objective: Enforce native queue expiry and qualified Stable Time migration
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/695]
+    plan: docs/dev/plans/0250-2026-11-17-stable-time-everywhere.md
+    branch: feat/native-expiry-695
+    target: origin/main
+    plan_state: OPEN
+    custody_state: REMOTE_PRESERVED
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-18
+    disposition: "#695 acceptance complete; exact Native package/UID1017 and both Python collections qualify. Final branch publication precedes normal integration-checkout removal; independent Plan0250 live-Grok tickets stay blocked with refs/checkpoint retained. No working daemon change."
+
+  - id: qualification-fixtures-695
+    owner: root / ecochran76 (worker reconcile_695_gates)
+    objective: Repair evidenced Python qualification fixtures without weakening production time guards
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/695]
+    plan: docs/dev/plans/0250-2026-11-17-stable-time-everywhere.md
+    branch: fix/qualification-fixtures-695
+    target: feat/native-expiry-695
+    plan_state: CLOSED
+    custody_state: REMOTE_PRESERVED
+    dependencies: []
+    overlaps: [native-expiry-695]
+    updated_at: 2026-11-18
+    disposition: Integrated2e48caad; exact worker eed6d40c pushed and verified. Clean checkout removed normally after ignored cache inventory; owned watcher processes0. No production guard relaxation.
+
   - id: P250
     owner: primary / ecochran76
     objective: Upgrade retained native Wake governor and Grok mods to upstream0.169.0

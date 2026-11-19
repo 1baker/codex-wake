@@ -110,6 +110,7 @@ class GoalRecoveryTests(unittest.TestCase):
         from codex_wake.session_permissions import PermissionDenied
         scenarios=dict(revoked='permission_deny',accounting='recovery_accounting_unqualified',
             boot='recovery_boot_identity_changed',exhausted='recovery_resources_exhausted',
+            expired_at_locked_admission='recovery_resources_exhausted',clock_unknown='recovery_clock_unqualified',
             active_work='recovery_native_stop_unverified',unobserved_scope='recovery_native_stop_unverified',changed_goal='recovery_goal_identity_changed')
         for scenario in scenarios:
             with self.subTest(scenario=scenario),tempfile.TemporaryDirectory() as tmp:
@@ -129,10 +130,11 @@ class GoalRecoveryTests(unittest.TestCase):
                     if scenario=='accounting':log.write_text('{"type":')
                     if scenario=='boot':manager=patch('codex_wake.goal_supervision.boot_id_value',return_value='other-boot')
                     if scenario=='exhausted':
-                        from types import SimpleNamespace
-                        import time
-                        manager=patch('codex_wake.goal_recovery.time',SimpleNamespace(CLOCK_BOOTTIME=time.CLOCK_BOOTTIME,
-                            clock_gettime=lambda _:time.clock_gettime(time.CLOCK_BOOTTIME)+200))
+                        manager=patch('codex_wake.lifecycle_budget.trusted_upper',return_value=NOW+200)
+                    if scenario=='expired_at_locked_admission':
+                        manager=patch('codex_wake.lifecycle_budget.trusted_upper',side_effect=[NOW,NOW+200])
+                    if scenario=='clock_unknown':
+                        manager=patch('codex_wake.lifecycle_budget.trusted_upper',side_effect=ValueError('clock unavailable'))
                     if scenario=='active_work':native['active']=['work']
                     if scenario=='changed_goal':native['goal']['createdAt']=NOW+1
                     from contextlib import nullcontext

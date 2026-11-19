@@ -1,0 +1,26 @@
+{
+  "recorded_at": "2026-11-18T20:05:12.906549+00:00",
+  "base": "bf3799ec7f5146dd68cd8b76a51095773b3ce096",
+  "implementation_tip": "4c78045f",
+  "tickets": [
+    "ST04-ACK-WAIT",
+    "ST04-MONITOR"
+  ],
+  "states": "implemented_integrated_validated_closed_repo_local",
+  "validation": {
+    "command": "PYTHONPATH=src:tests:. <validation-python> -m unittest test_injector test_monitor test_measurements",
+    "tier": "focused",
+    "python311": "49 PASS",
+    "python312": "49 PASS",
+    "static": "ruff F821/F822/F823, check_policy_wiring.py, git diff --check PASS"
+  },
+  "red_green": [
+    "Positive acknowledgement wait previously accepted receipt without qualified time; RED then GREEN. Zero wait remains untimed.",
+    "Post-paste time loss previously escaped without durable uncertain-outcome protection; RED then GREEN. Held record does not paste again and accepts later receipt.",
+    "Missing acknowledgement clock before paste previously consumed attempt and pasted; RED then GREEN.",
+    "Monitor guest timestamp and unavailable-time cases RED then GREEN; 12 worker monitor cases each Python version, 11 adjacent signal-record cases Python311."
+  ],
+  "review": "Existing single broad review and bounded findings pass retained; no repeat.",
+  "limits": "Focused local checks only; shared kernel. No full Python or installed runtime acceptance, builds, provider effects, daemon changes, merge or deployment. Global ST04/#695/#628 remain open. Legacy transport metadata/final-send admission and coupled signal-v2 terminal timestamps remain separate migration debt.",
+  "compatibility": "ack_wait_time_held is an additive durable no-replay fence. Older readers do not enforce it: retain those firing records out of an older scheduler before downgrade. No schema revision or deadline renewal."
+}

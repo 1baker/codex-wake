@@ -14,10 +14,26 @@ from codex_wake.injector import dispatch_firing_record
 from codex_wake.runtime_delivery import RuntimeRecipient, RuntimeObservation, RuntimeSubmission, RuntimeReconciliation
 
 THREAD = '01a1227e-a041-7b72-9c36-18349e7dd22c'
-CLOCK = {'utc': None, 'counter': {'epoch': 'boot-a', 'counter': 1000, 'frequency': 1000, 'rate_ppm': 0}}
+CLOCK = {'utc': {'status':'network', 'sources':['fixture-a','fixture-b'], 'lower':1800000000, 'upper':1800000000}, 'counter': {'epoch': 'boot-a', 'counter': 1000, 'frequency': 1000, 'rate_ppm': 0}}
 
 
 class WakePolicyTests(unittest.TestCase):
+    def test_create_load_run_accepts_busy_only_for_qualified_explicit_native_queue(self):
+        from codex_wake.runtime_delivery import RuntimeCapability
+        from codex_wake.wake_policy import startup_reason
+        with tempfile.TemporaryDirectory() as temporary:
+            record = self.register(Path(temporary), '--busy-policy', 'queue')
+        for transport, busy_policy, capability, expected in (
+                ('native', 'queue', 'supported', None),
+                ('native', 'wait', 'supported', 'recipient_startup_unavailable_or_unsupported'),
+                ('native', 'queue', 'not_qualified', 'recipient_startup_unavailable_or_unsupported'),
+                ('grok', 'queue', 'supported', 'recipient_startup_unavailable_or_unsupported')):
+            with self.subTest(transport=transport, busy_policy=busy_policy, capability=capability):
+                target = dict(record['target'], transport=transport, busy_policy=busy_policy)
+                observed = RuntimeObservation('busy', 'recipient_busy',
+                    {'busy_queue': RuntimeCapability(capability, 'host_qualification')})
+                self.assertEqual(startup_reason(dict(record, target=target), observed), expected)
+
     def register(self, root, *options, key='policy-test'):
         with patch('codex_wake.native_clock.snapshot', return_value=CLOCK), contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(run(['--wake-root', str(root), 'native', 'after', '--json',
@@ -29,6 +45,7 @@ class WakePolicyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             original = self.register(root)
+            self.assertNotIn('busy_policy', original['target'], 'preserve historical wait request fingerprints')
             self.assertEqual(original['schema_version'], 8)
             self.assertEqual(original['wake_policy']['startup'], 'create_load_run')
             self.assertEqual(classify_record(original), 'native_intent_v6')
@@ -77,10 +94,10 @@ class WakePolicyTests(unittest.TestCase):
                 return RuntimeRecipient('codex', THREAD, target)
             def observe(self, recipient):
                 return RuntimeObservation('ready', 'fixture_idle', {})
-            def submit(self, recipient, prompt):
+            def submit_bounded(self, recipient, prompt, envelope):
                 self.submits += 1
                 return RuntimeSubmission('uncertain', reason='response_lost')
-            def reconcile(self, recipient, prompt):
+            def reconcile_bounded(self, recipient, prompt, envelope):
                 self.reconciles += 1
                 return RuntimeReconciliation(reason='not_yet_observed')
         with tempfile.TemporaryDirectory() as temporary:
@@ -135,7 +152,7 @@ class WakePolicyTests(unittest.TestCase):
                 return RuntimeRecipient('codex', THREAD, target)
             def observe(self, recipient):
                 return RuntimeObservation('ready', 'fixture_loaded_without_tab_evidence', {})
-            def submit(self, recipient, prompt):
+            def submit_bounded(self, recipient, prompt, envelope):
                 self.submits += 1
                 return RuntimeSubmission('accepted', receipt_id='00000000-0000-7000-8000-000000000318',
                                          evidence_kind='native_queue_acceptance')

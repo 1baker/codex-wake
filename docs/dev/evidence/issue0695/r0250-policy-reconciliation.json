@@ -1,0 +1,43 @@
+{
+  "recorded_at": "2026-11-18T21:37:38.415472+00:00",
+  "timestamp_basis": "incidental OS log metadata, not deadline evidence",
+  "base": "363394fe11935749a95f5984215aca09377540f9",
+  "implementation_tip": "932ea539",
+  "authority": "User replacement AGENTS.md: reasonably reliable time via supported StableTime service; ordinary waits/logs need no additional call/gate; no app counter bridge required to consume service data.",
+  "closed_repo_local_components": [
+    "R0250-ACK",
+    "R0250-ORDINARY-WAITS",
+    "R0250-SERVICE-CONTRACT"
+  ],
+  "validation": {
+    "tier": "focused",
+    "wait_command": "PYTHONPATH=src:tests:. <validation-python> -m unittest test_injector test_host_commands test_local_output_modes test_local_grok_events",
+    "waits": "41 PASS Python3.11/3.12",
+    "service_command": "PYTHONPATH=src:tests:. <validation-python> -m unittest test_stable_time test_time_inspection",
+    "service": "17 PASS Python3.11/3.12",
+    "actual_cli": "python -m codex_wake time inspect: exit0, service_status qualified_live, measurement_decision network/finite, basis service_measurement, receipt_time_bound false, decision receipt_time_bound_unqualified, production_ready false.",
+    "static": "Ruff F821/F822/F823 changed files; policy wiring; diff PASS",
+    "environment": "Local WSL existing Python3.11/3.12 venvs. Synthetic native/ACP boundaries; actual service read only. No hosted CI/fullsuite."
+  },
+  "effects": [
+    "Ordinary acknowledgement/SSH/presentation/custody waits no longer add StableTime counter gates. Original advisory wait bounds retained.",
+    "Old held acknowledgement records remain fenced against replay; actual actor/permission/expiry checks retained.",
+    "Actual time inspection consumes service measurement evidence without read_counter; explicit service basis is separate from receipt-time authority.",
+    "Configuration/transport/response/counter/handoff failures have sanitized distinct reasons; finite service observation survives client/helper failure."
+  ],
+  "primary_contracts": [
+    "https://github.com/CochranResearchGroup/stable-time/blob/main/docs/specs/0001-stable-time-v1.md",
+    "https://github.com/CochranResearchGroup/stable-time/blob/main/docs/INSTALL.md"
+  ],
+  "reconciliation": [
+    "Historical305 raw calls count is not remaining work or a zero-raw acceptance target.",
+    "Prior receipts remain historical; assertions requiring StableTime for ordinary waits were superseded and consolidated, not treated as current requirements.",
+    "Earlier WSL helper errors do not prove StableTime or Grok outage; original empty-output test failure remains causally unproven."
+  ],
+  "remaining": [
+    "R0250-OWNER-WAITS: lower local_session_operations/controller_runtime protective waits still need separation from genuine actor UTC authorization.",
+    "R0250-STRICT-CLIENT: native_clock.snapshot and strict service_time_decision still use legacy handoff helper. Do not replace receipt-current upper with past service-point upper. No whole-stack helper independence or policy completion claimed."
+  ],
+  "limits": "No production daemon change, credential copy, Native build, live provider input, fullsuite, broadreview repeat, merge or deployment. #695/#628 remain OPEN. Existing original deadlines/unknown outcomes and expired live Grok window preserved.",
+  "memory_disposition": "forbidden by retained Plan0250 task boundary; root records one non-write receipt."
+}

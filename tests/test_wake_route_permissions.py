@@ -20,8 +20,8 @@ from codex_wake.runtime_delivery import RuntimeCapability, RuntimeObservation, R
 from codex_wake.session_permissions import PermissionStore, Principal
 
 THREAD='00000000-0000-7000-8000-000000000324'
-CLOCK={'utc':None,'counter':{'epoch':'wake-route-fixture','counter':1000,'frequency':1000,'rate_ppm':0}}
-DUE={'utc':None,'counter':dict(CLOCK['counter'],counter=62000)}
+CLOCK={'utc':{'status':'network','sources':['a','b'],'lower':1800000000,'upper':1800000000},'counter':{'epoch':'wake-route-fixture','counter':1000,'frequency':1000,'rate_ppm':0}}
+DUE={'utc':{'status':'network','sources':['a','b'],'lower':1800000061,'upper':1800000061},'counter':dict(CLOCK['counter'],counter=62000)}
 
 
 class RouteAdapter:
@@ -33,13 +33,13 @@ class RouteAdapter:
         route=recipient.binding.get('wake_route');self.observed.append(route)
         return RuntimeObservation('ready','fixture',{'submit':RuntimeCapability('supported','fixture'),
             'active_tab':RuntimeCapability('supported','fixture exact attachment')})
-    def submit(self,recipient,prompt):
+    def submit_bounded(self,recipient,prompt,envelope):
         route=recipient.binding.get('wake_route');self.submits.append(route)
         if route=='existing_tab' and self.first=='not_sent':
             return RuntimeSubmission('not_sent',reason='definite unavailable before I/O',pre_io=True)
         if route=='existing_tab' and self.first=='uncertain':return RuntimeSubmission('uncertain',reason='lost response')
         return RuntimeSubmission('accepted',receipt_id=str(uuid4()),evidence_kind='native_queue_acceptance')
-    def reconcile(self,recipient,prompt):
+    def reconcile_bounded(self,recipient,prompt,envelope):
         self.reconciles+=1;self.reconciled_routes.append(recipient.binding.get('wake_route'));return RuntimeReconciliation(reason='no accepted evidence yet')
 
 
@@ -75,7 +75,7 @@ class WakeRoutePermissionTests(unittest.TestCase):
         adapter=RouteAdapter();self.fire(adapter)
         self.assertEqual(adapter.submits,['existing_tab','background'])
         saved=all_records(self.root)[0].record
-        self.assertEqual(saved['status'],'submitted')
+        self.assertEqual(saved['status'],'firing')
         self.assertEqual(saved['target']['thread_id'],THREAD)
         self.assertEqual(saved['native_delivery']['route'],'background')
     def test_uncertain_submission_is_reconciled_without_fallback(self):
@@ -101,7 +101,7 @@ root=Path(sys.argv[1])
 class Adapter:
  def resolve(self,target):return RuntimeRecipient('codex',target['thread_id'],target)
  def observe(self,recipient):return RuntimeObservation('ready','fixture',{'submit':RuntimeCapability('supported','fixture')})
- def submit(self,recipient,prompt):
+ def submit_bounded(self,recipient,prompt,envelope):
   (root/'UNEXPECTED_EFFECT').write_text('submitted')
   raise AssertionError('revoked route submitted')
 clock={'utc':None,'counter':{'epoch':'wake-route-fixture','counter':62000,'frequency':1000,'rate_ppm':0}}
@@ -132,8 +132,8 @@ print(json.dumps({'result':result.status,'record':all_records(root)[0].record}))
         self.register('--wake-route','existing_tab','--wake-route','background')
         store=PermissionStore(self.root)
         class Revoking(RouteAdapter):
-            def submit(inner,recipient,prompt):
-                outcome=super().submit(recipient,prompt)
+            def submit_bounded(inner,recipient,prompt,envelope):
+                outcome=super().submit_bounded(recipient,prompt,envelope)
                 store.configure({'version':1,'mandatory':['wake.background']},Principal('op','operator'),expected_revision=1)
                 return outcome
         adapter=Revoking();self.fire(adapter)
@@ -162,7 +162,7 @@ print(json.dumps({'result':result.status,'record':all_records(root)[0].record}))
     def test_unproven_non_submission_never_unlocks_fallback(self):
         self.register('--wake-route','existing_tab','--wake-route','background')
         class Unproven(RouteAdapter):
-            def submit(inner,recipient,prompt):
+            def submit_bounded(inner,recipient,prompt,envelope):
                 inner.submits.append(recipient.binding['wake_route'])
                 return RuntimeSubmission('not_sent',reason='no conclusive pre-I/O proof',pre_io=False)
         adapter=Unproven();self.fire(adapter)
@@ -201,14 +201,14 @@ print(json.dumps({'result':result.status,'record':all_records(root)[0].record}))
             def refresh_identity(inner,binding):pass
             def paste(inner,binding,prompt,*,deadline=None):
                 inner.inputs+=1;raise OSError('outcome may have reached exact TUI')
-        host=Host();clock=dict(utc=dict(status='network',sources=['one','two'],lower=1800000000,upper=1800000000.1),counter=None)
+        host=Host();clock=dict(utc=dict(status='network',sources=['one','two'],lower=1800000000,upper=1800000000.1),counter=dict(CLOCK['counter'],epoch='3c93a3d4-445d-4403-8a40-77fa9162dee6'),reason='authenticated_utc',valid_for_ns=1000000000)
         argv=['--wake-root',str(self.root),'grok','after','--ttl','2m','--json',
             '--bus-root',str(self.bus.root),'--operator-capability',str(self.capability),
             '--wake-route','existing_tab','--idempotency-key','grok-route','grok_'+'a'*32,'1s','--','Synthetic task']
         with patch('codex_wake.runtime_wakes.GrokTerminalHost',return_value=host),patch(
                 'codex_wake.runtime_wakes.binding_digest',return_value='b'*64),patch(
                 'codex_wake.service.user_state_dir',return_value=self.root/'shared-locks'),patch(
-                'codex_wake.native_clock.snapshot',return_value=clock),contextlib.redirect_stdout(io.StringIO()):
+                'codex_wake.native_clock.snapshot',return_value=clock),patch('codex_wake.measurements.snapshot',return_value=clock),contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(run(argv),0)
             original=all_records(self.root)[0].record
             self.assertEqual(original['wake_policy']['routes'],['existing_tab'])

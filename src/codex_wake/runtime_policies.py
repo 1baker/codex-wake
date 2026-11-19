@@ -8,9 +8,23 @@ from .records import WakeError
 
 
 def require_wait_policy(policy='wait'):
-    """Neither built-in runtime qualifies dequeue expiry or owned interruption."""
+    """Other runtimes retain wait-only admission without qualified queueing."""
     if policy != 'wait':
         raise WakeError('busy_policy_unsupported')
+
+
+def require_native_policy(policy='wait'):
+    """Queue is explicit intent; runtime qualification is checked at delivery."""
+    if policy not in ('wait', 'queue'):
+        raise WakeError('busy_policy_unsupported')
+
+
+def native_delivery_ready(target, observation):
+    if observation.state == 'ready':
+        return True
+    capability = observation.capabilities.get('busy_queue')
+    return (observation.state == 'busy' and target.get('busy_policy', 'wait') == 'queue'
+            and capability is not None and capability.state == 'supported')
 
 
 def terminal_fallback(recipient, prompt, preferred, terminal):

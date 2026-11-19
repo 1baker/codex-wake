@@ -53,7 +53,7 @@ def register_parser(subparsers):
 
 
 def qualified_claimant(root, agent_id, principal, *, observer=None):
-    import time
+    from . import measurements
     from .managed_inventory import ManagedInventory
     from .managed_inventory_commands import RuntimeObserver
     from .resource_claims import Claimant
@@ -61,11 +61,12 @@ def qualified_claimant(root, agent_id, principal, *, observer=None):
     if (agent['enrollment'] != 'enrolled' or agent['state'] not in ('ready', 'stale')
             or (principal.role != 'operator' and agent['conversation_id'] != principal.subject)):
         raise AcceptanceError('authority_denied', 'verified current owner is required')
-    sample = (observer or RuntimeObserver())(dict(runtime=agent['runtime'], conversation_id=agent['conversation_id'])).validated(time.time())
+    sample = (observer or RuntimeObserver())(dict(runtime=agent['runtime'], conversation_id=agent['conversation_id'])).validated(measurements.snapshot())
     if (sample.state != 'ready' or any(getattr(sample, field) != agent[field]
             for field in ('runtime', 'namespace', 'conversation_id', 'root', 'process'))):
         raise AcceptanceError('authority_denied', 'exact fresh owner binding differs')
-    return Claimant(agent_id, sample.root, sample.process, sample.observed_at)
+    return Claimant(agent_id, sample.root, sample.process, sample.observed_at,
+                    clock_observation=sample.clock_observation)
 
 
 def run(args, root):

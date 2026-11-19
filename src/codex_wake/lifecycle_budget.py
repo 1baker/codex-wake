@@ -42,11 +42,11 @@ def objective_identity(policy):
 
 
 def trusted_upper():
-    from .native_clock import snapshot
-    bounds = snapshot().get('utc')
-    if not bounds:
-        raise ValueError('admissible time unavailable')
-    return bounds['upper']
+    from .measurements import utc_bounds, TimeUnavailable
+    try:
+        return utc_bounds()[1]
+    except TimeUnavailable:
+        raise ValueError('admissible time unavailable') from None
 
 
 def configured_ledger(root,receipt):

@@ -982,15 +982,14 @@ def _resume(root, policy, thread, path, journal, principal, *, caller=None):
                     "approved resume belongs to a previous budget revision",
                 )
             ack = receipt.get("poll_ack", {})
-            age = time.clock_gettime(time.CLOCK_BOOTTIME) - ack.get(
-                "observed_boottime", -1e30
-            )
+            from . import measurements
+            try:ack_fresh=measurements.fresh(ack.get('clock_observation'),max(3,3*controller.get('interval',1)))
+            except (measurements.TimeUnavailable,KeyError,TypeError):ack_fresh=False
             if (
                 ack.get("enrollment_revision") != receipt.get("enrollment_revision")
                 or ack.get("receipt_generation") != receipt["generation"]
                 or ack.get("controller_generation") != controller.get("generation")
-                or age < 0
-                or age > max(3, 3 * controller.get("interval", 1))
+                or not ack_fresh
             ):
                 result["resume_state"] = "awaiting_first_poll"
                 result["next_action"] = (
@@ -1115,11 +1114,13 @@ def resume_existing(root, policy, thread, *, principal, operation_id):
         no_goal=snapshot['goals'][thread]['status']=='session'
         ack = receipt.get('prepared_poll_ack' if no_goal and receipt.get('requires_native_guard') else 'poll_ack',{})
         controller = snapshot['controller']
-        age = time.clock_gettime(time.CLOCK_BOOTTIME)-ack.get('observed_boottime', -1e30)
+        from . import measurements
+        try:ack_fresh=measurements.fresh(ack.get('clock_observation'),max(3,3*controller.get('interval',1)))
+        except (measurements.TimeUnavailable,KeyError,TypeError):ack_fresh=False
         if (ack.get('enrollment_revision') != receipt.get('enrollment_revision')
                 or ack.get('receipt_generation') != receipt['generation']
                 or ack.get('controller_generation') != controller.get('generation')
-                or not 0 <= age <= max(3, 3*controller.get('interval', 1))):
+                or not ack_fresh):
             return dict(resumed=False, resume_state='awaiting_first_poll', renewed_resources=False)
         goal, active = supervision._native(receipt['grant'], thread)
         path = directory / (supervision._name(thread)+'.json')

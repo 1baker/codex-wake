@@ -4,9 +4,9 @@ The native app server owns expiry and exact-turn interruption. This module never
 creates a goal or turn, and a lease acknowledgement is not stop proof.
 """
 import math
-import time
 
 from . import goal_supervision as supervision
+from . import measurements
 
 
 def _identity(receipt):
@@ -19,9 +19,12 @@ def matches(receipt):
 
 def qualified(receipt):
     guard=receipt.get('native_guard',{})
-    age=time.clock_gettime(time.CLOCK_BOOTTIME)-guard.get('ack_boottime',-1e30)
-    return (guard.get('status')=='armed' and guard.get('lease_id')==_identity(receipt)
-        and 0<=age<guard.get('ttl_ms',0)/1000)
+    if guard.get('status')!='armed' or guard.get('lease_id')!=_identity(receipt):
+        return False
+    try:
+        return measurements.fresh(guard['ack_clock'],math.nextafter(guard.get('ttl_ms',0)/1000,-math.inf))
+    except (measurements.TimeUnavailable,KeyError,TypeError):
+        return False
 
 
 def arm(path,receipt,*,force=False,stop=False):
@@ -79,7 +82,7 @@ def arm(path,receipt,*,force=False,stop=False):
             enrollment_revision=receipt['enrollment_revision'],ttl_ms=ttl,member_turns=members)
         receipt['native_guard']=intent
         supervision._save(path,receipt)
-        sent=time.clock_gettime(time.CLOCK_BOOTTIME)
+        sent=measurements.snapshot()
         acknowledgement=supervision._request(receipt['grant'],'thread/governorLease/set',params)
         if acknowledgement.get('leaseId')!=identifier:
             raise ValueError('native governor lease acknowledgement changed identity')
@@ -89,9 +92,11 @@ def arm(path,receipt,*,force=False,stop=False):
             supervision._save(path,receipt);return False
         if acknowledgement.get('armed') is not True:
             raise ValueError('native governor lease was not armed')
+        if not measurements.fresh(sent,math.nextafter(ttl/1000,-math.inf)):
+            raise measurements.TimeUnavailable('native lease acknowledgement expired')
         receipt['native_guard']=dict(status='armed',lease_id=identifier,
             controller_generation=generation,enrollment_revision=receipt['enrollment_revision'],
-            ttl_ms=ttl,member_turns=members,ack_boottime=sent)
+            ttl_ms=ttl,member_turns=members,ack_boottime=None,ack_clock=sent)
         supervision._save(path,receipt)
         return True
     except Exception as error:
@@ -222,17 +227,17 @@ def guarded_start(path,receipt,operation_id,controller):
         if reply.get('startState')=='not_started':
             effects[key]=dict(state='intended',guard_request_id=operation_id)
             supervision._save(path,receipt)
-            sent=time.clock_gettime(time.CLOCK_BOOTTIME);submitted=True
+            sent=measurements.snapshot();submitted=True
             reply=supervision._request(receipt['grant'],'thread/governorLease/set',dict(common,ttlMs=ttl,
                 memberTurns=[dict(threadId=receipt['thread_id'],turnIds=[],goalCreatedAt=None)]))
-        else:sent=time.clock_gettime(time.CLOCK_BOOTTIME)
+        else:sent=None  # Querying an earlier start never renews its clock anchor.
         turn=reply.get('startedTurnId')
         started=reply.get('guardRequestId')==operation_id and reply.get('startState')=='started' and isinstance(turn,str) and bool(turn)
         effects[key]=dict(state='acknowledged' if started else reply.get('startState','uncertain'),
             guard_request_id=operation_id,started_turn_id=turn if started else None)
         if started and reply.get('armed') is True and reply.get('leaseId')==identifier:
             receipt['native_guard']=dict(status='armed' if submitted else 'query_verified',lease_id=identifier,controller_generation=controller['generation'],
-                enrollment_revision=receipt['enrollment_revision'],ttl_ms=min(ttl,reply.get('ttlMs',ttl)),ack_boottime=sent,
+                enrollment_revision=receipt['enrollment_revision'],ttl_ms=min(ttl,reply.get('ttlMs',ttl)),ack_boottime=None,ack_clock=sent,
                 member_turns=[dict(threadId=receipt['thread_id'],turnIds=[turn],goalCreatedAt=None)],guard_request_id=operation_id)
             receipt.update(state='armed',reason=None,stop_latched=False)
             receipt['poll_ack']=dict(receipt.get('prepared_poll_ack',{}))

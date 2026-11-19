@@ -4,7 +4,6 @@ import io
 import json
 from pathlib import Path
 import tempfile
-import time
 import unittest
 from unittest.mock import patch
 
@@ -90,19 +89,19 @@ class ManagedInventoryCommandTests(unittest.TestCase):
         parser = argparse.ArgumentParser()
         register_parser(parser.add_subparsers(dest='command', required=True))
         args = parser.parse_args(['agents', 'enroll', '--conversation-id', THREAD, '--operator', '--json'])
-        observer = lambda _: observation(observed_at=time.time())
+        observer = lambda _: observation(observed_at=100)
         with patch('sys.stdout', new_callable=io.StringIO) as out:
-            self.assertEqual(run(args, self.root / 'wake', observer=observer), 0)
+            self.assertEqual(run(args, self.root / 'wake', observer=observer, now=lambda:100), 0)
         agent = json.loads(out.getvalue())['agent']['managed_agent_id']
         args = parser.parse_args(['agents', 'unenroll', '--managed-agent-id', agent, '--operator'])
         with patch('sys.stdout', new_callable=io.StringIO):
-            self.assertEqual(run(args, self.root / 'wake'), 0)
+            self.assertEqual(run(args, self.root / 'wake', now=lambda:100), 0)
         result = execute('enroll', {'conversation_id': THREAD}, self.root / 'wake',
-                         native_context=native_context(), observer=observer)
+                         native_context=native_context(), observer=observer, now=lambda:100)
         self.assertEqual(result['status'], 'suppressed')
         args = parser.parse_args(['agents', 'reenable', '--managed-agent-id', agent, '--json'])
         with patch('sys.stdout', new_callable=io.StringIO) as out:
-            self.assertEqual(run(args, self.root / 'wake'), 2)
+            self.assertEqual(run(args, self.root / 'wake', now=lambda:100), 2)
         self.assertEqual(json.loads(out.getvalue())['error']['code'], 'policy_denied')
 
     def test_real_grok_actor_authentication_is_required_and_changed_generation_is_rejected(self):

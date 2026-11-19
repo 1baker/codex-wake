@@ -27,7 +27,7 @@ class SharedAppServerReader:
 
     def __init__(self, endpoint: str, *, timeout: float = 10.0,
                  connector: Callable[..., Any] | None = None):
-        if not math.isfinite(timeout) or timeout <= 0 or timeout > 60:
+        if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout <= 0 or timeout > 60:
             raise WakeError("source timeout must be positive and at most 60 seconds")
         if not endpoint.startswith("unix://") or not endpoint[7:]:
             raise SharedSourceError("an explicit existing unix://PATH endpoint is required")
@@ -37,13 +37,14 @@ class SharedAppServerReader:
         self.timeout = timeout
         self.connector = connector
         self.connection: Any = None
-        self.deadline = 0.0
+        self.deadline = None
         self.sequence = 0
         self.server_metadata: dict[str, Any] = {}
 
     def __enter__(self) -> SharedAppServerReader:
-        self.deadline = time.monotonic() + self.timeout
         try:
+            # Advisory I/O budget only; callers own freshness and authorization.
+            self.deadline = time.monotonic() + self.timeout
             if self.path.is_symlink():
                 from .strict_runtime import resolve_executor_endpoint
                 try:
@@ -74,6 +75,8 @@ class SharedAppServerReader:
             raise SharedSourceError(f"shared app-server unavailable: {type(exc).__name__}") from None
 
     def remaining(self) -> float:
+        if self.deadline is None:
+            raise SharedSourceError('shared connection budget is not open')
         remaining = self.deadline - time.monotonic()
         if remaining <= 0:
             raise SharedSourceError("shared metadata observation timed out")

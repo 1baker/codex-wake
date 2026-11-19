@@ -4,13 +4,13 @@ import io
 import json
 from pathlib import Path
 import tempfile
-import time
 import unittest
 from unittest.mock import patch
 
 from codex_wake.cli import run
 from codex_wake.managed_inventory import ManagedInventory, Observation
 from codex_wake.mcp_server import CommandRunner, SPECS
+from tests.test_measurements import observation
 
 THREAD = '00000000-0000-7000-8000-000000000331'
 META = dict(threadId=THREAD, sessionId=THREAD, callId='resource-call',
@@ -19,10 +19,13 @@ META = dict(threadId=THREAD, sessionId=THREAD, callId='resource-call',
 
 class ResourceCallerTests(unittest.TestCase):
     def test_cli_and_mcp_share_claim_and_refuse_spoofed_owner_authority(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        clock = observation(1000)
+        with tempfile.TemporaryDirectory() as tmp, patch(
+                "codex_wake.measurements.snapshot", return_value=clock):
             root = Path(tmp)
-            sample = Observation('codex', 'codex:fixture', THREAD, str(root), 'ready', time.time(),
-                                 'native_metadata', dict(pid=123, start_ticks=42, boot_id='boot'), [], {'inspect': 'supported'})
+            sample = Observation('codex', 'codex:fixture', THREAD, str(root), 'ready', clock['utc']['upper'],
+                                 'native_metadata', dict(pid=123, start_ticks=42, boot_id='boot'), [], {'inspect': 'supported'},
+                                 clock_observation=clock)
             agent = ManagedInventory(root).enroll(sample, operator=True)['agent']['managed_agent_id']
             runner = CommandRunner(wake_root=root)
             with patch('codex_wake.managed_inventory_commands.RuntimeObserver.__call__', return_value=sample):

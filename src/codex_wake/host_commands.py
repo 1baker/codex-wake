@@ -6,6 +6,7 @@ import json
 from .cli_output import emit
 from pathlib import Path
 import sys
+
 import time
 
 from .controller_hosts import HostOperations, HostRegistry, SSHReceiver
@@ -59,6 +60,7 @@ def bounded_stdin():
     import os
     import selectors
     chunks = bytearray()
+    # Protective I/O wait only; permission and lease expiry belong to the receiver.
     deadline = time.monotonic() + 5
     with selectors.DefaultSelector() as selector:
         selector.register(sys.stdin.buffer, selectors.EVENT_READ)
@@ -66,12 +68,15 @@ def bounded_stdin():
             remaining = deadline - time.monotonic()
             if remaining <= 0: raise InventoryError('invalid_argument', 'SSH frame input deadline exceeded')
             if not selector.select(remaining): continue
+            if time.monotonic() >= deadline: raise InventoryError('invalid_argument', 'SSH frame input deadline exceeded')
             chunk = os.read(sys.stdin.fileno(), 4096)
+            if time.monotonic() >= deadline: raise InventoryError('invalid_argument', 'SSH frame input deadline exceeded')
             if not chunk: break
             chunks.extend(chunk)
             if len(chunks) > 65536: raise InventoryError('invalid_argument', 'SSH frame exceeds 65536 bytes')
     value = json.loads(chunks)
     if not isinstance(value, dict): raise InventoryError('invalid_argument', 'SSH frame must be an object')
+    if time.monotonic() >= deadline: raise InventoryError('invalid_argument', 'SSH frame input deadline exceeded')
     return value
 
 

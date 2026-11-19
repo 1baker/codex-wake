@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 from . import goal_supervision as supervision
+from . import goal_time, measurements
 from .session_permissions import Principal
 
 
@@ -68,8 +69,11 @@ def _normalize(receipt, thread):
     elapsed=None
     if clock_ok:
         elapsed=receipt.get('elapsed_upper_seconds') if counter else None
-        if elapsed is None and not counter and all(type(receipt.get(key)) in (int,float) for key in ('started_upper','started_boottime','time_origin')):
-            elapsed=max(0,receipt['started_upper']-receipt['time_origin']+time.clock_gettime(time.CLOCK_BOOTTIME)-receipt['started_boottime'])
+        if not counter:
+            try:
+                elapsed=max(0,goal_time.upper(receipt)-receipt['time_origin'])
+            except goal_time.GoalTimeUnavailable:
+                clock_ok=False
         if elapsed is not None and counter and receipt.get('task_window'):
             elapsed=max(0,elapsed-receipt['task_window']['time_origin'])
     used=receipt.get('used_tokens') if current_usage else None
@@ -431,11 +435,22 @@ def _resolve_status(root, selector, endpoint):
 
 def _await_continuation(root,verb,arguments,principal,result):
     """One operator action waits briefly on the same approved continuation."""
-    until=time.monotonic()+3
-    while result.get('operation',{}).get('resume_state') in ('awaiting_first_poll','native_lease_release_pending') and time.monotonic()<until:
-        time.sleep(min(.05,max(0,until-time.monotonic())))
-        retry={key:value for key,value in arguments.items() if key!='expected_revision'}
-        result=_execute(root,verb,retry,principal=principal)
+    pending=('awaiting_first_poll','native_lease_release_pending')
+    if result.get('operation',{}).get('resume_state') not in pending:
+        return result
+    try:
+        deadline=measurements.deadline(3)
+        while result.get('operation',{}).get('resume_state') in pending:
+            remaining=deadline.remaining()
+            if remaining<=0:
+                break
+            time.sleep(min(.05,remaining))
+            if deadline.expired():
+                break
+            retry={key:value for key,value in arguments.items() if key!='expected_revision'}
+            result=_execute(root,verb,retry,principal=principal)
+    except measurements.TimeUnavailable:
+        result=dict(result,wait_status='qualified_time_unavailable')
     return result
 
 

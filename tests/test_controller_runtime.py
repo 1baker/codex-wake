@@ -33,6 +33,103 @@ class RuntimeTests(unittest.TestCase):
             with self.assertRaises(AuthError): runtime.operation(Actor('other', *tuple(actor.__dict__.values())[1:]), 'operations.result', {'operation_id': 'operation-one'}, authorize=lambda: actor)
             self.assertEqual(effect.read_text(), 'one effect')
 
+    def test_wait_rechecks_authority_after_the_advisory_deadline_observation(self):
+        from unittest.mock import patch
+        from codex_wake.controller_runtime import ControllerRuntime
+        for boundary in ('before_refresh','after_refresh'):
+            for loss in ('expiry','revocation'):
+                with self.subTest(boundary=boundary,loss=loss),tempfile.TemporaryDirectory() as directory:
+                    authority={'now':100,'revoked':False}
+                    runtime=ControllerRuntime(directory,now=lambda:authority['now'])
+                    actor=self.actor()
+                    def authorize():
+                        if authority['revoked']:raise AuthError('invalid_token')
+                        return actor
+                    request=dict(operation_id='final-authority',idempotency_key='final-authority',
+                        correlation_id='final-authority',binding='fixture',target=actor.targets[0])
+                    runtime.execute(actor,'fixture.effect',dict(_request=request),authorize=authorize,
+                        dispatch=lambda *_:dict(answer='private retained result'))
+                    calls=0
+                    def clock():
+                        nonlocal calls
+                        calls+=1
+                        trigger=2 if boundary=='before_refresh' else 3
+                        if calls>=trigger:
+                            if loss=='expiry':authority['now']=1001
+                            else:authority['revoked']=True
+                            return 3.0
+                        return calls / 100.0
+                    with patch('codex_wake.controller_runtime.time.monotonic',side_effect=clock):
+                        with self.assertRaises(AuthError):
+                            runtime.operation(actor,'operations.wait',dict(operation_id='final-authority',timeout=1),authorize=authorize)
+
+    def test_positive_wait_does_not_require_counter_and_keeps_retained_result(self):
+        from unittest.mock import patch
+        from codex_wake.controller_runtime import ControllerRuntime
+        from codex_wake.measurements import TimeUnavailable
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = ControllerRuntime(Path(directory), now=lambda:100)
+            actor = self.actor()
+            request = dict(operation_id='retained-wait', idempotency_key='retained-wait',
+                correlation_id='retained-wait', binding='caller', target=actor.targets[0])
+            runtime.execute(actor, 'fixture.effect', dict(_request=request), authorize=lambda:actor,
+                dispatch=lambda *_:dict(answer='retained'))
+            with patch('codex_wake.measurements.snapshot', side_effect=TimeUnavailable('unqualified')):
+                positive = runtime.operation(actor, 'operations.wait', dict(operation_id='retained-wait', timeout=1), authorize=lambda:actor)
+                self.assertEqual(positive['result']['wait']['status'], 'completed')
+                retained = runtime.operation(actor, 'operations.wait', dict(operation_id='retained-wait', timeout=0), authorize=lambda:actor)
+            self.assertEqual(retained['result']['operation']['result'], dict(answer='retained'))
+            self.assertEqual(retained['result']['wait']['status'], 'completed')
+
+    def test_positive_stream_does_not_require_counter_and_keeps_event_cursor(self):
+        from unittest.mock import patch
+        from codex_wake.controller_runtime import ControllerRuntime
+        from codex_wake.measurements import TimeUnavailable
+        with tempfile.TemporaryDirectory() as directory:
+            runtime = ControllerRuntime(Path(directory), now=lambda:100)
+            actor = self.actor()
+            request = dict(operation_id='retained-stream', idempotency_key='retained-stream',
+                correlation_id='retained-stream', binding='caller', target=actor.targets[0])
+            runtime.execute(actor, 'fixture.effect', dict(_request=request), authorize=lambda:actor,
+                dispatch=lambda *_:dict(answer='retained'))
+            with patch('codex_wake.measurements.snapshot', side_effect=TimeUnavailable('unqualified')):
+                positive = runtime.operation(actor, 'operations.stream', dict(operation_id='retained-stream', timeout=1), authorize=lambda:actor)
+                self.assertTrue(positive['result']['events'])
+                first = runtime.operation(actor, 'operations.stream', dict(operation_id='retained-stream', timeout=0), authorize=lambda:actor)
+                second = runtime.operation(actor, 'operations.stream', dict(operation_id='retained-stream', timeout=0, cursor=first['result']['next_cursor']), authorize=lambda:actor)
+            self.assertTrue(first['result']['events'])
+            self.assertEqual(second['result']['events'], [])
+            self.assertEqual(second['result']['next_cursor'], first['result']['next_cursor'])
+
+    def test_wait_and_stream_keep_original_advisory_limit_after_owner_observation(self):
+        from unittest.mock import patch
+        from codex_wake.controller_runtime import ControllerRuntime
+        from codex_wake.measurements import TimeUnavailable
+        for verb in ('operations.wait', 'operations.stream'):
+            with self.subTest(operation=verb), tempfile.TemporaryDirectory() as directory:
+                elapsed = [0.0]
+                class Owner:
+                    def observe_native_owned(self, record):
+                        elapsed[0] = 2.0
+                        record.update(phase='terminal', execution='completed',
+                            answer=dict(text='actual owner answer'))
+                runtime = ControllerRuntime(Path(directory), adapter=Owner(), now=lambda:100)
+                actor = self.actor()
+                request = dict(operation_id='late-answer', idempotency_key='late-answer',
+                    correlation_id='late-answer', binding='caller', target=actor.targets[0])
+                runtime.execute(actor, 'sessions.prompt', dict(_request=request), authorize=lambda:actor,
+                    dispatch=lambda *_:dict(_pending=True, handle=dict(kind='native_turn',turn_id='owned')))
+                with patch('codex_wake.measurements.snapshot', side_effect=TimeUnavailable('auxiliary counter unavailable')), \
+                        patch('codex_wake.controller_runtime.time.monotonic', side_effect=lambda:elapsed[0]):
+                    late = runtime.operation(actor, verb, dict(operation_id='late-answer',timeout=1),authorize=lambda:actor)
+                if verb=='operations.wait':self.assertEqual(late['result']['wait']['status'],'timeout')
+                else:
+                    self.assertEqual(late['result']['events'],[])
+                    self.assertEqual(late['result']['next_cursor'],0)
+                retained = runtime.operation(actor,'operations.result',dict(operation_id='late-answer'),authorize=lambda:actor)
+                self.assertEqual(retained['result']['operation']['answer']['text'],'actual owner answer')
+                self.assertEqual(retained['result']['operation']['cancellation'],'not_requested')
+
     def fixture(self, directory, *, fault=None, observed_at=None, sender_id="sender"):
         import json,time
         initial_wall, initial_elapsed = time.time(), time.monotonic()

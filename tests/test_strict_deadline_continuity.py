@@ -10,14 +10,12 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
-import time
 import unittest
 
 from codex_wake.process import boot_id_value
 from codex_wake.strict_executor import Guard
 
 
-@unittest.skipUnless(hasattr(time, 'CLOCK_BOOTTIME'), 'Linux CLOCK_BOOTTIME required')
 class StrictDeadlineContinuityTests(unittest.TestCase):
     def configuration(self, root, *, started_boottime):
         return dict(wake_root=str(root), objective_id='deadline-continuity',
@@ -38,15 +36,15 @@ class StrictDeadlineContinuityTests(unittest.TestCase):
         self.assertEqual(result.returncode,5,result.stderr)
         return json.loads((source.parent/'status.json').read_text())
 
-    def test_two_guard_processes_preserve_original_expired_deadline_and_no_child_effect(self):
+    def test_two_guard_processes_hold_legacy_clock_without_reanchoring_or_child_effect(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
-            configuration=self.configuration(root,started_boottime=time.clock_gettime(time.CLOCK_BOOTTIME)-20)
+            configuration=self.configuration(root,started_boottime=10)
             source=root/'admission.json';source.write_text(json.dumps(configuration))
             original=hashlib.sha256(source.read_bytes()).hexdigest()
             statuses=[self.invoke(source),self.invoke(source)]
             for status in statuses:
-                self.assertEqual(status['reason'],'deadline_reached')
+                self.assertEqual(status['reason'],'clock_unqualified')
                 self.assertEqual(status['state'],'stopped')
                 self.assertEqual(status['generation'],'original-generation')
                 self.assertIsNone(status['child_pid'])
@@ -55,11 +53,9 @@ class StrictDeadlineContinuityTests(unittest.TestCase):
             self.assertFalse((root/'child-effect').exists())
 
     def test_injected_boottime_jump_counts_elapsed_before_child_or_accounting(self):
-        # Linux exposes an actual, advancing BOOTTIME clock. The large jump
-        # below is injected via Guard.check, so it does not claim host suspend.
-        clock=time.clock_gettime(time.CLOCK_BOOTTIME)
-        self.assertGreater(time.clock_getres(time.CLOCK_BOOTTIME),0)
-        self.assertGreaterEqual(time.clock_gettime(time.CLOCK_BOOTTIME),clock)
+        # Numeric legacy fixture inputs preserve the explicit injection seam;
+        # they do not qualify a host clock or claim a real suspend trial.
+        clock=10  # Explicit deterministic legacy fixture coordinate.
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
             configuration=self.configuration(root,started_boottime=clock)
@@ -73,7 +69,7 @@ class StrictDeadlineContinuityTests(unittest.TestCase):
     def test_changed_boot_identity_fences_executable_before_child_effect(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory)
-            configuration=self.configuration(root,started_boottime=time.clock_gettime(time.CLOCK_BOOTTIME))
+            configuration=self.configuration(root,started_boottime=10)
             configuration['boot_id']='previous-boot-disposable-fixture'
             source=root/'admission.json';source.write_text(json.dumps(configuration))
             status=self.invoke(source)

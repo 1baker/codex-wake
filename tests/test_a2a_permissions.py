@@ -102,7 +102,8 @@ class A2APermissionTests(unittest.TestCase):
         with self.assertRaises(BusError) as error:self.send()
         self.assertEqual(error.exception.code,'permission_policy_unavailable')
 
-    def test_task_scope_comes_only_from_operator_bound_approved_briefs(self):
+    @patch('codex_wake.measurements.utc_bounds', return_value=(1000, 1001))
+    def test_task_scope_comes_only_from_operator_bound_approved_briefs(self, _clock):
         from codex_wake.task_briefs import TaskBriefStore,BriefAuthority
         self.adopt({'version':1,'global':{'actions':{
             'a2a.send':{'decision':'allow','tasks':['task'],'targets':['recipient']},

@@ -53,13 +53,14 @@ def submission_failure(reason, result, error):
                 stderr=output_summary(getattr(source, 'stderr', None), inspect=True))
 
 class CodexRuntimeAdapter:
-    def __init__(self, *, read_thread, request, run, project_failure, monotonic=None, busy_policy="wait"):
+    def __init__(self, *, read_thread, request, run, project_failure, monotonic=None, busy_policy="wait", bounded_adapter=None):
+        self._bounded_adapter = bounded_adapter
         self.busy_policy = busy_policy
         self._read_thread = read_thread
         self._request = request
         self._run = run
         self._project_failure = project_failure
-        self._clock = monotonic or time.monotonic
+        self._clock = monotonic  # Injectable advisory transport clock; no expiry authority.
 
     def resolve(self, target) -> RuntimeRecipient:
         if target.get("transport") != "native" or target.get("runtime", "codex") != "codex":
@@ -80,6 +81,11 @@ class CodexRuntimeAdapter:
             "terminal_input": RuntimeCapability("unsupported", "not_this_delivery_method"),
             "receiver_acknowledgment": RuntimeCapability("not_qualified", "queue_is_not_receiver_ack"),
         }
+        if self._bounded_adapter is not None:
+            try:
+                capabilities['busy_queue'] = self._bounded_adapter.capability(recipient)
+            except Exception:
+                capabilities['busy_queue'] = RuntimeCapability('not_qualified', 'bounded_native_backend_not_qualified')
         if target.get('startup_policy') == 'active_tab':
             from .sessions import observe
             try:
@@ -120,6 +126,32 @@ class CodexRuntimeAdapter:
             return RuntimeObservation("unavailable", "recipient_not_loaded_or_unknown", capabilities, resumed)
         except Exception:
             return RuntimeObservation("unavailable", "runtime_observation_unavailable", capabilities, resumed)
+
+    def submit_bounded(self, recipient, prompt, envelope):
+        # Host qualification must be rechecked on the submission connection.
+        if self._bounded_adapter is None:
+            return RuntimeSubmission('not_sent', reason='bounded_native_backend_not_qualified', pre_io=True)
+        return self._bounded_adapter.submit_bounded(recipient, prompt, envelope)
+
+    def reconcile_bounded(self, recipient, prompt, envelope):
+        if self._bounded_adapter is None:
+            return RuntimeReconciliation(None, 'bounded_native_backend_not_qualified')
+        observed = self._bounded_adapter.reconcile_bounded(recipient, prompt, envelope)
+        admission = observed.evidence
+        if admission is None or admission.get('source') != 'bounded_native_admission':
+            return observed
+        exact = self.reconcile(recipient, prompt)
+        evidence = exact.evidence
+        if (not isinstance(evidence, dict) or evidence.get('source') != 'native_turn'
+                or evidence.get('turn_id') != admission['turn_id']
+                or evidence.get('client_message_id') != envelope.client_user_message_id):
+            return RuntimeReconciliation(None, 'bounded_native_admitted_execution_unconfirmed')
+        return exact
+
+    def cancel_bounded(self, recipient, prompt, envelope, queue_id=None):
+        if self._bounded_adapter is None:
+            return RuntimeReconciliation(None, 'bounded_native_backend_not_qualified')
+        return self._bounded_adapter.cancel_bounded(recipient, prompt, envelope, queue_id)
 
     def submit(self, recipient: RuntimeRecipient, prompt: str) -> RuntimeSubmission:
         if self.busy_policy != "wait":
@@ -162,14 +194,19 @@ class CodexRuntimeAdapter:
     def reconcile(self, recipient: RuntimeRecipient, prompt: str) -> RuntimeReconciliation:
         """Observe only this session and return receipt identities, never bodies."""
         target = recipient.binding
-        deadline = self._clock() + 10
+        # One advisory RPC budget, retained across queue/history pagination.
+        clock = self._clock if self._clock is not None else time.monotonic
+        end = clock() + 10
+
+        def remaining_budget():
+            return end - clock()
 
         def request(method, params):
-            remaining = deadline - self._clock()
+            remaining = remaining_budget()
             if remaining <= 0:
                 raise WakeError("native reconciliation observation timed out")
             response = self._request(target["endpoint"], target["codex_cmd"], method, params, remaining)
-            if self._clock() >= deadline:
+            if remaining_budget() <= 0:
                 raise WakeError("native reconciliation observation timed out")
             return response
 
@@ -329,7 +366,7 @@ class CodexRuntimeAdapter:
                             freshness='Observed with this exact native turn reconciliation',
                             ambiguity='Completion establishes execution, not acceptance of the result.'),
                     )
-        if self._clock() >= deadline:
+        if remaining_budget() <= 0:
             raise WakeError("native reconciliation observation timed out")
         if len(evidence) != 1:
             return RuntimeReconciliation(

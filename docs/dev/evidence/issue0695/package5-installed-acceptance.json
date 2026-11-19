@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "issue": 695,
+  "state": "native_package5_qualification_pass_parent_open",
+  "native_source_commit": "9af0e8e48d0c2dcfe1800a3deaadfcec7e2c0bd7",
+  "package": {
+    "version": "0.169.0-wake695.5+9af0e8e48d",
+    "target": "x86_64-unknown-linux-gnu",
+    "files": {
+      "codex-package.json": "bf514f5ecce6ea536249efcbd075dfcf505057885e91d6ba79e3e54c41b3f388",
+      "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+      "codex-resources/bwrap": "da1fe1635e7d3f087e65d840e807a9d7f9d2c05ab9af782c1bd6bb5f5f094220",
+      "bin/codex-code-mode-host": "8ef927abc0a07dd159ec2469bca8756c036163bf818375d01f0d362bf8cf32ee",
+      "bin/codex-exec-server": "c8976af35e1292daa2ba8fecfe8d9b241796ef6a3340a3fbe9acd2e0a9921796",
+      "bin/codex": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978"
+    },
+    "assembly_seconds": 1176.072,
+    "all6_hashes_verified_source_and_UID1017_before_and_after": true
+  },
+  "environment": {
+    "uid": 1017,
+    "shared_wsl_kernel": true,
+    "provider": "owned localhost Responses stream",
+    "external_model_calls": 0,
+    "material_difference": "GNU/system glibc candidate; prior working baseline musl"
+  },
+  "gates": {
+    "06-package5-cross": {
+      "state": "passed",
+      "candidate_sha256": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978",
+      "updater_exit": 1,
+      "active_turn_preserved": true,
+      "selection_preserved": true,
+      "forced_shutdown": false,
+      "external_provider_calls": 0,
+      "stop_exit": 0,
+      "seconds": 29.315
+    },
+    "07-package5-same": {
+      "state": "passed",
+      "candidate_sha256": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978",
+      "updater_exit": 0,
+      "active_turn_preserved": true,
+      "selection_preserved": true,
+      "forced_shutdown": false,
+      "external_provider_calls": 0,
+      "stop_exit": 0,
+      "seconds": 32.991
+    },
+    "695-package5-account": {
+      "state": "passed",
+      "source": "9af0e8e48d",
+      "candidate_sha256": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978",
+      "account_history_prefixes_preserved": true,
+      "native_goals_and_budgets_preserved": true,
+      "failed_start_repair_passed": true,
+      "provider_requests": 2,
+      "external_model_calls": 0,
+      "stop_exit_code": 0,
+      "seconds": 77.179
+    },
+    "695-package5-default": {
+      "state": "passed",
+      "source": "9af0e8e48d",
+      "candidate_sha256": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978",
+      "default_home_selected_without_codex_home": true,
+      "default_history_prefixes_preserved": true,
+      "native_goals_and_budgets_preserved": true,
+      "failed_start_repair_passed": true,
+      "provider_requests": 2,
+      "external_model_calls": 0,
+      "stop_exit_code": 0,
+      "seconds": 77.892
+    },
+    "695-package5-shared": {
+      "state": "passed",
+      "source": "9af0e8e48d",
+      "candidate_sha256": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978",
+      "explicit_shared_codex_home": true,
+      "shared_history_prefixes_preserved": true,
+      "native_goals_and_budgets_preserved": true,
+      "failed_start_repair_passed": true,
+      "provider_requests": 2,
+      "external_model_calls": 0,
+      "stop_exit_code": 0,
+      "seconds": 70.959
+    },
+    "695-package5-private": {
+      "state": "passed",
+      "source": "9af0e8e48d",
+      "candidate_sha256": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978",
+      "private_lock_refusal_and_normal_exit_recovery": true,
+      "owner_identified": true,
+      "actionable_recovery": true,
+      "provider_requests": 0,
+      "external_model_calls": 0,
+      "stop_exit_code": 0,
+      "seconds": 12.598
+    },
+    "695-package5-prepared": {
+      "state": "passed",
+      "source": "9af0e8e48d",
+      "candidate_sha256": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978",
+      "eligible_when_hook_entered": true,
+      "expired_before_hook_return": true,
+      "expired_input_and_derived_context_absent_from_all_model_requests": true,
+      "post_reload_control_completed": true,
+      "provider_requests": 2,
+      "external_model_calls": 0,
+      "stop_exit_code": 0,
+      "seconds": 56.485
+    },
+    "695-package5-queue": {
+      "state": "passed",
+      "source": "9af0e8e48d",
+      "candidate_sha256": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978",
+      "unknown_time_held": true,
+      "original_deadlines_and_client_ids_survive_restart": true,
+      "restart_expired_absent_from_model_and_history": true,
+      "restart_control_reached_model": true,
+      "provider_requests": 3,
+      "external_model_calls": 0,
+      "stop_exit_code": 0,
+      "seconds": 56.146
+    },
+    "695-package5-cancel-reconnect": {
+      "state": "passed",
+      "candidate_sha256": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978",
+      "direct_cancel": true,
+      "lost_reply_reconciled_without_second_delete": true,
+      "already_admitted_not_canceled": true,
+      "canceled_inputs_absent_from_provider": true,
+      "existing_client_reconnect_prompt_reached_provider": true,
+      "reconnect_notice_observed": true,
+      "cancel_tombstone_survives_restart": true,
+      "provider_requests": 3,
+      "stop_exit_code": 0,
+      "installed_helper_source": "ff9b9c01",
+      "wheel_sha256": "905399e0d99ccbde91d52cb9828010e2b60f9c744f80567ad7f4a1e2f6206b81",
+      "seconds": 25.147
+    }
+  },
+  "initial_pipeline": {
+    "state": "failed",
+    "passed_stages": 8,
+    "failure": "admitted evidence duplicated upper bound differed exactlyonef64ULP; fail-safe strict equality rejection; original receipts preserved"
+  },
+  "repair": {
+    "wake_source": "ff9b9c01",
+    "scope": "Python wire validator only, native package unchanged",
+    "red": "public cancel_bounded rejects actual native RPC pair",
+    "green": "10focusedPASS Python3113.716s and3123.203s; real installed retry25.147sPASS",
+    "safety": "Only adjacent representable bound differences; both finite/ordered/qualified; larger upper bound rounded outward must be strictly before original expiry; greater disagreement and expiry crossing refused",
+    "setup_retry": "Initial repaired case exceeded UNIX tmux socket length before native launch; short case then passed"
+  },
+  "final_owned_processes": [],
+  "working_native_changed": false,
+  "production_bounded_delivery_enabled": false,
+  "completion_wake_actual_chat_delivery_observed": true,
+  "remaining": [
+    "Production bounded-adapter activation with approved qualified target selection",
+    "Original full Python assertion failure remains unexplained; no full-green claim",
+    "Production restart/cooperative protocol remains unqualified; no working installation authorization implied"
+  ],
+  "nonzero_goal_continuity": {
+    "state": "passed",
+    "seconds": 42.807,
+    "provider_reported_tokens_charged_to_native_goal": 25,
+    "token_budget": 2000,
+    "paused_status_and_cumulative_usage_preserved_across_rollback_and_reupgrade": true,
+    "owned_follow_on_turn_paused_and_interrupted_before_upgrade": true,
+    "external_model_calls": 0
+  },
+  "recipe_provenance": "Retained operator-scoped package5-qualification-recipes.json records recipe hashes; raw stage receipts preserved outside Git.",
+  "bounded_native_admission": {
+    "contract_version": 1,
+    "state": "qualified",
+    "checks": {
+      "expiry": true,
+      "unknown": true,
+      "cancellation": true,
+      "restart": true,
+      "history_isolation": true,
+      "final_send": true,
+      "rollback": true,
+      "ownership": true,
+      "reconnect": true
+    },
+    "provenance": {
+      "expiry": "695-package5-prepared and 695-package5-queue",
+      "unknown": "695-package5-queue",
+      "cancellation": "695-package5-cancel-reconnect",
+      "restart": "695-package5-queue",
+      "history_isolation": "695-package5-prepared and 695-package5-queue",
+      "final_send": "Native9af send-boundary source controls plus installed prepared-expiry gate",
+      "rollback": "695-package5-account and default/shared gates",
+      "ownership": "695-package5-private",
+      "reconnect": "695-package5-cancel-reconnect"
+    }
+  }
+}

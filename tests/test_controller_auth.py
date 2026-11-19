@@ -6,6 +6,49 @@ from pathlib import Path
 
 
 class OAuthTests(unittest.TestCase):
+    def test_default_oauth_lifetimes_use_lower_issue_bound_and_upper_expiry_guard(self):
+        from unittest.mock import patch
+        from codex_wake.controller_auth import OAuthAuthority,AuthError
+        from codex_wake.measurements import TimeUnavailable
+        with tempfile.TemporaryDirectory() as directory:
+            auth=OAuthAuthority(Path(directory)/'auth.sqlite',issuer='https://wake.test',resource='https://wake.test/controller')
+            client=auth.register(dict(redirect_uris=['http://localhost/callback']))
+            verifier='x'*43
+            challenge=base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b'=').decode()
+            with patch('codex_wake.measurements.utc_bounds',return_value=(100,110)):
+                code=auth.authorize(subject='owner',principal_kind='owner',client_id=client['client_id'],
+                    redirect_uri=client['redirect_uris'][0],resource=auth.resource,scopes=['observe'],
+                    targets=[dict(host='fixture')],code_challenge=challenge)
+                with auth.connect() as database:
+                    self.assertEqual(database.execute('SELECT expires FROM codes').fetchone()[0],220)
+                tokens=auth.token(dict(grant_type='authorization_code',client_id=client['client_id'],
+                    code=code,redirect_uri=client['redirect_uris'][0],code_verifier=verifier,resource=auth.resource))
+                actor=auth.authenticate(tokens['access_token'])
+            self.assertEqual(actor.expires_at,700)
+            self.assertEqual(tokens['expires_in'],590)
+            with patch('codex_wake.measurements.utc_bounds',return_value=(699,701)):
+                with self.assertRaises(AuthError):auth.authenticate(tokens['access_token'])
+            with patch('codex_wake.measurements.utc_bounds',side_effect=TimeUnavailable('unqualified')):
+                self.assertEqual(auth.revoke_grant(actor.grant_id)['status'],'revoked')
+
+    def test_default_clock_loss_refuses_new_grant_without_partial_authority(self):
+        from unittest.mock import patch
+        from codex_wake.controller_auth import OAuthAuthority,AuthError
+        from codex_wake.measurements import TimeUnavailable
+        with tempfile.TemporaryDirectory() as directory:
+            auth=OAuthAuthority(Path(directory)/'auth.sqlite',issuer='https://wake.test',resource='https://wake.test/controller')
+            client=auth.register(dict(redirect_uris=['http://localhost/callback']))
+            challenge=base64.urlsafe_b64encode(hashlib.sha256(('x'*43).encode()).digest()).rstrip(b'=').decode()
+            with patch('codex_wake.measurements.utc_bounds',side_effect=TimeUnavailable('unqualified')):
+                with self.assertRaises(AuthError) as held:
+                    auth.authorize(subject='owner',principal_kind='owner',client_id=client['client_id'],
+                        redirect_uri=client['redirect_uris'][0],resource=auth.resource,scopes=['observe'],
+                        targets=[dict(host='fixture')],code_challenge=challenge)
+            self.assertEqual(held.exception.code,'qualified_time_unavailable')
+            with auth.connect() as database:
+                self.assertEqual(database.execute('SELECT COUNT(*) FROM grants').fetchone()[0],0)
+                self.assertEqual(database.execute('SELECT COUNT(*) FROM codes').fetchone()[0],0)
+
     def test_pkce_grant_exact_resource_rotation_and_independent_revocation(self):
         from codex_wake.controller_auth import OAuthAuthority, AuthError
         with tempfile.TemporaryDirectory() as directory:

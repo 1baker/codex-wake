@@ -444,6 +444,7 @@ for line in sys.stdin:
             record = build_record(
                 predicate={"type": "not_before", "due_at": "2026-05-25T20:39:34Z"},
                 prompt="Resume",
+                now=datetime(2026, 5, 25, tzinfo=UTC),
                 cwd=repo,
                 target={"transport": "tmux", "tmux_socket": "/tmp/tmux/default", "pane": "%1"},
             )
@@ -462,6 +463,7 @@ for line in sys.stdin:
                         "dispatched": 0,
                         "submitted": 0,
                         "requeued": 0,
+                        "time_held": 0,
                     },
                 )()
                 results = supervisor_poll_once(config, mode="loop", dispatch=False)

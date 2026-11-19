@@ -98,18 +98,35 @@ def _exit(output):
 
 def output_frames(owner,identifier,mode,timeout,cursor=0,limit=100):
     """One polling and diagnostic contract for direct and framed presentation."""
+    # Advisory caller wait only; the owner enforces authorization and operation expiry.
+    deadline=time.monotonic()+timeout if timeout>0 else None
     yield {'operation_id':identifier}
-    deadline=time.monotonic()+timeout
+    def timed_out():
+        yield {'stderr':json.dumps(dict(operation_id=identifier,reason='wait_timeout',next_cursor=cursor))+'\n'}
+        yield {'exit_code':124}
     while True:
-        output=owner.output(identifier,mode=mode,cursor=cursor,limit=limit,timeout=max(0,min(30,deadline-time.monotonic())))
+        remaining=deadline-time.monotonic() if deadline is not None else 0
+        if deadline is not None and remaining<=0:
+            yield from timed_out();return
+        output=owner.output(identifier,mode=mode,cursor=cursor,limit=limit,timeout=max(0,min(30,remaining)))
+        if deadline is not None and time.monotonic()>=deadline:
+            yield from timed_out();return
         yield {'output':output}
+        if deadline is not None and time.monotonic()>=deadline:
+            yield from timed_out();return
         if mode=='stream' and output.get('text'):yield {'stdout':output['text']}
         elif mode=='transcript':yield {'stdout':json.dumps(output,sort_keys=True)+'\n'}
         elif mode=='final' and output['terminal']:yield {'stdout':output.get('text','')}
+        if deadline is not None and time.monotonic()>=deadline:
+            yield from timed_out();return
         cursor=output['next_cursor']
         # Terminal status does not discard already-retained pages.
-        if mode in ('stream','transcript') and cursor<output['latest_cursor']:continue
-        if output['terminal'] or output['phase']=='uncertain' or time.monotonic()>=deadline:
+        if mode in ('stream','transcript') and cursor<output['latest_cursor']:
+            # The owner already reported completion. Remaining retained pages are
+            # untimed inspection, never another wait or a renewed deadline.
+            if output['terminal']:deadline=None
+            continue
+        if output['terminal'] or output['phase']=='uncertain' or deadline is None or time.monotonic()>=deadline:
             code=_exit(output)
             if code:
                 reason=output['reason'] or ('native_turn_'+output['execution'] if output['execution'] in ('failed','cancelled') else 'output_incomplete' if output['terminal'] else 'wait_timeout')

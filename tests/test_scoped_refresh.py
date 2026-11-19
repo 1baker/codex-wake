@@ -92,7 +92,15 @@ class ScopedRefreshTests(unittest.TestCase):
                 app_server='unix://'+str(sock),codex_path='/bin/true',timeout=1,
                 resources={'toy':dict(kind='mcp_catalog',server='toy',version='v2',tools={'version':[]})})})));profile.chmod(0o600)
             from datetime import datetime, timezone
-            expiry=datetime.fromtimestamp(time.time()+3 if stale else time.time()+15,timezone.utc).isoformat()
+            if stale:
+                from tests.test_shared_refresh import refresh_fixture_clock, REFRESH_CLOCK_BOOTSTRAP
+                fixture_clock = base / 'explicit-utc-fixture'
+                fixture_clock.write_text('1000')
+                clock = patch('codex_wake.measurements.snapshot',
+                              side_effect=lambda: refresh_fixture_clock(fixture_clock))
+                clock.start()
+                self.addCleanup(clock.stop)
+            expiry=datetime.fromtimestamp(1003 if stale else time.time()+15,timezone.utc).isoformat()
             common=['--wake-root',str(root),'sessions']
             identity=['--profiles',str(profile),'--profile','self','--thread-id',THREAD,
                 '--caller-thread-id',THREAD,'--scope','current_connection','--bus-root',str(bus.root),
@@ -103,7 +111,8 @@ class ScopedRefreshTests(unittest.TestCase):
                 if operation=='refresh':args+=['--intent','owned-scope','--checkpoint','checkpoint.json',
                     '--checkpoint-sha256',hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
                     '--resource','toy','--expires-at',expiry]
-                with patch('codex_wake.lifecycle_budget.trusted_upper',return_value=time.time()),redirect_stdout(output):
+                with patch('codex_wake.lifecycle_budget.trusted_upper',
+                        side_effect=lambda: float(fixture_clock.read_text()) if stale else time.time()),redirect_stdout(output):
                     code=run(args)
                 return code,json.loads(output.getvalue())
             watcher=None
@@ -117,8 +126,11 @@ class ScopedRefreshTests(unittest.TestCase):
                     code,value=invoke('refresh');self.assertNotEqual(code,0,value)
                     self.assertFalse((root/'shared-refresh').exists());return
                 env=dict(os.environ,PYTHONPATH=str(Path(__file__).resolve().parents[1]/'src'))
-                watcher=subprocess.Popen([sys.executable,'-m','codex_wake','--wake-root',str(root),
-                    'sessions','refresh-watch','--interval','0.05'],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+                watch_args=['--wake-root',str(root),'sessions','refresh-watch','--interval','0.05']
+                watch_command=([sys.executable,'-c',REFRESH_CLOCK_BOOTSTRAP,
+                    str(Path(__file__).resolve().parents[1]),str(fixture_clock),*watch_args]
+                    if stale else [sys.executable,'-m','codex_wake',*watch_args])
+                watcher=subprocess.Popen(watch_command,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
                 deadline=time.monotonic()+10
                 while time.monotonic()<deadline:
                     heartbeat=root/'shared-refresh/controller.json'
@@ -127,6 +139,8 @@ class ScopedRefreshTests(unittest.TestCase):
                 code,value=invoke('refresh');self.assertEqual(code,0,value)
                 while time.monotonic()<deadline:
                     code,value=invoke('refresh')
+                    if stale and state['reloaded'] and value.get('resource_status'):
+                        fixture_clock.write_text('1004')
                     if value.get('state') in ('completed','expired','blocked'):break
                     time.sleep(.03)
                 self.assertEqual(value['state'],'expired' if stale else 'blocked' if reset else 'completed',value)

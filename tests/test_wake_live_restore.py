@@ -64,8 +64,14 @@ class LiveWakeRestoreTests(unittest.TestCase):
             identity = process_identity(os.getpid())
             process = dict(pid=os.getpid(), start_ticks=identity['start_time_ticks'], boot_id=identity['boot_id'])
             inv = ManagedInventory(root, now=clock)
-            agent = inv.enroll(Observation('codex', namespace, THREAD, str(cwd), 'ready', clock(),
-                'native_metadata', process, [dict(pane_id='%7')], {'inspect':'supported'}))['agent']
+            prior = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])
+            try:
+                prior_identity = process_identity(prior.pid)
+                prior_process = dict(pid=prior.pid, start_ticks=prior_identity['start_time_ticks'], boot_id=prior_identity['boot_id'])
+                agent = inv.enroll(Observation('codex', namespace, THREAD, str(cwd), 'ready', clock(),
+                    'native_metadata', prior_process, [dict(pane_id='%7')], {'inspect':'supported'}))['agent']
+            finally:
+                prior.terminate(); prior.wait(timeout=5)
             PermissionStore(root).configure({'version':1}, Principal('operator','operator'), expected_revision=0)
             profiles = base / 'profiles.json'
             profiles.write_text(json.dumps(dict(version=1, profiles=dict(latest=dict(cwd=str(cwd),
@@ -102,7 +108,7 @@ class LiveWakeRestoreTests(unittest.TestCase):
                 absent = missing_server and not socket.exists()
                 return dict(complete=not absent, sources=dict(app_server=dict(availability='available'),
                     tmux=dict(availability='unavailable' if absent else 'available')),
-                    sessions=[dict(thread_id=THREAD,cwd=str(cwd),runtime_state='not_loaded' if absent else 'idle',
+                    sessions=[dict(thread_id=THREAD,cwd=str(cwd),runtime_state='idle' if ready else 'not_loaded',
                         binding_status='metadata_matched',attachments=[pane] if ready else [])])
             def terminal(argv, **kwargs):
                 nonlocal live
@@ -126,6 +132,12 @@ class LiveWakeRestoreTests(unittest.TestCase):
                     LiveWakeRestorer(root, now=clock).prepare(target)
                 self.assertEqual(commands, [])
                 thread['status'] = {'type':'idle'}
+                with self.assertRaisesRegex(RuntimeTargetError, 'identity_unavailable'):
+                    LiveWakeRestorer(root, now=clock).prepare(target)
+                self.assertEqual(commands, [])
+                # An absent frontend is recoverable only with native saved-thread
+                # evidence; idle-without-attachment remains an ownership hold.
+                thread['status'] = {'type':'notLoaded'}
                 prepared = LiveWakeRestorer(root, now=clock).prepare(target)
                 self.assertEqual(LiveWakeRestorer(root, now=clock).prepare(target)['thread_id'], THREAD)
             launches = [cmd for cmd in commands if 'new-window' in cmd]

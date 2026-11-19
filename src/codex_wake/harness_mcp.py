@@ -84,6 +84,7 @@ def tool_specs():
             'Schedule one exact-self native wake with frozen lifetime/startup policy. Delays may exceed 24 hours; time-wake TTL starts after due. Select persistent lifetime to survive creator completion. Inspect armed/monitor state: retention is not readiness or delivery.',
             dict(caller_thread_id=CALLER, trigger={'type': 'string', 'minLength': 1, 'maxLength': 1024},
                  prompt={'type': 'string', 'minLength': 1, 'maxLength': 32768},
+                 busy_policy={'enum': ['wait', 'queue'], 'default': 'wait'},
                  idempotency_key=TEXT, ttl=dict(TEXT, description='Delivery window after due for time wakes; from registration for file wakes.'), **POLICY),
             ['caller_thread_id', 'trigger', 'prompt', 'idempotency_key', 'session_mode'], False)
     for verb in ('register', 'list', 'show', 'revise', 'cancel'):
@@ -229,7 +230,8 @@ def call(runner, group, verb, arguments, native_context):
             raise WakeError('invalid_option_prefixed_argument')
         from .cli import run
         argv = ['--wake-root', str(root), 'native', verb, '--endpoint', runner.app_server,
-                '--json', '--idempotency-key', arguments['idempotency_key'], '--ttl', arguments.get('ttl', '24h')]
+                '--json', '--idempotency-key', arguments['idempotency_key'], '--ttl', arguments.get('ttl', '24h'),
+                '--busy-policy', arguments.get('busy_policy', 'wait')]
         for name in POLICY:
             if name=='routes':
                 for route in arguments.get('routes',[]):argv+=['--wake-route',route]

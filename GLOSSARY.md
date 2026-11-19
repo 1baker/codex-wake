@@ -10,8 +10,20 @@ The point in time when a registered wake becomes due, including time spent aslee
 **Message expiration**:
 The deadline after which a message is no longer eligible for delivery, including time spent asleep.
 
+**Final native-send admission**:
+Authorization for one bounded input to be sent toward its model provider while
+fresh qualified StableTime evidence at its service measurement instant places
+the original expiration in the future, independent of earlier selection or
+preparation. This is best effort: delivery delay or suspension after measurement
+can permit late sending. It does not establish when the remote model starts.
+
 **Trusted time**:
-A bounded estimate of current time accepted under the configured source-selection rules.
+A bounded UTC estimate accepted under the configured source-selection rules at its documented measurement instant. It does not by itself bound delivery to another process.
+
+**Service measurement instant**:
+The instant described by StableTime's UTC bounds and host-counter evidence.
+Client receipt and provider send are separate instants. WSL clocks must not be
+used to extrapolate this trusted observation.
 
 **Time uncertainty**:
 The condition in which available evidence cannot establish whether a deadline has passed.
@@ -453,7 +465,7 @@ identifiers can locate observations, whose freshness and uncertainty remain visi
 **Upgrade recovery**:
 Continuing work paused by a specific daemon upgrade from its durable checkpoint,
 under the same authority, remaining allowance, deadline and conversation identity.
-It does not resume work that was already paused or grant new resources.
+It does not resume work that was already paused or grant new resources. Replacing an executable or receiving a successful updater exit does not establish recovery acceptance.
 
 **Recovery acceptance**:
 Durable evidence that one recovery continuation was admitted for an exact upgrade

@@ -7,6 +7,9 @@ import unittest
 
 from codex_wake.grok_provider_auth import GrokSession
 
+CLOCK = dict(reason='authenticated_counter_only', counter=dict(
+    epoch='00000000-0000-0000-0000-000000000001', counter=1000, frequency=1000, rate_ppm=0))
+
 
 class GrokSessionTest(unittest.TestCase):
     def test_native_session_status_is_sanitized_and_bearer_requires_qualified_time(self):
@@ -57,15 +60,59 @@ class GrokSessionTest(unittest.TestCase):
                 accounts.bearer('personal', 1800000000)
 
     def test_login_never_relays_native_errors_or_treats_exit_zero_as_sign_in(self):
+        from unittest.mock import patch
         from codex_wake.grok_provider_auth import login
         with tempfile.TemporaryDirectory() as directory:
             executable = Path(directory) / 'grok'
             executable.write_text('#!/bin/sh\necho private-provider-secret >&2\nexit 0\n')
             executable.chmod(0o700)
             events = []
-            result = login(executable, Path(directory) / 'auth.json', emit=events.append)
+            with patch('codex_wake.measurements.snapshot', return_value=CLOCK):
+                result = login(executable, Path(directory) / 'auth.json', emit=events.append)
+            self.assertEqual(result['status'], 'login_finished')
             self.assertEqual(result['authentication'], 'unavailable')
             self.assertNotIn('private-provider-secret', json.dumps(events + [result]))
+
+    def test_login_holds_before_starting_native_child_without_qualified_time(self):
+        import shlex
+        from unittest.mock import patch
+        from codex_wake.grok_provider_auth import login
+        from codex_wake.measurements import TimeUnavailable
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / 'native-started'
+            executable = Path(directory) / 'grok'
+            executable.write_text('#!/bin/sh\ntouch ' + shlex.quote(str(marker)) + '\n')
+            executable.chmod(0o700)
+            events = []
+            with patch('codex_wake.measurements.snapshot', side_effect=TimeUnavailable('private-clock-detail')):
+                result = login(executable, Path(directory) / 'auth.json', emit=events.append)
+            self.assertEqual((result['status'], result['reason']), ('held', 'stable_time_unavailable'))
+            self.assertFalse(marker.exists(), 'unqualified time must not start official device login')
+            self.assertNotIn('private-clock-detail', json.dumps(events + [result]))
+
+    def test_login_holds_and_reaps_owned_child_when_qualified_clock_is_lost(self):
+        import subprocess
+        from unittest.mock import patch
+        from codex_wake.grok_provider_auth import login
+        from codex_wake.measurements import TimeUnavailable
+        children = []
+        popen = subprocess.Popen
+        def start(*args, **kwargs):
+            child = popen(*args, **kwargs)
+            children.append(child)
+            return child
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory) / 'grok'
+            executable.write_text('#!/bin/sh\nexec sleep 30\n')
+            executable.chmod(0o700)
+            events = []
+            with patch('codex_wake.measurements.snapshot', side_effect=[CLOCK, TimeUnavailable('private-clock-detail')]), \
+                    patch('subprocess.Popen', side_effect=start):
+                result = login(executable, Path(directory) / 'auth.json', emit=events.append)
+            self.assertEqual((result['status'], result['reason']), ('held', 'stable_time_unavailable'))
+            self.assertEqual(len(children), 1)
+            self.assertIsNotNone(children[0].poll(), 'a clock hold must reap its owned native child')
+            self.assertNotIn('private-clock-detail', json.dumps(events + [result]))
 
     def test_public_status_requires_exact_account_grant_before_credentials(self):
         from codex_wake.grok_provider_auth import GrokAccounts, observe

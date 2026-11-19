@@ -1,0 +1,125 @@
+{
+  "parent": 695,
+  "base": "f8e879c291c172add80211b83de2b3c581fa2295",
+  "branch": "feat/native-expiry-695",
+  "wip_limit": 3,
+  "tickets": {
+    "695-QUAL": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [],
+      "job_dir": "/home/ecochran76/.local/state/codex-wake/native-expiry-0248/uid1017-default-package4/job-20261116T230603Z-821e69ff7cb1",
+      "validation": "Actual Native075 package4: default120.172s, legacyshared62.753s, same-client reconnect with real provider prompt41.510s; original budgets/history retained.",
+      "tracker_resolution": "DONE repo-local; parent695 remains OPEN"
+    },
+    "695-ADAPTER": {
+      "owner": "pending_cancel_695",
+      "state": "validated",
+      "dependencies": [],
+      "activation_blockers": [
+        "695-QUAL",
+        "695-TIMING"
+      ],
+      "worker": "/root/pending_cancel_695",
+      "branch": "fix/issue-695-pending-cancel",
+      "base": "f8e879c291c172add80211b83de2b3c581fa2295",
+      "result_sha": "97f6dca73a1ccb68177beeddc12bc8e293d5e928",
+      "integration_sha": "89c639f9",
+      "validation": "Source31133PASS/3129PASS; rootintegration9PASS; wheel9f465233 actual UID1017 Native075 cancellation/lostreply/admitted/restart41.510s PASS.",
+      "tracker_resolution": "DONE repo-local source and isolated installed seam; production activation blocked"
+    },
+    "695-TIMING": {
+      "owner": "send_boundary_695",
+      "state": "validated",
+      "dependencies": [],
+      "worker": "/root/send_boundary_695",
+      "write_scope": "private source-boundary proposal; no edits authorized yet",
+      "blocker": null,
+      "evidence": "private ticket-695-timing/boundary-blocker.json",
+      "decision": "Operator accepted final native transport-send admission; no remote model-start guarantee",
+      "native_base": "075639f50a5cf8f8cdfa39b5213cd77a6efa3d53",
+      "causal_scope": "API sender + protocol/core QueueAdmissionGuard non-consuming preflight/final consume + ext queue durable state; preserve after-first-send admitted retries",
+      "tracker_resolution": "DONE repo-local source; exact package5/runtime parent acceptance pending",
+      "result_sha": "9af0e8e48d0c2dcfe1800a3deaadfcec7e2c0bd7",
+      "validation": "249PASS (26queue+2clock+221API), public delayed-auth/WS/queue UNKNOWN and knownexpiry behavioral reds retained"
+    },
+    "695-ACTIVATE": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "695-QUAL",
+        "695-ADAPTER",
+        "695-TIMING"
+      ],
+      "scope": "Host-owned opt-in qualified native factory; same-connection actualpeer hash + capability negotiation beforeinput; explicitqueuepolicy only qualified peers; no working daemon change",
+      "acceptance": "Missing/revoked/tampered approval, wrongpeer/oldcapabilities refuse preIO; qualifieddefaultfactory submits originaldeadline/IDs via CLI/API/MCP andnativecancel/reconcile; actualUID1017 package5 proof",
+      "priority": "P1",
+      "workers": [
+        "activation_host_gate",
+        "activation_queue_policy"
+      ],
+      "validation": "94PASS311;51PASS312+final2PASS; actualUID1017 defaultfactory PASS; finalwheel delta2PASS installed",
+      "evidence": "docs/dev/evidence/issue0695/bounded-activation-acceptance.json",
+      "tracker_resolution": "DONE repo-local activation source and isolated installed acceptance; no working-host enablement",
+      "source_commit": "aee2e97308fe9dc69f35f757e4c868147aa498a2"
+    },
+    "695-PYTHON": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [],
+      "scope": "Complete current comprehensive validation with source-aligned fixture clocks; retain old failures and immutable time guards.",
+      "evidence": "docs/dev/evidence/issue0695/python-clock-diagnosis.json",
+      "blocker": null,
+      "priority": "P1",
+      "tracker_resolution": "DONE repo-local; parent695 CLOSED completed after published acceptance",
+      "next_action": "None for695; independent live Grok and working-host deployment retain their own authorization gates.",
+      "validation": "Python3.11/3.12 each2805PASS1opt-in-systemdskip across2806unique cases;18duplicate imported instances deduplicated. Local approved service-backed environment;312 three Windows failures pass unchanged focused reruns, originals retained."
+    }
+  },
+  "review": {
+    "prior_cycle": "completed retained",
+    "new_batch_fixed_point": "Wakef8e879c291c172add80211b83de2b3c581fa2295; Native075639f50a5cf8f8cdfa39b5213cd77a6efa3d53",
+    "max_broad_reviews": 1,
+    "max_remediation_passes": 1,
+    "new_batch_status": "Prior single broad review and bounded remediation retained; no repeated review. Exact package/runtime evidence now accepted; Rust libtest compilation gap deferred explicitly.",
+    "passes": 1,
+    "standards_accepted": 1,
+    "spec_code_findings": 0,
+    "remediation_passes": 1,
+    "remediation": "No behavioral blocker; no new test/source edit warranted. Retain existing redgreen controls."
+  },
+  "integration_tip": "2ae7d0697b3606888a5a6cdbdf7e406ac46fd72e",
+  "package5_acceptance": {
+    "state": "validated",
+    "native_source": "9af0e8e48d0c2dcfe1800a3deaadfcec7e2c0bd7",
+    "codex_sha256": "6bc59c44a04dcf1c1a36f9754397b26994ccf6a3a932c7e872560a8016bac978",
+    "installed_gates_passed": 9,
+    "additional_nonzero_goal_continuity": "25tokens/2000budget preserved rollback/reupgrade",
+    "postqualification_python_repair": "ff9b9c01; conservative adjacent-f64 wire validation, red then10focusedPASS311and312; final installed stage retryPASS25.147s",
+    "first_pipeline_failure_retained": true,
+    "working_installation": false,
+    "parent695": "OPEN"
+  },
+  "best_effort_revision": {
+    "state": "validated",
+    "decision": "Approved service-instant best effort; explicit observation-to-send suspension gap",
+    "evidence": "docs/dev/evidence/issue0695/service-instant-closeout.json",
+    "native_clock_ticket": "R0250-NATIVE-CLOCK-SOURCE in0250 ledger",
+    "native_base": "9af0e8e48d0c2dcfe1800a3deaadfcec7e2c0bd7",
+    "release": "Exact six-hash complete package and affected UID1017 installed journeys PASS; no working-host enablement.",
+    "native_result_sha": "e7286ffdc338457ea11b8becb26daa0f7f4855af"
+  },
+  "final_acceptance": {
+    "source": "2ae7d0697b3606888a5a6cdbdf7e406ac46fd72e",
+    "native": "e7286ffdc338457ea11b8becb26daa0f7f4855af",
+    "state": "validated",
+    "evidence": "docs/dev/evidence/issue0695/service-instant-closeout.json",
+    "tracker": {
+      "state": "CLOSED",
+      "reason": "completed",
+      "closed_at": "2026-11-19T05:03:01Z",
+      "url": "https://github.com/CochranResearchGroup/codex-wake/issues/695",
+      "readback": "GitHub MCP fetch and independent authenticated gh issue view"
+    }
+  }
+}

@@ -6,11 +6,10 @@ Existing health probes and service status inspection provide read-only evidence.
 from pathlib import Path
 import os
 import socket
-import time
 import subprocess
 
 from .controller_auth import Actor, AuthError
-from .account_observation import _TARGET_FIELDS
+from .account_observation import _TARGET_FIELDS, _actor_is_current
 
 from .controller_accounts import ControllerAccounts
 from .managed_inventory import InventoryError
@@ -33,7 +32,7 @@ def execute(root, arguments, *, accounts=None, actor=None, authorize=None):
     target = account['target']
     def guard():
         if actor is not None:
-            if (not isinstance(actor, Actor) or actor.expires_at <= time.time() or authorize is None
+            if (not isinstance(actor, Actor) or not _actor_is_current(actor) or authorize is None
                     or authorize() != actor or 'account.observe' not in actor.scopes
                     or not any(_TARGET_FIELDS <= scope.keys() and all(target.get(k) == v for k, v in scope.items()) for scope in actor.targets)):
                 raise AuthError('insufficient_scope')

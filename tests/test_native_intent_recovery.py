@@ -184,7 +184,7 @@ class NativeIntentRecoveryTests(unittest.TestCase):
             self.assertEqual(len(all_records(root)), 1)
             self.assertEqual(all_records(root)[0].record["status"], "firing")
 
-    def test_counter_only_recovery_submits_one_successor_and_never_replays(self):
+    def test_counter_only_recovery_holds_without_inventing_absolute_expiry(self):
         from subprocess import CompletedProcess
         first = {"utc": None, "counter": {"epoch": "host-a", "counter": 1000000, "frequency": 1000, "rate_ppm": 0}, "reason": "uncertainty_exceeded"}
         due = {"utc": None, "counter": {"epoch": "host-a", "counter": 11800010, "frequency": 1000, "rate_ppm": 0}, "reason": "uncertainty_exceeded"}
@@ -196,13 +196,14 @@ class NativeIntentRecoveryTests(unittest.TestCase):
             with patch("codex_wake.native_clock.snapshot", return_value=due), patch("codex_wake.native_delivery.read_native_thread", return_value={"id": THREAD, "status": {"type": "idle"}}), patch("codex_wake.native_delivery.subprocess.run", return_value=CompletedProcess([], 0, f"Queued message {queue} for thread {THREAD}.\n", "")) as submit:
                 first_poll = poll_once(root)
                 second_poll = poll_once(root)
-            self.assertEqual(first_poll.submitted, 1)
+            self.assertEqual(first_poll.submitted, 0)
             self.assertEqual(second_poll.submitted, 0)
-            self.assertEqual(submit.call_count, 1)
+            submit.assert_not_called()
             record = all_records(root)[0].record
-            self.assertEqual(record["status"], "submitted")
-            self.assertEqual(record["attempts"], 1)
-            self.assertIsNone(record["native_delivery"]["accepted_at"])
+            self.assertEqual(record['status'], 'pending')
+            self.assertEqual(record['attempts'], 0)
+            self.assertNotIn('native_delivery', record)
+            self.assertIn('bounded_native_absolute_expiry_unavailable', str(record['policy_outcome']))
 
     def test_explicit_intent_key_survives_recovery_and_rejects_changed_request(self):
         from codex_wake.records import WakeError
@@ -261,13 +262,21 @@ class NativeIntentRecoveryTests(unittest.TestCase):
             root = Path(directory) / "wake"
             with patch("codex_wake.native_clock.snapshot", return_value=first), contextlib.redirect_stdout(io.StringIO()):
                 run(["--wake-root", str(root), "native", "after", "--idempotency-key", "uncertain-001", "--codex-path", sys.executable, THREAD, "3h", "--", "Continue"])
+            # This is an already-uncertain historical unbounded attempt. The
+            # outage permits its original read contract, never new submission.
+            from codex_wake.records import replace_record
+            found = all_records(root)[0]
+            record = dict(found.record, status='firing', attempts=1,
+                native_delivery=dict(state='uncertain', route='existing_tab',
+                    submission_id='11111111-1111-4111-8111-111111111111'))
+            replace_record(root, found, record)
             with patch("codex_wake.native_clock.snapshot", return_value=due), patch("codex_wake.native_delivery.read_native_thread", return_value={"id": THREAD, "status": {"type": "idle"}}), patch("codex_wake.native_delivery.subprocess.run", side_effect=subprocess.TimeoutExpired("queue", 30)) as submit:
                 poll_once(root)
                 with patch("codex_wake.native_clock.snapshot", return_value={"utc": None, "counter": None, "reason": "outage"}), patch("codex_wake.native_delivery.native_request", side_effect=lambda endpoint, codex, method, params, timeout: {"data": [], "nextCursor": None} if method == "thread/queue/list" else {"thread": {"id": THREAD, "turns": []}}):
                     poll_once(root)
                     with patch('codex_wake.native_delivery.utc_now', side_effect=AssertionError('guest UTC forbidden')), contextlib.redirect_stdout(io.StringIO()):
                         run(['--wake-root', str(root), 'native', 'reconcile', all_records(root)[0].record['id']])
-            self.assertEqual(submit.call_count, 1)
+            self.assertTrue(all('queue' not in call.args[0] for call in submit.call_args_list))
             record = all_records(root)[0].record
             self.assertEqual(record["attempts"], 1)
             self.assertEqual(record["native_delivery"]["state"], "uncertain")

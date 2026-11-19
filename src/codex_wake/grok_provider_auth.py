@@ -308,7 +308,7 @@ def login(executable, auth_path, *, emit, timeout=600):
     """
     import selectors
     import subprocess
-    import time
+    from . import measurements
     from urllib.parse import urlsplit, parse_qsl
     executable = Path(executable).absolute()
     info = executable.stat()
@@ -319,7 +319,13 @@ def login(executable, auth_path, *, emit, timeout=600):
     environment['GROK_AUTH_PATH'] = str(Path(auth_path).absolute())
     environment['GROK_HOME'] = str(Path(auth_path).absolute().parent)
     environment['RUST_LOG'] = 'off'
-    deadline = time.monotonic() + timeout
+    held = dict(status='held', authentication='unavailable', entitlement='unverified',
+                inference='unverified', freshness='unverified', reason='stable_time_unavailable',
+                provider_logout='unconfirmed')
+    try:
+        deadline = measurements.deadline(timeout)
+    except measurements.TimeUnavailable:
+        return held
     process = subprocess.Popen([str(executable), 'login', '--device-auth'],
                                env=environment, stdin=subprocess.DEVNULL,
                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -331,7 +337,7 @@ def login(executable, auth_path, *, emit, timeout=600):
         selector.register(process.stderr, selectors.EVENT_READ)
         try:
             while selector.get_map():
-                remaining = deadline - time.monotonic()
+                remaining = deadline.remaining()
                 if remaining <= 0:
                     process.terminate()
                     break
@@ -384,6 +390,8 @@ def login(executable, auth_path, *, emit, timeout=600):
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait()
+        except measurements.TimeUnavailable:
+            return held
         finally:
             process.stderr.close()
             if process.poll() is None:

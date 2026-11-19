@@ -65,31 +65,46 @@ def test_enrollment_waits_for_exact_first_poll(self):
             self.assertEqual(again['enrollment_revision'], first['enrollment_revision'])
 
 
-def test_real_watcher_acknowledges_enrollment_and_preserves_budget(self):
+def test_real_watcher_acknowledges_enrollment_and_preserves_budget(self,prepared=False):
     with tempfile.TemporaryDirectory() as directory:
-        root, policy, _, _, _ = self.fixture(directory)
+        root, policy, _, native, _ = self.fixture(directory)
+        if prepared:native.update(goal_none=True,active=[])
+        clock=dict(reason='authenticated_utc',utc=dict(status='network',lower=NOW,upper=NOW),
+            valid_for_ns=300000000000,counter=dict(epoch='c357309d-c209-4467-b757-e1488e6b1aaa',
+                counter=1000,frequency=1000,rate_ppm=0))
         source = ("import sys; from unittest.mock import patch; "
                   "from codex_wake.goal_supervision import watch; "
                   "p=patch('codex_wake.lifecycle_budget.trusted_upper',return_value=" + str(NOW) + "); p.start(); "
+                  "q=patch('codex_wake.measurements.snapshot',return_value=" + repr(clock) + "); q.start(); "
                   "watch(sys.argv[1],interval=.05)")
         process = subprocess.Popen([sys.executable, '-c', source, str(root)], stderr=subprocess.PIPE)
         try:
-            until = time.monotonic()+5
-            while not (root/'goal-supervision/controller.json').exists():
-                if process.poll() is not None:
-                    self.fail(process.stderr.read().decode())
-                if time.monotonic()>until:
-                    self.fail('independent watcher did not start')
+            for _ in range(500):
+                if (root/'goal-supervision/controller.json').exists():break
+                if process.poll() is not None:self.fail(process.stderr.read().decode())
                 time.sleep(.01)
-            with patch('codex_wake.lifecycle_budget.trusted_upper', return_value=NOW):
-                first = enroll(root, policy, THREAD, 100, 120)
-                while True:
+            else:self.fail('independent watcher did not start')
+            with patch('codex_wake.lifecycle_budget.trusted_upper', return_value=NOW),patch(
+                    'codex_wake.measurements.snapshot',return_value=clock):
+                first = enroll(root, policy, THREAD, 100, 120,session_scope=prepared,requires_native_guard=prepared)
+                for _ in range(500):
                     current = show(root, policy, THREAD)
-                    if current['engagement']['engaged']:
+                    if current.get('prepared_poll_ack') if prepared else current['engagement']['engaged']:
                         break
-                    if process.poll() is not None or time.monotonic()>until:
+                    if process.poll() is not None:
                         self.fail('watcher did not acknowledge exact enrollment')
                     time.sleep(.01)
+                else:self.fail('watcher did not acknowledge exact enrollment')
+                if prepared:
+                    self.assertIsNone(current['prepared_poll_ack']['observed_boottime'])
+                    self.assertEqual(current['prepared_poll_ack']['clock_observation'],clock)
+                    self.assertEqual(current['prepared_poll_ack']['controller_generation'],current['controller']['generation'])
+                    self.assertFalse(current['engagement']['engaged'])
+                    self.assertFalse(current.get('stop_latched',False))
+                    self.assertEqual(current['deadline'],first['deadline'])
+                    return
+                self.assertIsNone(current['poll_ack']['observed_boottime'])
+                self.assertEqual(current['poll_ack']['clock_observation'],clock)
                 self.assertEqual(current['poll_ack']['enrollment_revision'], first['enrollment_revision'])
                 self.assertEqual(current['poll_ack']['controller_generation'], current['controller']['generation'])
                 self.assertEqual(current['engagement']['card']['used_tokens'], 40)
@@ -106,7 +121,7 @@ def test_real_watcher_acknowledges_enrollment_and_preserves_budget(self):
                 self.assertEqual(tightened['deadline'],first['deadline'])
         finally:
             process.kill()
-            process.wait(timeout=3)
+            process.wait()
             process.stderr.close()
         with patch('codex_wake.lifecycle_budget.trusted_upper', return_value=NOW):
             stopped = show(root, policy, THREAD)
@@ -116,6 +131,12 @@ def test_real_watcher_acknowledges_enrollment_and_preserves_budget(self):
 
 GoalEngagementTests.test_enrollment_waits_for_exact_first_poll = test_enrollment_waits_for_exact_first_poll
 GoalEngagementTests.test_real_watcher_acknowledges_enrollment_and_preserves_budget = test_real_watcher_acknowledges_enrollment_and_preserves_budget
+
+def test_real_watcher_prepares_idle_session_without_claiming_engagement(self):
+    test_real_watcher_acknowledges_enrollment_and_preserves_budget(self,prepared=True)
+
+GoalEngagementTests.test_real_watcher_prepares_idle_session_without_claiming_engagement = test_real_watcher_prepares_idle_session_without_claiming_engagement
+
 
 
 def test_diagnose_reports_missing_history_without_enrolling(self):

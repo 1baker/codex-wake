@@ -206,9 +206,15 @@ def _cancel(root, args):
                 if not _owned_by(current, subject):
                     raise WakeError('wake outside verified caller scope')
                 # An ambiguous external submission may already have been consumed.
-                if (current.get('native_delivery',{}).get('state') == 'uncertain'
-                        or current.get('app_server_delivery',{}).get('state') == 'uncertain'):
+                if current.get('app_server_delivery',{}).get('state') == 'uncertain':
                     raise WakeError('submission uncertain; reconcile original effect before cancellation')
+                if current.get('native_delivery',{}).get('state') == 'uncertain':
+                    from .native_delivery import cancel_native_pending
+                    from .records import WakeLifecycleLock
+                    with WakeLifecycleLock(root, identifier):
+                        state = cancel_native_pending(root, find_record(root, identifier))
+                    results.append(dict(wake_id=identifier, state=state))
+                    continue
                 cancel_record(root,identifier)
                 results.append(dict(wake_id=identifier,state='cancelled'))
             except (OSError, ValueError) as exc:

@@ -54,7 +54,7 @@ class HistoryAuthorizationTests(unittest.TestCase):
         self.addCleanup(fixture.doCleanups)
         fixture.metadata['codexHome'] = str(self.root / 'homes' / 'codex-alice')
         fixture.namespace = RuntimeIdentity.from_metadata(fixture.thread, fixture.metadata).namespace
-        agent = fixture.inv.enroll(fixture.sample(True), operator=True)['agent']
+        agent = fixture.enroll_ended_generation()
         fixture.config['profiles']['saved']['codex_home'] = fixture.metadata['codexHome']
         fixture.config['recovery_callers'] = {'reader': [agent['managed_agent_id']]}
         fixture.save_profiles()
@@ -130,6 +130,8 @@ profiles="{fixture.profiles}"
         self.assertEqual(json.loads(cli.stdout)['result']['resume']['status'], 'resumed')
         self.assertEqual(success['actor']['subject'], 'reader')
         fixture.current = False
+        from codex_wake.managed_inventory import ManagedInventory
+        fixture.enroll_ended_generation(inventory=ManagedInventory(self.root, now=lambda: fixture.inv.now()))
         original_terminal = fixture.runtime.terminal
         grant_id = authority.authenticate(token).grant_id
         def revoked_terminal(args, *command):

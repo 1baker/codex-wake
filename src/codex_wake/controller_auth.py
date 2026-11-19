@@ -8,11 +8,12 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import math
 import os
 import re
 import secrets
 import sqlite3
-import time
+from . import measurements
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -24,6 +25,13 @@ class AuthError(ValueError):
     def __init__(self, code='invalid_token', message='authorization denied'):
         super().__init__(message)
         self.code = code
+
+
+def _qualified_upper():
+    try:
+        return measurements.utc_bounds()[1]
+    except measurements.TimeUnavailable:
+        raise AuthError('qualified_time_unavailable') from None
 
 
 def digest(value):
@@ -46,7 +54,7 @@ class Actor:
 
 
 class OAuthAuthority:
-    def __init__(self, path, *, issuer, resource, now=time.time, on_revoke=None):
+    def __init__(self, path, *, issuer, resource, now=None, on_revoke=None):
         self.on_revoke = on_revoke
         if urlsplit(issuer).path:
             raise ValueError('issuer must be a canonical origin without path or trailing slash')
@@ -56,7 +64,8 @@ class OAuthAuthority:
             url = urlsplit(value)
             if (url.scheme != 'https' and not (url.scheme == 'http' and url.hostname in ('127.0.0.1', '::1', 'localhost'))) or url.query or url.fragment or url.username or url.password or not url.netloc:
                 raise ValueError('canonical HTTPS issuer/resource required (loopback HTTP fixtures allowed)')
-        self.path, self.issuer, self.resource, self.now = Path(path), issuer, resource, now
+        self._injected_clock=now is not None
+        self.path, self.issuer, self.resource, self.now = Path(path), issuer, resource, now if now is not None else _qualified_upper
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         fd = os.open(self.path, os.O_CREAT | os.O_RDWR, 0o600)
         os.close(fd)
@@ -87,6 +96,24 @@ class OAuthAuthority:
 
     def connect(self):
         return sqlite3.connect(self.path, timeout=10)
+
+    def _issuance_bounds(self):
+        try:
+            if self._injected_clock:
+                point=self.now()
+                if type(point) not in (int,float) or not math.isfinite(point):
+                    raise measurements.TimeUnavailable('invalid_injected_time')
+                return point,point
+            return measurements.utc_bounds()
+        except measurements.TimeUnavailable:
+            raise AuthError('qualified_time_unavailable') from None
+
+    def _expires_after(self,seconds):
+        lower,upper=self._issuance_bounds()
+        expires=lower+seconds
+        if not math.isfinite(expires) or expires<=upper:
+            raise AuthError('qualified_time_unavailable')
+        return expires
 
     def metadata(self):
         return dict(issuer=self.issuer, authorization_endpoint=self.issuer + '/authorize',
@@ -145,6 +172,7 @@ class OAuthAuthority:
             raise AuthError('invalid_target')
         if not isinstance(code_challenge, str) or not re.fullmatch(r'[A-Za-z0-9_-]{43}', code_challenge):
             raise AuthError('invalid_request', 'S256 challenge required')
+        code_expiry=self._expires_after(120)
         code, grant = secrets.token_urlsafe(32), secrets.token_urlsafe(24)
         with self.connect() as db:
             row = db.execute('SELECT metadata FROM clients WHERE id=?', (client_id,)).fetchone()
@@ -157,7 +185,7 @@ class OAuthAuthority:
                 db.execute('INSERT INTO delegations VALUES(?,?,?,?)',(grant,parent,until,None if actions is None else json.dumps(sorted(actions))))
                 table='delegated_codes'
             db.execute('INSERT INTO '+table+'(hash,grant_id,redirect,challenge,expires) VALUES(?,?,?,?,?)',
-                       (digest(code), grant, redirect_uri, code_challenge, self.now() + 120))
+                       (digest(code), grant, redirect_uri, code_challenge, code_expiry))
         return code
 
     def token(self, args):
@@ -189,6 +217,11 @@ class OAuthAuthority:
             current = db.execute('SELECT client,scopes,revoked FROM grants WHERE id=?', (grant,)).fetchone()
             boundary, unused_actions = self.delegation(grant, db=db)
             if not current or current[2] or current[0] != args.get('client_id'): raise AuthError('invalid_grant')
+            lower,upper=self._issuance_bounds()
+            source_expiry=row[3] if grant_type=='authorization_code' else row[1]
+            if source_expiry<=upper or boundary<=upper:raise AuthError('invalid_grant')
+            access_expiry=min(lower+600,boundary)
+            if access_expiry<=upper:raise AuthError('qualified_time_unavailable')
             if grant_type == 'authorization_code':
                 db.execute('UPDATE '+table+' SET used=1 WHERE hash=?', (digest(args['code']),))
             # Rotation invalidates old access and refresh credentials, not operation identity.
@@ -196,8 +229,8 @@ class OAuthAuthority:
             access, refresh = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
             delegated=db.execute('SELECT 1 FROM delegations WHERE grant_id=?',(grant,)).fetchone() is not None
             for secret, kind, lifetime in ((access, 'delegated_access_v1' if delegated else 'access', 600), (refresh, 'delegated_refresh_v1' if delegated else 'refresh', 86400)):
-                db.execute('INSERT INTO tokens VALUES(?,?,?,?,0)', (digest(secret), grant, kind, min(self.now() + lifetime,boundary)))
-            return dict(access_token=access, refresh_token=refresh, token_type='Bearer', expires_in=min(600,boundary-self.now()),
+                db.execute('INSERT INTO tokens VALUES(?,?,?,?,0)', (digest(secret), grant, kind, min(lower + lifetime,boundary)))
+            return dict(access_token=access, refresh_token=refresh, token_type='Bearer', expires_in=max(0,math.floor(access_expiry-upper)),
                         scope=' '.join(json.loads(current[1])))
 
     def authenticate(self, token):
@@ -248,7 +281,7 @@ class OAuthAuthority:
             targets=intersect_targets(actor.targets,targets);actions=canonical_actions(actions)
             if actor.actions is not None and not actions<=actor.actions:raise AuthError('insufficient_scope')
         else:raise AuthError('invalid_request')
-        until=min(actor.expires_at,self.now()+expires_in)
+        until=min(actor.expires_at,self._expires_after(expires_in))
         code=self.authorize(subject=actor.subject,principal_kind='service',client_id=client_id,
             redirect_uri=redirect_uri,resource=self.resource,scopes=scopes,targets=targets,code_challenge=code_challenge,
             _delegation=(actor.grant_id,until,actions))

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
@@ -17,6 +16,7 @@ import re
 import tempfile
 
 from .a2a_bus import private_path
+from . import measurements
 from .records import WakeError
 
 
@@ -60,7 +60,10 @@ def _digest(value):
 
 
 def _now():
-    return datetime.now(timezone.utc).isoformat()
+    try:
+        return measurements.datetime_now().isoformat()
+    except measurements.TimeUnavailable:
+        raise TaskBriefError('qualified_time_unavailable', 'qualified Stable Time is required for task metadata') from None
 
 
 @dataclass(frozen=True)

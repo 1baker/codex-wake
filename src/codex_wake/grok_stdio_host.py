@@ -19,7 +19,6 @@ import subprocess
 import sys
 import tempfile
 import threading
-import time
 from urllib.parse import parse_qs,urlsplit
 from uuid import uuid4
 
@@ -112,7 +111,7 @@ class StdioOwner:
                 if self.active is not None:
                     self._send(client,dict(jsonrpc='2.0',id=identifier,error=dict(code=-32098,message='Native stdio owner is busy; no request queued.',data=dict(source='codex_wake_stdio_host',pre_io=True,reason='busy'))));continue
                 native_id='host_'+uuid4().hex
-                self.active=dict(client=client,client_id=identifier,native_id=native_id,started_at=time.time())
+                self.active=dict(client=client,client_id=identifier,native_id=native_id)
                 try:self._write(dict(value,id=native_id))
                 except Exception:
                     self.failure='native_write_uncertain';self.active=None

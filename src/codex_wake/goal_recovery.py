@@ -3,7 +3,6 @@ from __future__ import annotations
 from contextlib import nullcontext, ExitStack
 import json
 from pathlib import Path
-import time
 from uuid import uuid4
 
 from .session_permissions import PermissionDenied, Principal
@@ -11,6 +10,7 @@ from .session_permissions import PermissionDenied, Principal
 
 def recover(root, policy, thread, *, principal, task_id=None, operation_id=None, allocation_id=None):
     from . import goal_supervision as g
+    from .goal_time import upper, GoalTimeUnavailable
     from .permission_enforcement import authorize, controller_permission
     permission=authorize(root,'enforcement.recover',principal,task_id=task_id,operation_id=operation_id)
     if permission['permission']=='legacy' and principal.role!='operator':
@@ -81,8 +81,11 @@ def recover(root, policy, thread, *, principal, task_id=None, operation_id=None,
         if (observation.get('state')!='qualified' or type(observation.get('used_tokens')) is not int
                 or any(g._accounting_decreased(item,observation) for _,item in participants.values())):
             refuse('recovery_accounting_unqualified')
-        elapsed=time.clock_gettime(time.CLOCK_BOOTTIME)-receipt['started_boottime']
-        if elapsed<0 or receipt['started_upper']+elapsed>=receipt['deadline'] or observation['used_tokens']>=receipt['token_limit']:
+        try:
+            current_upper = upper(receipt)
+        except GoalTimeUnavailable:
+            refuse('recovery_clock_unqualified')
+        if current_upper>=receipt['deadline'] or observation['used_tokens']>=receipt['token_limit']:
             refuse('recovery_resources_exhausted')
         current=g._heartbeat(directory)
         if not current['fresh'] or current['generation']!=heartbeat['generation']:
@@ -118,11 +121,16 @@ def recover(root, policy, thread, *, principal, task_id=None, operation_id=None,
             current=g._heartbeat(directory)
             if not current['fresh'] or current['generation']!=heartbeat['generation']:
                 refuse('recovery_controller_unavailable')
-            if receipt['started_upper']+time.clock_gettime(time.CLOCK_BOOTTIME)-receipt['started_boottime']>=receipt['deadline']:
+            try:
+                final_upper = upper(receipt)
+            except GoalTimeUnavailable:
+                refuse('recovery_clock_unqualified')
+            if final_upper>=receipt['deadline']:
                 refuse('recovery_resources_exhausted')
             event=pending or dict(id=uuid4().hex,receipt_generation=receipt['generation'],stop_episode_id=receipt.get('active_stop_id'),operation_id=operation_id,kind='recovery',reason='observation_recovered',
                 subject=principal.subject,participants=sorted(member_ids),authority=permission,controller_generation=heartbeat['generation'],
-                observed_boottime=time.clock_gettime(time.CLOCK_BOOTTIME),used_tokens=observation['used_tokens'],
+                observed_boottime=None, observed_upper=final_upper,
+                clock_basis=receipt.get('time_basis', 'qualified_utc'), used_tokens=observation['used_tokens'],
                 deadline=receipt['deadline'],goal_created_at=receipt['goal_created_at'])
             if allocation is not None:
                 allocation['pending_recovery']=event;g._save(allocation_path,allocation)

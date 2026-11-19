@@ -17,6 +17,7 @@ from codex_wake.injector import (
     dispatch_firing_record,
     lock_name_for_pane,
     unsafe_pane_reason,
+    wait_for_ack,
 )
 from codex_wake.daemon import poll_once
 from codex_wake.event_wake import EventWake
@@ -89,6 +90,116 @@ class FakeAppServerClient:
 
 
 class InjectorTests(unittest.TestCase):
+    def test_default_native_dispatch_holds_ambiguous_expiry_without_changing_original_deadline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'wake'
+            found = self.make_firing_record(root, Path(tmp))
+            record = dict(found.record)
+            record['schema_version'] = 4
+            record['target'] = {'transport': 'native', 'thread_id': 'd6724570-2d77-415d-99b8-cd5ceeb3454a',
+                'endpoint': 'unix:///tmp/unused-native.sock', 'codex_cmd': '/bin/false',
+                'expires_at': '2026-05-18T21:15:00Z'}
+            found = WakePath(write_record(root, record), record)
+            expiry = datetime(2026, 5, 18, 21, 15, tzinfo=UTC).timestamp()
+            with patch('codex_wake.measurements.utc_bounds', return_value=(expiry - 1, expiry + 1)):
+                result = dispatch_firing_record(root, found)
+            self.assertEqual(result.status, 'skipped')
+            self.assertIn('expiry is uncertain', result.message)
+            self.assertEqual(find_record(root, 'wake_test').record, record)
+            with patch('codex_wake.measurements.utc_bounds', return_value=(expiry, expiry + 1)):
+                result = dispatch_firing_record(root, found)
+            self.assertEqual(result.status, 'failed')
+            expired = find_record(root, 'wake_test').record
+            self.assertEqual(expired['target']['expires_at'], '2026-05-18T21:15:00Z')
+            self.assertEqual(expired['attempts'], 0)
+
+    def test_default_dispatch_holds_without_qualified_utc_before_any_transport(self) -> None:
+        from codex_wake import measurements
+        with tempfile.TemporaryDirectory() as tmp:
+            for transport in ('tmux', 'app-server'):
+                with self.subTest(transport=transport):
+                    root = Path(tmp) / transport
+                    found = self.make_firing_record(root, Path(tmp))
+                    runner = FakeTmuxRunner()
+                    client = FakeAppServerClient()
+                    record = dict(found.record)
+                    if transport == 'app-server':
+                        record['target'] = {'transport': 'app-server', 'thread_id': 'thread_abc', 'endpoint': 'stdio://'}
+                    path = write_record(root, record)
+                    with patch('codex_wake.measurements.datetime_now', side_effect=measurements.TimeUnavailable('clock unavailable')):
+                        result = dispatch_firing_record(root, WakePath(path, record), runner=runner,
+                            app_server_client=client, thread_identity_resolver=self.identity, ack_timeout_override=0)
+                    self.assertEqual(result.status, 'skipped')
+                    self.assertEqual(find_record(root, 'wake_test').record, record)
+                    self.assertEqual(runner.capture_calls, 0)
+                    self.assertEqual(runner.pastes, [])
+                    self.assertEqual(client.calls, [])
+
+    def test_default_dispatch_uses_qualified_metadata_and_reconciles_held_ack_without_utc(self) -> None:
+        from codex_wake import measurements
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / 'wake'
+            found = self.make_firing_record(root, Path(tmp))
+            runner = FakeTmuxRunner()
+            receipt = root / 'acks' / 'wake_test.submitted'
+            receipt.parent.mkdir(exist_ok=True)
+            receipt.write_text('{}')
+            with patch('codex_wake.measurements.datetime_now', return_value=datetime(2026, 5, 18, 21, 15, tzinfo=UTC)):
+                result = dispatch_firing_record(root, found, runner=runner,
+                    thread_identity_resolver=self.identity, ack_timeout_override=0)
+            self.assertEqual(result.status, 'submitted')
+            submitted = find_record(root, 'wake_test')
+            self.assertEqual(submitted.record['updated_at'], '2026-05-18T21:15:00Z')
+            self.assertEqual(submitted.record['events'][-1]['at'], '2026-05-18T21:15:00Z')
+            held_root = Path(tmp) / 'held'
+            held = self.make_firing_record(held_root, Path(tmp))
+            held.record['ack_wait_time_held'] = True
+            held = WakePath(write_record(held_root, held.record), held.record)
+            receipt = held_root / 'acks' / 'wake_test.submitted'
+            receipt.parent.mkdir(exist_ok=True)
+            receipt.write_text('{}')
+            held_runner = FakeTmuxRunner()
+            with patch('codex_wake.measurements.datetime_now', side_effect=measurements.TimeUnavailable('clock unavailable')):
+                result = dispatch_firing_record(held_root, held, runner=held_runner)
+            self.assertEqual(result.status, 'submitted')
+            self.assertEqual(held_runner.pastes, [])
+            event = find_record(held_root, 'wake_test').record['events'][-1]
+            self.assertIsNone(event['at'])
+            self.assertEqual(event['time_status'], 'not_observed')
+
+    def test_ordinary_ack_wait_does_not_require_a_time_service_observation(self) -> None:
+        from codex_wake import measurements
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            receipt = root / 'acks' / 'wake_test.submitted'
+            receipt.parent.mkdir()
+            receipt.write_text('{}')
+            with patch('codex_wake.measurements.snapshot', side_effect=measurements.TimeUnavailable('client helper failed')):
+                self.assertTrue(wait_for_ack(root, 'wake_test', 0))
+                self.assertTrue(wait_for_ack(root, 'wake_test', 1))
+
+    def test_ack_polling_adds_no_clock_gate_and_old_held_outcomes_do_not_replay(self) -> None:
+        from codex_wake import measurements
+        with tempfile.TemporaryDirectory() as tmp:
+            for held in (False, True):
+                with self.subTest(held=held):
+                    root = Path(tmp) / str(held)
+                    found = self.make_firing_record(root, Path(tmp))
+                    if held:
+                        found.record['ack_wait_time_held'] = True
+                        found = WakePath(write_record(root, found.record), found.record)
+                    else:
+                        receipt = root / 'acks' / 'wake_test.submitted'
+                        receipt.parent.mkdir(exist_ok=True)
+                        receipt.write_text('{}')
+                    runner = FakeTmuxRunner()
+                    with patch('codex_wake.measurements.snapshot', side_effect=measurements.TimeUnavailable('client helper failed')):
+                        result = dispatch_firing_record(root, found, runner=runner,
+                            now=datetime(2026, 5, 18, 21, 15, tzinfo=UTC),
+                            thread_identity_resolver=self.identity, ack_timeout_override=1)
+                    self.assertEqual(result.status, 'skipped' if held else 'submitted')
+                    self.assertEqual(len(runner.pastes), 0 if held else 1)
+
     def setUp(self) -> None:
         patcher = patch(
             "codex_wake.app_server.read_app_server_thread_identity",
@@ -102,6 +213,7 @@ class InjectorTests(unittest.TestCase):
             root = Path(tmp) / "wake"
             runtime = SQLiteSignalModule(
                 signal_journal_path(root),
+                lease_clock=lambda: datetime(2026, 9, 14, 14, 0, tzinfo=UTC),
                 record_publisher=WakeRecordPublisher(
                     root,
                     ManagedReaderCapability(root, "reader", 1, frozenset({1, 2}), True),
@@ -187,6 +299,7 @@ class InjectorTests(unittest.TestCase):
             root = Path(tmp) / "wake"
             runtime = SQLiteSignalModule(
                 signal_journal_path(root),
+                lease_clock=lambda: datetime(2026, 9, 14, 14, 0, tzinfo=UTC),
                 record_publisher=WakeRecordPublisher(
                     root,
                     ManagedReaderCapability(root, "reader", 1, frozenset({1, 2}), True),
@@ -221,6 +334,7 @@ class InjectorTests(unittest.TestCase):
                 root,
                 WakePath(found.path, tampered),
                 runner=runner,
+                now=datetime(2026, 9, 14, 14, 2, tzinfo=UTC),
                 signal_authorizer=runtime.authorize_firing_record,
             )
 

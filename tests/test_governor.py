@@ -5,7 +5,70 @@ from unittest.mock import patch
 from pathlib import Path
 
 
+def governor_fixture_clock():
+    import time
+    from tests.test_measurements import observation
+    value = observation(int(time.monotonic() * 1000), rate=0)
+    value["utc"].update(lower=1893456000, upper=1893456000)
+    return value
+
+
 class GovernorTests(unittest.TestCase):
+    def qualify_controller_clock(self):
+        import subprocess
+        import sys
+        original_popen = subprocess.Popen
+        def launch(argv, *args, **kwargs):
+            if (len(argv) > 2 and argv[:2] == [sys.executable, '-c']
+                    and argv[2].startswith('from codex_wake.goal_supervision import watch;')):
+                # The existing owned controller shares explicit fixture
+                # counter authority with its parent, without a new watcher.
+                prefix = ("import sys; sys.path.insert(0, "
+                          + repr(str(Path(__file__).resolve().parents[1])) + "); "
+                          "from tests.test_governor import governor_fixture_clock; "
+                          "from codex_wake import measurements; "
+                          "measurements.snapshot=governor_fixture_clock; ")
+                argv = [*argv[:2], prefix + argv[2], *argv[3:]]
+            return original_popen(argv, *args, **kwargs)
+        controller_clock = patch('codex_wake.measurements.snapshot', side_effect=governor_fixture_clock)
+        controller_clock.start()
+        self.addCleanup(controller_clock.stop)
+        controller_launch = patch('test_goal_supervision.subprocess.Popen', side_effect=launch)
+        controller_launch.start()
+        self.addCleanup(controller_launch.stop)
+
+    def test_continuation_clock_loss_preserves_accepted_operation_without_retry(self):
+        from codex_wake.governor import _await_continuation
+        from codex_wake.measurements import TimeUnavailable
+        accepted = dict(operation=dict(id='retained', resume_state='awaiting_first_poll'))
+        with patch('codex_wake.measurements.deadline', side_effect=TimeUnavailable('unqualified')), patch('codex_wake.governor._execute') as retry:
+            result = _await_continuation(None, 'resume', {}, None, accepted)
+        retry.assert_not_called()
+        self.assertEqual(result['operation'], accepted['operation'])
+        self.assertEqual(result['wait_status'], 'qualified_time_unavailable')
+
+    def test_status_meters_use_qualified_utc_and_hold_when_authority_is_lost(self):
+        import test_goal_supervision as fixtures
+        from codex_wake.governor import execute
+        from codex_wake.goal_supervision import enroll
+        from codex_wake.measurements import TimeUnavailable
+        harness = fixtures.GoalSupervisionTests()
+        self.addCleanup(harness.doCleanups)
+        with tempfile.TemporaryDirectory() as directory:
+            root, policy, _, native, _ = harness.fixture(directory)
+            with harness.controller(root), patch('codex_wake.lifecycle_budget.trusted_upper', return_value=fixtures.NOW):
+                original = enroll(root, policy, fixtures.THREAD, 100, 120)
+                with patch('codex_wake.lifecycle_budget.trusted_upper', return_value=fixtures.NOW+10):
+                    current = execute(root, 'status', dict(selector=fixtures.THREAD))
+                self.assertEqual(current['usage']['elapsed_seconds'], 10)
+                self.assertEqual(current['remaining_seconds'], 110)
+                with patch('codex_wake.lifecycle_budget.trusted_upper', side_effect=TimeUnavailable('unqualified')):
+                    held = execute(root, 'status', dict(selector=fixtures.THREAD))
+                self.assertIsNone(held['usage']['elapsed_seconds'])
+                self.assertIsNone(held['remaining_seconds'])
+                self.assertEqual(held['deadline_basis'], 'unknown')
+                self.assertEqual(held['owner_receipt']['deadline'], original['deadline'])
+
     def test_status_does_not_provision_an_allowance_or_watcher(self):
         from codex_wake.governor import execute
         with tempfile.TemporaryDirectory() as directory:
@@ -156,6 +219,7 @@ class GovernorTests(unittest.TestCase):
     def test_shared_task_extension_resumes_paused_goal_once_without_locking_itself(self):
         import json
         import signal
+        from codex_wake.native_clock import snapshot as qualified_snapshot
         import test_goal_supervision as fixtures
         from codex_wake.governor import execute, local_operator_principal
         from codex_wake.goal_supervision import poll
@@ -177,7 +241,7 @@ class GovernorTests(unittest.TestCase):
                 return result
             def expired(signum, frame):
                 raise TimeoutError('operator continuation blocked on its own allocation lock')
-            with harness.controller(root), patch('codex_wake.lifecycle_budget.trusted_upper', return_value=fixtures.NOW), patch('codex_wake.native_clock.snapshot', return_value=dict(utc=dict(status='network', sources=['a', 'b'], lower=fixtures.NOW, upper=fixtures.NOW), counter=None, reason='bounded_utc')), patch('codex_wake.local_sessions.resolve', return_value=row), patch('codex_wake.goal_supervision.native_request', side_effect=native_call):
+            with patch('codex_wake.measurements.snapshot', side_effect=qualified_snapshot), harness.controller(root), patch('codex_wake.lifecycle_budget.trusted_upper', return_value=fixtures.NOW), patch('codex_wake.native_clock.snapshot', return_value=dict(utc=dict(status='network', sources=['a', 'b'], lower=fixtures.NOW, upper=fixtures.NOW), counter=None, reason='bounded_utc')), patch('codex_wake.local_sessions.resolve', return_value=row), patch('codex_wake.goal_supervision.native_request', side_effect=native_call):
                 execute(root, 'activate', dict(selector=fixtures.THREAD,
                         token_limit=100, time_limit_seconds=120), principal=local_operator_principal())
                 native['goal']['status'] = 'paused'
@@ -325,6 +389,7 @@ class GovernorTests(unittest.TestCase):
                 if method=='thread/read':result['thread']['path']=str(log)
                 return result
             clock={'now':fixtures.NOW}
+            self.qualify_controller_clock()
             with harness.controller(root), patch('codex_wake.lifecycle_budget.trusted_upper',side_effect=lambda:clock['now']), patch('codex_wake.native_clock.snapshot',side_effect=lambda:dict(utc=dict(status='network',sources=['a','b'],lower=clock['now'],upper=clock['now']),counter=None,reason='bounded_utc')), patch('codex_wake.local_sessions.resolve',return_value=row), patch('codex_wake.goal_supervision.native_request',side_effect=native_call):
                 result=execute(root,'activate',dict(selector=fixtures.THREAD,token_limit=100,time_limit_seconds=120,request_id='activate-without-provisioning'),principal=local_operator_principal())
                 self.assertEqual(result['state'],'disconnected')
@@ -369,6 +434,7 @@ class GovernorTests(unittest.TestCase):
                 result=request(endpoint,executable,method,params,timeout)
                 if method=='thread/read':result['thread']['path']=str(log)
                 return result
+            self.qualify_controller_clock()
             actor=native_principal(fixtures.THREAD,policy=policy)
             with harness.controller(root),patch('codex_wake.lifecycle_budget.trusted_upper',return_value=fixtures.NOW),patch('codex_wake.local_sessions.resolve',return_value=row),patch('codex_wake.goal_supervision.native_request',side_effect=native_call):
                 with self.assertRaisesRegex(ValueError,'inherited host ceilings'):
@@ -376,12 +442,17 @@ class GovernorTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'local operator'):
                     execute(root,'activate',dict(selector=fixtures.THREAD,token_limit=100,time_limit_seconds=120,policy='/arbitrary'),principal=actor)
                 result=execute(root,'activate',dict(selector=fixtures.THREAD,token_limit=100,time_limit_seconds=120),principal=actor)
-                until=time.monotonic()+7
+                from codex_wake.measurements import deadline
+                until=deadline(7)
                 while result['state']!='enforced':
-                    self.assertLess(time.monotonic(),until,result)
+                    self.assertFalse(until.expired(),result)
                     time.sleep(.05)
                     result=execute(root,'status',dict(selector=fixtures.THREAD),principal=actor)
                 self.assertTrue(result['watcher']['native_guard_qualified'])
+                from codex_wake.measurements import TimeUnavailable
+                with patch('codex_wake.measurements.fresh',side_effect=TimeUnavailable('counter unavailable')):
+                    held=execute(root,'status',dict(selector=fixtures.THREAD),principal=actor)
+                self.assertFalse(held['watcher']['native_guard_qualified'])
                 self.assertEqual(result['limits']['token_limit'],100)
                 self.assertTrue(native['lease_calls'])
                 self.assertEqual(next(call for call in native['lease_calls'] if not call.get('query'))['memberTurns'][0]['turnIds'],['work'])
@@ -431,7 +502,10 @@ class GovernorTests(unittest.TestCase):
                 if method=='thread/read':result['thread']['path']=str(log)
                 return result
             with harness.controller(root) as watcher,patch('codex_wake.lifecycle_budget.trusted_upper',return_value=fixtures.NOW),patch('codex_wake.local_sessions.resolve',return_value=row),patch('codex_wake.goal_supervision.native_request',side_effect=native_call):
-                os.kill(watcher.pid,signal.SIGSTOP)
+                from codex_wake.goal_supervision import _lock
+                # Freeze only after the child has released its admission lock.
+                with _lock(root/'goal-supervision', 'maintenance'):
+                    os.kill(watcher.pid,signal.SIGSTOP)
                 heartbeat=root/'goal-supervision/controller.json'
                 retained=json.loads(heartbeat.read_text());retained.pop('governor_protocol')
                 heartbeat.write_text(json.dumps(retained))
@@ -562,10 +636,12 @@ class GovernorTests(unittest.TestCase):
                 self.assertEqual(first['state'],'enforced')
                 native['goal']['status']='paused';native['active']=[]
                 native['lease_reply']=dict(armed=False,expired=True,stopVerified=True,ttlMs=2000)
-                with patch('codex_wake.goal_supervision.time.clock_gettime',return_value=first['owner_receipt']['started_boottime']+3):
+                with patch('codex_wake.lifecycle_budget.trusted_upper',return_value=fixtures.NOW+3):
+                    poll(root)  # Request expiry; a separate read must prove native stop.
                     stopped=poll(root)[0]
                     status=execute(root,'status',dict(selector=fixtures.THREAD))
                 self.assertTrue(stopped['stop_latched'])
                 self.assertEqual(status['state'],'limit_reached')
                 self.assertEqual(status['remaining_seconds'],0)
+                self.assertIn('stop_proof', stopped, stopped)
                 self.assertTrue(stopped['stop_proof'])

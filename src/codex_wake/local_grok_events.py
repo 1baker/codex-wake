@@ -67,14 +67,20 @@ def collect(root, identifier):
         store.update(identifier, status='connecting', pid=os.getpid(), process=process_identity(os.getpid()),
                      provider='grok', unsupported_event_kinds=[])
         try:
+            # Protective custody handoff wait; actor and provider guards own authorization expiry.
             deadline = time.monotonic() + 10
             while True:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError('original admission did not publish collector custody')
                 record = runtime._load(identifier)
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise RuntimeError('original admission did not publish collector custody')
                 if record['phase'] == 'waiting':
                     break
-                if record['phase'] != 'dispatching' or time.monotonic() >= deadline:
+                if record['phase'] != 'dispatching':
                     raise RuntimeError('original admission did not publish collector custody')
-                time.sleep(.01)
+                time.sleep(min(.01, remaining))
             payload = record['payload']; target = record['target']
             row = local.resolve('grok:' + target['conversation_id'], target, payload['profile'])
             def update(event):
@@ -89,6 +95,8 @@ def collect(root, identifier):
                 store.update(identifier, status='running')
             owner = ControllerGrok(root, on_update=update)
             selected, guard = local._connection(row['profile'], target)
+            if time.monotonic() >= deadline:
+                raise RuntimeError('original admission collector custody deadline elapsed')
             with owner._connection(selected, guard) as connection:
                 owner._negotiation(connection, selected)
                 store.update(identifier, status='running', transmitted=True)

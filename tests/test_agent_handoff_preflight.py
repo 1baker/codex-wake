@@ -202,6 +202,17 @@ class HandoffPreflightTests(unittest.TestCase):
             external_run=subprocess.run
             visibility={'show_goal':not lost_goal,'stale_title':stale_title}
             clock={'utc':{'lower':1000,'upper':1001}}
+            def utc_bounds():
+                from codex_wake.measurements import TimeUnavailable
+                bounds = clock.get('utc')
+                if not bounds:
+                    raise TimeUnavailable('fixture authority unavailable')
+                return bounds['lower'], bounds['upper']
+            # Metadata setup and budget decisions consume the same mutable UTC
+            # fixture, including its explicit unknown and expiry transitions.
+            utc = patch('codex_wake.measurements.utc_bounds', side_effect=utc_bounds)
+            utc.start()
+            self.addCleanup(utc.stop)
             def launch(command,pane,name,thread):
                 master,slave=pty.openpty();fds.extend([master,slave])
                 client=subprocess.Popen(command,stdin=slave,stdout=subprocess.PIPE)

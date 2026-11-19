@@ -1,6 +1,6 @@
 # External OAuth connector
 
-State: DONE
+State: CLOSED
 Owner: ecochran76 / root
 Work item: #646
 Branch: feat/external-oauth-0235

@@ -14,6 +14,29 @@ SUCCESSOR = '00000000-0000-7000-8000-000000000316'
 NOW = 1792872000.0
 
 
+class StableInventoryClockTests(unittest.TestCase):
+    def test_inventory_keeps_utc_metadata_and_uses_counter_evidence_for_freshness(self):
+        from unittest.mock import patch
+        from codex_wake import measurements
+        from codex_wake.managed_inventory import ManagedInventory
+        anchor = dict(reason='authenticated_counter_only', counter=dict(
+            epoch='c357309d-c209-4467-b757-e1488e6b1aaa', counter=1000,
+            frequency=1000, rate_ppm=0))
+        current = dict(anchor, counter=dict(anchor['counter'], counter=2000))
+        with tempfile.TemporaryDirectory() as temporary:
+            sample = observation(clock_observation=anchor)
+            with patch.object(measurements, 'snapshot', return_value=current), patch.object(measurements, 'utc_time', return_value=NOW-8):
+                inventory = ManagedInventory(Path(temporary)/'wake')
+                agent = inventory.enroll(sample, operator=True)['agent']
+                self.assertTrue(agent['binding_current'])
+                self.assertEqual(agent['observed_at'], NOW)
+                self.assertEqual(agent['clock_observation'], anchor)
+                changed_epoch = dict(current, counter=dict(current['counter'],
+                    epoch='d357309d-c209-4467-b757-e1488e6b1aaa'))
+                with patch.object(measurements, 'snapshot', return_value=changed_epoch):
+                    self.assertEqual(inventory.inspect(agent['managed_agent_id'])['agent']['state'], 'stale')
+
+
 def native_context(thread=THREAD):
     return {'threadId': thread, 'sessionId': thread, 'callId': 'call-315',
             'x-codex-turn-metadata': {'thread_id': thread, 'session_id': thread,

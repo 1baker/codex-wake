@@ -12,6 +12,7 @@ import subprocess
 import time
 from uuid import uuid4
 
+from . import measurements
 from .process import process_identity
 from .records import WakeError
 
@@ -23,6 +24,7 @@ def digest(data):
 class GrokTerminalHost:
     def __init__(self, root, *, deadline=None):
         self.deadline = deadline
+        self._phase_deadline = None
         self.root = Path(root)
         self.tmux = shutil.which('tmux')
 
@@ -33,7 +35,12 @@ class GrokTerminalHost:
                 or info.st_uid != os.getuid() or info.st_mode & 0o077
                 or not re.fullmatch(r'%[0-9]+', binding['pane'])):
             raise WakeError('untrusted_terminal_endpoint')
-        timeout = 3 if self.deadline is None else min(3, self.deadline - time.monotonic())
+        timer = self.deadline if self.deadline is not None else measurements.deadline(3)
+        if not callable(getattr(timer, 'remaining', None)):
+            raise measurements.TimeUnavailable('retained_deadline_required')
+        timeout = min(3, timer.remaining())
+        if self._phase_deadline is not None:
+            timeout = min(timeout, self._phase_deadline.remaining())
         if timeout <= 0:
             raise WakeError('terminal_observation_deadline_reached')
         from contextlib import nullcontext
@@ -44,6 +51,8 @@ class GrokTerminalHost:
         with guard:
             result = subprocess.run([self.tmux or '/usr/bin/tmux', '-S', str(socket), *args],
                                     input=input, capture_output=True, timeout=timeout)
+        if timer.remaining() <= 0 or (self._phase_deadline is not None and self._phase_deadline.remaining() <= 0):
+            raise WakeError('terminal_observation_deadline_reached')
         if result.returncode:
             raise WakeError('terminal_operation_unavailable')
         return result.stdout.decode('utf-8', errors='replace')
@@ -120,22 +129,31 @@ class GrokTerminalHost:
                     receiver_acknowledgment='not_qualified')
 
     def refresh_identity(self,binding):
-        previous=self.snapshot(binding)['frame'].count('  Session ID: ')
-        self._tmux(binding,'send-keys','-l','-t',binding['pane'],'/session-info')
-        self._tmux(binding,'send-keys','-t',binding['pane'],'Enter')
-        deadline=time.monotonic()+5
-        while time.monotonic()<deadline:
-            observed=self.snapshot(binding)
-            if observed['frame'].count('  Session ID: ')>previous:
-                return
-            time.sleep(.05)
-        raise WakeError('fresh_session_info_unavailable')
+        phase=measurements.deadline(5)
+        previous_phase=self._phase_deadline
+        self._phase_deadline=phase
+        try:
+            if self.deadline is not None and self.deadline.remaining() <= 0:
+                raise WakeError('original_deadline_reached')
+            previous=self.snapshot(binding)['frame'].count('  Session ID: ')
+            self._tmux(binding,'send-keys','-l','-t',binding['pane'],'/session-info')
+            self._tmux(binding,'send-keys','-t',binding['pane'],'Enter')
+            while min(phase.remaining(), self.deadline.remaining() if self.deadline is not None else 5)>0:
+                observed=self.snapshot(binding)
+                if observed['frame'].count('  Session ID: ')>previous:
+                    return
+                time.sleep(.05)
+            raise WakeError('fresh_session_info_unavailable')
+        finally:
+            self._phase_deadline=previous_phase
 
     def paste(self, binding, prompt, *, deadline=None):
         # Literal stdin buffer + bracketed paste. No shell, prompt interpolation,
         # pre-clearing input, session-info command or fallback recipient.
         def check_window(seconds):
-            if deadline is not None and deadline-time.monotonic() <= seconds:
+            if deadline is None or not callable(getattr(deadline, 'remaining', None)):
+                raise measurements.TimeUnavailable('retained_deadline_required')
+            if deadline.remaining() <= seconds:
                 raise WakeError('original_deadline_reached')
         check_window(12)
         buffer = 'wake-'+uuid4().hex

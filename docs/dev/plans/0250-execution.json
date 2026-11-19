@@ -1,0 +1,1020 @@
+{
+  "spec": "docs/dev/plans/0250-2026-11-17-stable-time-everywhere.md",
+  "branch": "feat/native-expiry-695",
+  "base": "098f409a8de5d7010984189127bf4f10e12fb1d3",
+  "wip_limit": 3,
+  "tickets": {
+    "ST01": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [],
+      "paths": [
+        "src/codex_wake/measurements.py",
+        "tests/test_measurements.py"
+      ],
+      "validation": "7 focused publicinterface checks pass Python3.11 and3.12; ruff/diff pass; UTC/counter domains separate, ratebounds/epoch/frequency/rollback/unqualifiedhold; native bridge bootstrap remains ST04 adoption gate"
+    },
+    "ST02": {
+      "owner": "time_bypass_audit",
+      "state": "validated",
+      "dependencies": [],
+      "evidence": "private st02-time-bypass-audit.json",
+      "summary": "440 production measurements,42boundclocks,197injectedcalls across134files;602scriptmeasurements90files; legacy persistedclockdomains identified"
+    },
+    "ST03": {
+      "owner": "time_bypass_audit",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "worker": "/root/time_bypass_audit",
+      "branch": "feat/stable-time-custody-0250",
+      "base": "6b5dad0c22c38215e269a89abdc712b4b302300d",
+      "scope": "structured freshness across observation/custody/backgroundjob/workacceptance owners; original UTCmetadata retained",
+      "integration_sha": "1d140f6a",
+      "worker_sha": "f9368576f778b0bf2ca133d756ff1e43b912f772",
+      "validation": "41focusedchecks311/312 worker; rootactual3publicscenariospassed viaenrolledStableTime; maintainedrealprocessjobmodule13PASS; immutableoriginaldeadlineandstrictcustody preserved",
+      "actual_evidence": "private st03-actual-public-result.json andst03-background-module-311.log"
+    },
+    "ST04": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "Reconcile reliable-time owners with supported StableTime service semantics; ordinary waits/log metadata allowed. Prior raw-call inventory is not a migration target.",
+      "validation": "Approved supported-service/ordinary-wait reconciliation complete; reliable-time owners retain service instant/uncertainty, immutable deadlines and unavailable holds. Native exact package/runtime accepted and Python collections complete; historical raw-call inventory is not a universal migration gate."
+    },
+    "GR01": {
+      "owner": "grok_readiness_diagnosis",
+      "state": "validated",
+      "dependencies": [],
+      "evidence": "private gr01-grok-readiness-diagnosis.json",
+      "summary": "Catalogexpiry already StableTime; bothmetadata/codingproof expired2026-11-17T01:27:08.145664Z; prior liveallowance exhausted, no new qualification effects authorized",
+      "next_gate": "renewed explicit liveallowance and stop/unknowncharge reconciliation; immutableexpiry preserved"
+    },
+    "ST04-NATIVE": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "native protocol, bounded peerqualification, sharedmetadata reader deadline adoption and implicit alternateclock fallback refusal",
+      "validation": "64focused311/52focused312authority+nativechecks; thennewreconciliationclockgate30PASS311/18PASS312; missingauthorityholds beforeRPC/endpointresolution; explicitnumericfixtureonly clocks retained",
+      "native_build": "unchanged; no rebuild or broadreview"
+    },
+    "ST04-GROK": {
+      "owner": "grok_readiness_diagnosis",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "worker": "/root/grok_readiness_diagnosis",
+      "branch": "fix/stable-time-grok-login-0250",
+      "base": "6b5dad0c22c38215e269a89abdc712b4b302300d",
+      "result_sha": "bba146a32b094d612f84bb651294bb0fd6afcc4c",
+      "validation": "14focusedauthchecks311and312; rootintegratedaffectedselectionalso14authcasespass; no realautheffects",
+      "integration_sha": "46aca738"
+    },
+    "ST04-BUDGET": {
+      "owner": "time_bypass_audit",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "worker": "/root/time_bypass_audit",
+      "result_sha": "7177b48e",
+      "scope": "strictcurrentUTCgoalupper and truthfulunqualifiedstopmetadata; originaldeadline/origin/usageimmutable; otherBOOTTIME paths pending",
+      "validation": "12 focused checks pass Python3.11 and3.12 on integration branch",
+      "integration_sha": "3f8f0fe8"
+    },
+    "ST04-PERMISSIONS": {
+      "owner": "grok_readiness_diagnosis",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "permissionmetadata/approvalUTCexpiry strictdefaultclock; staticstandingandoperatorstop unaffected",
+      "worker_sha": "45d0011d",
+      "integration_sha": "7a049a92",
+      "validation": "14 worker checks each Python3.11/3.12; integration permission and task metadata selection24PASS311"
+    },
+    "ST04-RECOVERY": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "Both admission checks use original qualified UTC deadline; clock loss refuses recovery",
+      "validation": "5 checks each Python3.11/3.12; retained red evidence",
+      "integration_sha": "07ece11b"
+    },
+    "ST04-REFRESH": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "Original reload deadline uses qualified UTC; missing authority blocks",
+      "validation": "15PASS311 and2 affected checksPASS312; initial stale fixture failure retained",
+      "integration_sha": "07ece11b"
+    },
+    "ST04-TASK-METADATA": {
+      "owner": "grok_readiness_diagnosis",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "Task brief metadata requires qualified UTC; original pins retained",
+      "validation": "15 worker checks each Python3.11/3.12; integrated selection24PASS311",
+      "integration_sha": "a2aa0640"
+    },
+    "ST04-GOVERNOR": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "Qualified UTC public meters and retained counter continuation wait",
+      "validation": "New2 checksPASS311/312; wider19 case run16PASS,2failures1error retained. All3 failures repaired with focused checks: shared continuation311/312, expiry311/312 now separately proves native stop, legacy watcher311/312 after qualified heartbeat and safe fixture stop. No claim of rerun whole-module green."
+    },
+    "ST04-HEARTBEAT": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "Goal controller structured host-counter heartbeat freshness; no legacy BOOTTIME interpretation; missing clock observation stays unavailable",
+      "validation": "Legacy watcher public scenario PASS311/312; affected meter and clock-loss checks PASS312; clock core7PASS311; Ruff undefined names/diff pass"
+    },
+    "ST04-STRICT": {
+      "owner": "time_bypass_audit",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "Frozen retained executor anchor, strict guard and lifecycle supervision heartbeat; no deadline renewal",
+      "worker_sha": "bc65ca6ebec036a9edc8549485a676e9c17ec822",
+      "integration_sha": "4bdc35b6",
+      "validation": "Worker47 affected scenarios PASS311/312 plus final delta/heartbeat/adjacent refusal checks; root4 critical default/legacy/cleanup/refusal cases PASS311/312. Real systemd/native acceptance separate."
+    },
+    "ST04-CANCEL": {
+      "owner": "grok_readiness_diagnosis",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "Legacy v1/v4 cancellation metadata qualified or explicitly unobserved; stop remains available",
+      "worker_sha": "c991c35728926b133d643d2fc22ba08d29a61f8a",
+      "integration_sha": "ff08980f",
+      "validation": "27 focused records/signal controls PASS311 and312; integrated public legacy cancellation subcases PASS311; no global utc_now replacement"
+    },
+    "ST04-BOOTSTRAP": {
+      "owner": "stable_time_bootstrap",
+      "state": "validated",
+      "dependencies": [
+        "ST02"
+      ],
+      "scope": "Approved non-authoritative whole-operation blocking transport fuse; no guest clock reads, no measurement bootstrap recursion, no daemon/helper/protocol change",
+      "worker_sha": "1dd3764718895921da1043164a1297cb5ded4d5a",
+      "integration_sha": "ed7c8913",
+      "validation": "Worker9PASS311/312; root bootstrap9 plus native lease public2 PASS311; no guest clock measurement; explicit non-authoritative blocking fuses only"
+    },
+    "ST04-STOP-METADATA": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "New stop diagnostics use qualified coordinate or explicitly unknown time; original first-stop history retained, stop stays available",
+      "validation": "Public retained-deadline metadata RED then2PASS311;2 affected checks plus7goal-time controls PASS312; no broad run"
+    },
+    "ST04-NATIVE-GUARD": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "integration_sha": "f11c61b4",
+      "scope": "Retained pre-send host-counter acknowledgement anchor; missing/legacy/expired clock unqualified, query never reanchors",
+      "validation": "Public status clock-loss RED then2native guard scenarios PASS311/312; post-bootstrap integrated2PASS311; coupled reenrollment consumer fixed separately"
+    },
+    "ST04-REENROLL": {
+      "owner": "time_bypass_audit",
+      "state": "validated",
+      "dependencies": [
+        "ST04-NATIVE-GUARD"
+      ],
+      "worker_sha": "6bf66e8b8c90a4975583ed14751ca7710854c39d",
+      "integration_sha": "707aabe5",
+      "validation": "Public TypeError RED thenPASS311/312; integratedPASS311. Same lease/anchor/deadline/revision retained without rearm, tighter limit still revises/rearms"
+    },
+    "ST04-APP-TRANSPORT": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST04-BOOTSTRAP"
+      ],
+      "scope": "Qualified startup/request deadlines and dispatch metadata, nonblocking stdio send, existing WebSocket timer only protective I/O fuse; clock loss holds before startup/attempt mutation/input",
+      "validation": "Startup authority2subcases RED thenGREEN;20causally affected checksPASS311,21PASS312 after admission case; admission1PASS311 and final startup/cleanup2PASS311; full suite not run"
+    },
+    "ST04-POLL-ACK": {
+      "owner": "time_bypass_audit",
+      "state": "validated",
+      "dependencies": [
+        "ST04-REENROLL"
+      ],
+      "scope": "Exact producers in goal_supervision and freshness consumers in goal_readiness/goal_renewal; legacy acknowledgements require genuine new poll",
+      "worker_sha": "18c9fd0abfaf35c648ae4743245bd684c7ad2d02",
+      "integration_sha": "14f4daff",
+      "validation": "Worker6 public scenarios plus2 final delta checks PASS311/312. Root combined host-preflight real watcher scenario PASS311/312, both account modules also PASS (12 selected311/13selected312). No live service/provider acceptance claimed."
+    },
+    "ST04-GROK-CONTROLS": {
+      "owner": "grok_readiness_diagnosis",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "scope": "Remove unused stdio timestamp; qualify actor expiry and cached-token staleness in account observation/readiness; no provider effects",
+      "worker_sha": "0f93689a309f207e57b9f18dcf0b1deea03803fb",
+      "integration_sha": "b9c49167",
+      "validation": "12 focused account/stdio controls PASS311/312; root account modules plus host-preflight integrated12PASS311/13PASS312. Cached bytes and exact actor gates preserved; no provider effects."
+    },
+    "ST04-PREFLIGHT-METADATA": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST04-POLL-ACK"
+      ],
+      "scope": "Host compatibility observations have qualified UTC or explicit null/not_observed; disabled/manual controls remain available",
+      "validation": "Metadata RED then unitGREEN311; original fixture malformed UTC stub repaired with qualified counter/UTC evidence. Earlier module attempted read-only tmux has-session because wrong fixture UTC made expired launch eligible; retained failed log, no session created. Final2PASS311, combined positive1+11accountPASS311 and2+11PASS312 after poll-ack integration; no deployment/provider effects."
+    },
+    "ST04-RUNTIME-DEADLINE": {
+      "owner": "grok_readiness_diagnosis",
+      "state": "validated",
+      "dependencies": [
+        "ST04-DEADLINE-RESTRICT"
+      ],
+      "scope": "Four-file Grok runtime/terminal/wake/A2A retained deadline contract; waits on root Deadline.restrict primitive before source edits",
+      "worker_sha": "047e80b9d9497cca21fae4474b62e0e117518537",
+      "validation": "802 original28PASS311/312; post-reconcile late/lost-clock regression RED then5 focusedPASS311/312; combined with core continuity root29PASS311 and29PASS312. Same original anchor passed through wake/A2A/terminal/fallback, no replay after possible paste.",
+      "integration_sha": "624692dc"
+    },
+    "ST04-DEADLINE-RESTRICT": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01"
+      ],
+      "scope": "Tighten total duration against immutable original host-counter anchor; never renew on later observation",
+      "validation": "New regression RED AttributeError then8 measurement controls PASS311 and312; restrict20 cannot extend original2-second cap"
+    },
+    "ST04-DEADLINE-CONTINUITY": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST04-DEADLINE-RESTRICT"
+      ],
+      "scope": "Retain latest qualified observation and elapsed upper high-water; rollback above original anchor cannot extend remaining duration",
+      "validation": "Public Deadline regression RED then9core controls PASS311/312; original anchor remains immutable"
+    },
+    "ST04-MAINTENANCE": {
+      "owner": "time_bypass_audit",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST04-POLL-ACK"
+      ],
+      "worker_sha": "258ef0522aa56bfef90e56c185dc16fa800b57c6",
+      "scope": "One retained permit anchor/fixed duration; legacy/unknown holds, protective stop preserved",
+      "integration_gate": "Diagnose rollback above anchor after a previously observed counter; latest mutable evidence must not rebase anchor/duration",
+      "validation": "Both new public continuity REDs retained. Worker5 scenariosPASS311/312 (9 defects + private real watcher). Root combined actor6 + maintenance3 PASS311/312. Ordered maintenance\u2192receipt lock, immutable anchor/duration and persisted monotone evidence; legacy/missing evidence held.",
+      "integration_sha": "fdd88274"
+    },
+    "ST04-RECORD-LIFECYCLE": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST04-CANCEL"
+      ],
+      "scope": "Timed archival UTC evidence/unknown legacy metadata; retained upper vs qualified lower retention comparison, explicit gate before deletion; signal fences and untimed6/7/8 policy preserved. Daemon/creator/move clocks remain separate pending owners.",
+      "acceptance": "Public unknown-time archival no raw clock/event fallback; uncertain retention boundary cannot delete, missing/legacy qualification holds, known old records and dry-run still work, existing signal fences preserved. No real operator archive/delete effects; fixtures only.",
+      "validation": "Archive raw-clock and uncertain-retention public REDs retained. Records+network24PASS311/312, fresh-process cross-store crash/recovery1PASS each311/312. Legacy network quantization delta1PASS each after retained missing-json test import failure repaired. Ruffundefined/diffPASS. No actual operator data archived/deleted; isolated fixtures only.",
+      "deployment_gate": "Quiesce older cleanup readers before root adoption; no mixed-reader or working-root adoption authorized by source validation."
+    },
+    "ST04-OAUTH": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01"
+      ],
+      "scope": "Default opaque OAuth clock is qualified UTC; lower-bound issuance cannot extend fixed TTL, upper-bound verification holds ambiguous expiry; revocation untimed and available; explicit injected point clocks preserved",
+      "validation": "Clock-loss grant and conservative lifetime public regressions RED thenGREEN. Module9PASS311. Final OAuth+connector16 actual casesPASS311/312 plus wrong test-class collection error retained; corrected scheduled original-authority scenario1PASS311/312, not relabeled full initial green. Integer conservative expires_in preserves OAuth wire type. No real connector or credential effects."
+    },
+    "ST04-ACTOR-GUARDS": {
+      "owner": "grok_readiness_diagnosis",
+      "state": "validated",
+      "dependencies": [
+        "ST04-OAUTH"
+      ],
+      "worker_sha": "aad7c4dedea7cbe45cba7a99f65bb74ac480b2fb",
+      "integration_sha": "f6fc8f31",
+      "scope": "Explicit actor profile/daemon read expiry qualified UTC; actor=None verified local read/stop paths untouched",
+      "validation": "6worker public product/daemon scenariosPASS311/312, root combined9 actor/maintenancePASS311/312. No Actor-string local bypass, no private reads on clock loss."
+    },
+    "ST04-COLLECTOR": {
+      "owner": "collector_stable_deadlines",
+      "worker": "/root/collector_stable_deadlines",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST04-APP-TRANSPORT"
+      ],
+      "base": "f8d8fea9dfb5f56093af0407f4296b401c03b427",
+      "paths": [
+        "src/codex_wake/local_session_events.py",
+        "tests/test_local_session_resilience.py"
+      ],
+      "acceptance": "Qualified deadline before launch/input, retained counter anchor for acknowledgement/RPC/stream; post-I/O clock loss cannot claim timely acceptance; preserve exact protective-scope publication and no replay. Focused Python311/312.",
+      "non_goals": "No installed daemon/build/provider effects or comprehensive review/test rerun.",
+      "worker_sha": "5cc120501bb588e939c1c0f668220c758eff4922",
+      "integration_sha": "2d3f3aa0",
+      "validation": "6focusedPASS311/312worker; root same6PASS311 onintegration. ExactpublicACK/postscopeclockloss, no-spawn, lateACK, disconnectedstream, busyrefusal, protectiveinterrupt. No fullsuite/nativeacceptance.",
+      "evidence": "private st04-collector-result.json andst04-collector-integration-311.log"
+    },
+    "GR01-SAMPLE": {
+      "owner": "root",
+      "worker": "/root/grok_admission_contract",
+      "state": "blocked",
+      "dependencies": [
+        "GR01",
+        "ST01"
+      ],
+      "scope": "New private selected-build thread/sample bounded packet; sourcea5806e, expected latestfinished persistentroot, exactlyonegeneration/zeroCoretools. Existing user allowance unchanged.",
+      "acceptance": "Real selected executable provider-free interception/cleanup acceptance before anyliveactivation; qualified originaldeadline and no uncertain replay; hooks/MCP startup effects qualified.",
+      "non_goals": "No fullcoding/mixedroute proof; no Nativebuild/serviceupgrade/credentials copies.",
+      "evidence": "Private takeover-diagnosis.json supersedesstaleparentlookup. Preparedadapter/loopbackqualified; actualsampleuncertain, original900swindowexpired.",
+      "implemented": "Private durable one-attempt thread/sample adapter and provider-free selected-binary harness prepared.",
+      "validation": "5adapterchecksPASS311/312worker plus root5PASS311. Actual selectedbinaryf3213987 loopbackResponsesPASS: prelude1+sample1, toolnull/noCoreexecution, ownedNativeprocessreaped. GenericResponses, notGrok auth/wire acceptance.",
+      "blocker_id": "GR01-LIVE-WINDOW"
+    },
+    "GR01-PARENT": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "GR01"
+      ],
+      "scope": "Qualify an existing idle persistent Grok root with latestfinishedturn and exactaccount/build/settings, no oldunknownstoppedtree replay or inheritedunqualifiedhook/MCPeffects.",
+      "acceptance": "Eligible exactparent/turn andstartupcontrols qualified beforeanylive sample/refresh. Freshprelude requires enforceableadmission, notpromptlimits.",
+      "evidence": "Private gr01-fresh-packet/takeover-preflight-result.json; correctcampaignhome/provider, idlecompletedparent/noactivegoal. Wronghome/filterholdretainedashistory.",
+      "tracker_resolution": "closed_repo_local_corrected_stale_lookup"
+    },
+    "GR01-PARENT-EVIDENCE": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [],
+      "scope": "Missing exacteligiblepersistentparent evidence; no candidate in boundedselecteddaemonmetadataqueries.",
+      "unblock": "Attributable eligibleparent locator or a separatelyqualifiedboundedparentpreparationroute.",
+      "non_goals": "Do notfabricatecompletedturn, unboundedprelude, broadenprivatehistoryscan or alterworkingdaemon.",
+      "tracker_resolution": "closed_repo_local_corrected_stale_lookup",
+      "evidence": "Private gr01-fresh-packet/takeover-preflight-result.json; correctcampaignhome/provider, idlecompletedparent/noactivegoal. Wronghome/filterholdretainedashistory."
+    },
+    "ST04-CREATION": {
+      "owner": "root",
+      "worker": "/root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "5d2919175664ae1e0ceab0843162b276d6ba6260",
+      "paths": [
+        "src/codex_wake/cli.py",
+        "src/codex_wake/records.py",
+        "tests/test_cli.py",
+        "tests/test_records.py"
+      ],
+      "acceptance": "Legacy after/at/app/file/changed/pid creators require qualifiedUTC before writing; relative whole-second due rounds up acceptedUTCupper+duration; explicit trustednow fixtures and native6/7/8 paths preserved; stop/globalutc_now unchanged.",
+      "validation_environment": "FocusedPython3.11/3.12; publicAPI seam RED/GREEN; fixturesisolated, no provider/service/build/fullsuite effects.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration_and_one_review",
+      "validation": "34focusedPASS311/312: records/network +9CLIcreation/clock cases. Three REDloops retained; missingUTC no record, rawupper ceil beforedatetime, trustednow preserved. No broad/full/live effects.",
+      "integration_sha": "dc8ebc2c"
+    },
+    "ST04-LOCAL-WAITS": {
+      "owner": "st04_local_waits",
+      "worker": "/root/st04_local_waits",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "5d2919175664ae1e0ceab0843162b276d6ba6260",
+      "paths": [
+        "src/codex_wake/local_session_operations.py",
+        "tests/test_local_session_resilience.py"
+      ],
+      "acceptance": "Positive waits use originalqualifiedDeadline beforeobservation, recheckafterIO, zero-timeoutinspect retained; exactprotectivecancel/noreplay unchanged.",
+      "validation_environment": "FocusedPython3.11/3.12; publicAPI seam RED/GREEN; fixturesisolated, no provider/service/build/fullsuite effects.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration_and_one_review",
+      "worker_sha": "0d8eaddf4e11b6fa65546d0c852c5b5df9ad67bf",
+      "integration_sha": "f35b2e8e",
+      "worker_branch": "fix/stable-time-local-waits-0250",
+      "validation": "6 focusedworkerPASS311/312; finalcombined23PASS311/312 includesactorintegration. Initial23case311had2fixtureerrors afterstrictactorissuer; separateUTCauthorityfixturecorrectedandretainedfailedlog. No broad/fullsuite."
+    },
+    "ST04-CONTROLLER-WAITS": {
+      "owner": "st04_controller_waits",
+      "worker": "/root/st04_controller_waits",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "5d2919175664ae1e0ceab0843162b276d6ba6260",
+      "paths": [
+        "src/codex_wake/controller_runtime.py",
+        "tests/test_controller_runtime.py"
+      ],
+      "acceptance": "Controller wait/events use originalqualifiedDeadline, no progressrenewal; zero-timeoutinspect, actor/target/cursor/revocation semantics preserved.",
+      "validation_environment": "FocusedPython3.11/3.12; publicAPI seam RED/GREEN; fixturesisolated, no provider/service/build/fullsuite effects.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration_and_one_review",
+      "worker_sha": "173284970991cbf9c45370f55cf146582a677004",
+      "integration_sha": "ee9f7f7f",
+      "worker_branch": "fix/stable-time-controller-waits-0250",
+      "validation": "6 focusedworkerPASS311/312; finalcombined23PASS311/312 includesactorintegration. Initial23case311had2fixtureerrors afterstrictactorissuer; separateUTCauthorityfixturecorrectedandretainedfailedlog. No broad/fullsuite."
+    },
+    "ST04-LOCAL-ACTOR": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST04-OAUTH"
+      ],
+      "paths": [
+        "src/codex_wake/daemon_commands.py",
+        "tests/test_controller_product_authorization.py"
+      ],
+      "acceptance": "LocalActor120s ceiling uses qualifiedlowerUTC; missingUTC refusesissuance, qualifiedupper continuesverification, no change to untimedlocalstop.",
+      "integration_sha": "781772f0",
+      "validation": "PublicissuerRED then11auth/daemonPASS311; combined23PASS311/312 includingexactclockloss/cachedreads anduntimedstop. Lowerboundissuance/upperverification, no WSLfallback.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration_and_one_review"
+    },
+    "ST04-DAEMON-UTC": {
+      "owner": "root",
+      "worker": "/root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "c39eabd6cf29096fbb0cfc366ada11ae0bd6a089",
+      "paths": [
+        "src/codex_wake/daemon.py",
+        "tests/test_daemon.py"
+      ],
+      "acceptance": "Reademergencycontrolbeforeclock. DefaultlegacydecisionsusequalifiedlowerUTC, missingUTCholdslegacy/signalobservation/dispatchwithtime_heldcount; relativecounter-onlynative6/7/8proceedthroughownclock. RecheckUTCbeforelegacydispatch, useuppertoholdambiguousnative4expiry. Explicitnowtrustedhostseam preserved. No finalsendguaranteesnewtransport/noNativebuild.",
+      "non_goals": "No provider/service/credentials/Nativebuild/fullsuite/broadreview/OpenClaw/memoryeffects.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "validation": "Combined92focusedchecksPASS311/312; final27causalrecords/daemon/nativecounterchecksPASS311/312. Ruffundefined/policywiring/diffPASS. See batchevidence; no installed/fullPythonacceptance.",
+      "integration_sha": "97c0e289"
+    },
+    "ST04-RECORD-EVENTS": {
+      "owner": "st04_record_events",
+      "worker": "/root/st04_record_events",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "c39eabd6cf29096fbb0cfc366ada11ae0bd6a089",
+      "paths": [
+        "src/codex_wake/records.py",
+        "tests/test_records.py"
+      ],
+      "acceptance": "Defaultevent/movemetadataqualifiedUTC-or-null/not_observed; explicitnowpreserved. Stop/identity/deadline/retention unchanged. No globalutc_nowreplacement/no coupledv2cancelretirementchange.",
+      "non_goals": "No provider/service/credentials/Nativebuild/fullsuite/broadreview/OpenClaw/memoryeffects.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "worker_sha": "d7b64e856104c02fe4443bed7d9aa6b8dff648e2",
+      "integration_sha": "a84cd2b4",
+      "worker_branch": "fix/stable-time-record-events-0250",
+      "validation": "Combined92focusedchecksPASS311/312; final27causalrecords/daemon/nativecounterchecksPASS311/312. Ruffundefined/policywiring/diffPASS. See batchevidence; no installed/fullPythonacceptance."
+    },
+    "ST04-SIGNAL-LEASES": {
+      "owner": "st04_signal_leases",
+      "worker": "/root/st04_signal_leases",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "c39eabd6cf29096fbb0cfc366ada11ae0bd6a089",
+      "paths": [
+        "src/codex_wake/signal_store.py",
+        "tests/test_signal_store.py"
+      ],
+      "acceptance": "DefaultnewmetadataqualifiedUTC. Ownershipreclaimrequiresqualifiedlower>=expiry; newTTLanchoredlower, continuedleaseadmissionrequiresupper<expiry. Missing/ambiguoustimeholdsnewownership/work; explicitlease_clockpointseamandexistingreadonlyinspectionretained. No schema/domain/terminalretirementcontractchange.",
+      "non_goals": "No provider/service/credentials/Nativebuild/fullsuite/broadreview/OpenClaw/memoryeffects.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "worker_sha": "a3d2996090a38ebf147e017c2af4243d3cbb565d",
+      "integration_sha": "fcf84a87",
+      "worker_branch": "fix/stable-time-signal-leases-0250",
+      "validation": "Combined92focusedchecksPASS311/312; final27causalrecords/daemon/nativecounterchecksPASS311/312. Ruffundefined/policywiring/diffPASS. See batchevidence; no installed/fullPythonacceptance."
+    },
+    "GR01-LIVE-WINDOW": {
+      "owner": "root",
+      "state": "blocked",
+      "dependencies": [],
+      "scope": "Original900sStableTimewindow expired; uncertainfreshsamplepreserved. Needexplicitrenewedlivewindow beforeanynewprobe, pluscompleteerrorcapture/backgroundmetadataeffectqualification.",
+      "non_goals": "No timerreset/no replay/no newproviderpermissionfromimplement-spec."
+    },
+    "ST04-ACK-WAIT": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "bf3799ec7f5146dd68cd8b76a51095773b3ce096",
+      "paths": [
+        "src/codex_wake/injector.py",
+        "tests/test_injector.py"
+      ],
+      "acceptance": "Positive acknowledgement wait retains one qualified counter deadline; zero wait remains untimed inspection. Clock loss after possible paste holds unknown outcome without replay; original retry semantics on qualified timeout retained.",
+      "non_goals": "No fullsuite, reviewrepeat, build, deployment, provider, daemon or memory effects.",
+      "integration_sha": "d814049c",
+      "validation": "Integrated test_injector test_monitor test_measurements:49 PASS Python3.11/3.12; Ruff F821/F822/F823, policy wiring, diff PASS.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration"
+    },
+    "ST04-MONITOR": {
+      "owner": "st04_monitor_time",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "bf3799ec7f5146dd68cd8b76a51095773b3ce096",
+      "paths": [
+        "src/codex_wake/monitor.py",
+        "tests/test_monitor.py"
+      ],
+      "acceptance": "Monitor timestamps and freshness use conservative qualified UTC bounds or explicit unavailable metadata; explicit now seam retained.",
+      "non_goals": "No fullsuite, reviewrepeat, build, deployment, provider, daemon or memory effects.",
+      "integration_sha": "4c78045f",
+      "validation": "Integrated test_injector test_monitor test_measurements:49 PASS Python3.11/3.12; Ruff F821/F822/F823, policy wiring, diff PASS.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "worker": "/root/st04_monitor_time",
+      "worker_sha": "aedf1c10011e7b186e4400797fdaff6966196802",
+      "worker_branch": "fix/stable-time-monitor-0250"
+    },
+    "ST04-SIGNAL-CANCEL": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "7c09353a89eb189380dd0b04b17dac70df22060a",
+      "paths": [
+        "src/codex_wake/records.py",
+        "src/codex_wake/signal_store.py",
+        "tests/test_records.py"
+      ],
+      "acceptance": "Signal cancellation uses qualified UTC when available; missing time still stops with retained last-observed updated_at plus explicit unknown marker/event, and untimed journal terminal fence. Keep schema2 valid, identity/pins/republication fences intact; no retention deadline fabricated.",
+      "non_goals": "No fullsuite/build/reviewrepeat/provider/service/credentials/memory/merge/deploy effects.",
+      "integration_sha": "ffa2ac25",
+      "validation": "Root integrated85 terminal/input cases PASS each311/312; untimed-expiry RED/GREEN preserved.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "evidence": "docs/dev/evidence/issue0695/st04-terminal-stream-validation.json"
+    },
+    "ST04-INJECTOR-METADATA": {
+      "owner": "st04_injector_metadata",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "7c09353a89eb189380dd0b04b17dac70df22060a",
+      "paths": [
+        "src/codex_wake/injector.py",
+        "tests/test_injector.py",
+        "tests/test_native_delivery.py"
+      ],
+      "acceptance": "Default injector UTC metadata qualified; absent authority holds before attempts/transport; explicit now/network ownership and untimed held-ack reconciliation retained.",
+      "non_goals": "No fullsuite/build/reviewrepeat/provider/service/credentials/memory/merge/deploy effects.",
+      "integration_sha": "3dc12f2b",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "evidence": "docs/dev/evidence/issue0695/st04-terminal-stream-validation.json",
+      "worker": "/root/st04_injector_metadata",
+      "worker_sha": "fa95eddacebeee0faa9491a3029dae659474c749",
+      "worker_branch": "fix/stable-time-injector-metadata-0250",
+      "validation": "Worker56 PASS311/312 after retained deterministic fixture corrections; root integrated85 plus separate10 network controls PASS each311/312."
+    },
+    "ST04-HOST-STDIN": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "ffa2ac255fcd32815cfbf3ef991bbce15043f05e",
+      "paths": [
+        "src/codex_wake/host_commands.py",
+        "tests/test_host_commands.py"
+      ],
+      "acceptance": "Five-second stdin frame read retains original qualified deadline across select/read; absent or lost authority refuses input acceptance, including after EOF, no guest fallback. Existing byte/object limits unchanged.",
+      "non_goals": "No live/build/fullsuite/reviewrepeat/daemon/credential/memory effects.",
+      "integration_sha": "afad1968",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "evidence": "docs/dev/evidence/issue0695/st04-terminal-stream-validation.json",
+      "validation": "Private pipe public RED/GREEN; integrated85 and final12 causal cases PASS each311/312."
+    },
+    "ST04-OUTPUT-FRAMES": {
+      "owner": "st04_output_frames",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "ffa2ac255fcd32815cfbf3ef991bbce15043f05e",
+      "paths": [
+        "src/codex_wake/local_control_commands.py",
+        "tests/test_local_output_modes.py"
+      ],
+      "acceptance": "Output streaming retains original qualified wait across pages and validates before/after observation/publication; zero wait remains untimed, cursor drain and ownership/no cancel/no replay preserved.",
+      "non_goals": "No live/build/fullsuite/reviewrepeat/daemon/credential/memory effects.",
+      "integration_sha": "1054d949",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "evidence": "docs/dev/evidence/issue0695/st04-terminal-stream-validation.json",
+      "worker": "/root/st04_output_frames",
+      "worker_sha": "a8765203cccdd976d04dcb1dd19ceab4e41d9f03",
+      "worker_branch": "fix/stable-time-output-frames-0250",
+      "validation": "Worker7 module PASS311/312; final12 integrated causal selection PASS311/312 after readiness correction. Earlier joint311 failures retained; host control exact retry PASS311 and original joint11 PASS312. First empty-output failure cause unproven, not relabeled clean first-run."
+    },
+    "ST04-GROK-EVENT-WAIT": {
+      "owner": "st04_injector_metadata",
+      "state": "validated",
+      "dependencies": [
+        "ST01",
+        "ST02"
+      ],
+      "base": "afad1968",
+      "paths": [
+        "src/codex_wake/local_grok_events.py",
+        "tests/test_local_grok_events.py"
+      ],
+      "acceptance": "Collector dispatch-custody wait retains qualified deadline; absent/lost time holds before provider connection and preserves uncertain/no-replay journal state. Provider-free only.",
+      "non_goals": "No live/build/fullsuite/reviewrepeat/daemon/credential/memory effects.",
+      "integration_sha": "88213eb4",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "evidence": "docs/dev/evidence/issue0695/st04-terminal-stream-validation.json",
+      "worker": "/root/st04_injector_metadata",
+      "worker_sha": "031aa7e8744a7d0f428029865840726ed2da010f",
+      "worker_branch": "fix/stable-time-grok-event-wait-0250",
+      "validation": "4 public worker checks PASS311/312; root7 combined and final12 combined causal checks PASS311/312; no provider effects."
+    },
+    "ST04-REMAINING-INVENTORY": {
+      "owner": "st04_remaining_inventory",
+      "worker": "/root/st04_remaining_inventory",
+      "state": "validated",
+      "dependencies": [
+        "ST02"
+      ],
+      "source_tip": "ffa2ac255fcd32815cfbf3ef991bbce15043f05e",
+      "evidence": "Private st04-remaining-inventory.json; curated summary in packet evidence",
+      "scope": "AST production candidates only; no runtime reachability/all-alias claim; before current packet changes."
+    },
+    "R0250-ACK": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [],
+      "base": "363394fe11935749a95f5984215aca09377540f9",
+      "acceptance": "Ordinary receipt wait has no extra StableTime gate; old held outcomes remain no-replay.",
+      "integration_sha": "3c49b314",
+      "tracker_resolution": "closed_repo_local_corrective_component",
+      "evidence": "docs/dev/evidence/issue0695/r0250-policy-reconciliation.json",
+      "validation": "Public no-extra-clock-gate RED/GREEN; injector29 PASS311/312; combined waits41 PASS311/312. Historical held no-replay fence retained."
+    },
+    "R0250-ORDINARY-WAITS": {
+      "owner": "ordinary_wait_correction",
+      "state": "validated",
+      "dependencies": [],
+      "base": "363394fe11935749a95f5984215aca09377540f9",
+      "acceptance": "SSH frame/presentation/custody waits use ordinary protective limits; actual permission/expiry ownership unchanged.",
+      "integration_sha": "57106956",
+      "tracker_resolution": "closed_repo_local_corrective_component",
+      "evidence": "docs/dev/evidence/issue0695/r0250-policy-reconciliation.json",
+      "worker": "/root/ordinary_wait_correction",
+      "worker_sha": "94c0d7cdf227fde658fe0db257a2ddccfc290961",
+      "worker_branch": "fix/ordinary-waits-policy-0250",
+      "validation": "12 owned checks PASS311/312; root combined41 PASS311/312."
+    },
+    "R0250-SERVICE-CONTRACT": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [],
+      "base": "363394fe11935749a95f5984215aca09377540f9",
+      "acceptance": "Service observations consumed at documented measurement basis without extra bridge; no false outage or current-upper claim.",
+      "integration_sha": "932ea539",
+      "tracker_resolution": "closed_repo_local_corrective_component",
+      "evidence": "docs/dev/evidence/issue0695/r0250-policy-reconciliation.json",
+      "worker": "/root/service_clock_contract",
+      "worker_sha": "42e4697b86bafc429a2575dd9cd4649254a849d2",
+      "worker_branch": "fix/service-observation-policy-0250",
+      "validation": "17 stable_time/time_inspection PASS311/312 worker and root. Real CLI qualified_live service measurement inspection succeeded.",
+      "scope": "Helper-free read-only service inspection and explicit measurement-basis/failure taxonomy; strict scheduling helper replacement remains R0250-STRICT-CLIENT."
+    },
+    "R0250-OWNER-WAITS": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "R0250-ORDINARY-WAITS"
+      ],
+      "scope": "Remove further protective wait clock gates in local_session_operations/controller_runtime; preserve genuine actor/permission expiry checks.",
+      "worker": "/root/owner_waits_correction",
+      "integration_sha": "9f2de173",
+      "worker_sha": "da112c106db5411e37a2ac076e448c60394cf7a0",
+      "worker_branch": "fix/owner-waits-policy-0250",
+      "validation": "23 integrated owner/output checks PASS Python3.11/3.12. Counter-client independence and final result/output expiry/revocation4 subcases RED/GREEN.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration"
+    },
+    "R0250-STRICT-CLIENT": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "R0250-SERVICE-CONTRACT"
+      ],
+      "scope": "Default Python snapshots/selection consume explicit service-measurement evidence without helper; Native final-send remains separate qualification/protocol owner.",
+      "integration_sha": "a7d34a08",
+      "validation": "Core77 PASS311 before additional error-case; final10 measurement checks PASS311, full78 PASS312. Queue-reader2 final checks PASS311/312. Real defaults qualified with helper forced unavailable. Authority20 PASS311;312 first19PASS/1readiness failure, exactcase PASS311/312 after test-cadence correction; first failure retained.",
+      "tracker_resolution": "closed_repo_local_python_clients_only"
+    },
+    "R0250-NATIVE-CLOCK-SOURCE": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "R0250-STRICT-CLIENT"
+      ],
+      "scope": "Root Python wirev2; Native worker Rust reader/tests. Remove private bridge; fresh observation per final admission, original expiry/no-replay retained.",
+      "decision_gate": "Resolved: operator accepts best-effort fresh service-instant admission and observation-to-send suspension gap.",
+      "evidence": "Frozen Native9af codex-rs/ext/queue/src/clock.rs requires private counter read after service output. Supported service contract excludes delivery-time bound.",
+      "worker": "/root/native_service_admission",
+      "native_base": "9af0e8e48d0c2dcfe1800a3deaadfcec7e2c0bd7",
+      "wire_contract": {
+        "contract_version": 2,
+        "basis": "service_measurement",
+        "receipt_time_bound": false,
+        "counter_source": {
+          "kind": "stable_time_service_measurement"
+        }
+      },
+      "native_result_sha": "e7286ffdc338457ea11b8becb26daa0f7f4855af",
+      "validation": "Exact complete GNU package sixhashes verified and realUID1017 prepared/queue/invalidreader/expiry/cancel/restart/control journeys PASS. Python producer2 andadapter13PASS311/312. Three Rust source tests unexecuted after900+900+600s compile budgets; explicit nonblocking validation-cost gap, no pass claimed.",
+      "tracker_resolution": "closed_repo_local_native_behavior; parent695 requires completePython"
+    },
+    "R0250-TRANSPORT-WAITS": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "R0250-OWNER-WAITS"
+      ],
+      "scope": "First owner native_protocol protective request budget only; preserve actual expiry/protective ownership guards and finite argument validation.",
+      "worker": "/root/transport_waits_correction",
+      "worker_sha": "fcfe9b554ffb2e6b716622588026d990448a0f66",
+      "worker_branch": "fix/transport-waits-policy-0250",
+      "integration_sha": "ab89437f",
+      "validation": "13 focused native RPC checks PASS311/312 worker and integration; finite timeout validation restored before I/O.",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "integration_shas": [
+        "fc7687a0",
+        "ab89437f"
+      ]
+    },
+    "R0250-APP-TRANSPORT-WAITS": {
+      "owner": "root",
+      "worker": "/root/transport_waits_correction",
+      "state": "validated",
+      "dependencies": [
+        "R0250-TRANSPORT-WAITS"
+      ],
+      "worker_sha": "1efc072a621cf179109f1a3a7dfabdc50dfb3c8f",
+      "integration_sha": "69d27514",
+      "scope": "Ordinary app-server startup/discovery/stdio/WebSocket protective waits; reliable dispatch authority unchanged.",
+      "validation": "Worker24PASS311/312; integration24PASS311,31223PASS/1fixture handshake error retained; exact framed RPC casePASS311/312 after separate startup allowance, original request timeout retained.",
+      "remediation_worker_sha": "417ff3e9bbe78de62cdded8dd99a76335a264662",
+      "tracker_resolution": "closed_repo_local_after_validated_integration",
+      "remediation_integration_sha": "7f1186a0d39ecf33274ead9decb4b9a8ce9c3f3f"
+    },
+    "R0250-SHARED-TRANSPORT": {
+      "owner": "root",
+      "state": "validated",
+      "dependencies": [
+        "R0250-TRANSPORT-WAITS"
+      ],
+      "integration_sha": "a294bef4",
+      "scope": "Shared metadata discovery and native reconciliation advisory RPC budgets; actual expiry/freshness unchanged.",
+      "validation": "Causal REDs retained;14focusedPASS311/312 CIblank, including expiry/control spawn."
+    }
+  },
+  "review": "Previous single broadreview retained; no repeat",
+  "working_effects": "none",
+  "live_grok_renewal": "Original approved window expired; fresh sample uncertain. GR01-LIVE-WINDOW owns required renewal; parent evidence resolved. No live effects in this batch.",
+  "integration_validation_attempt": {
+    "source": "1d140f6a",
+    "initial": "115selected311/103selected312; eachfailedonlyonewrongtestmodule name test_work_acceptance_commands; allactualtests114/102passed",
+    "selection_correction": "Correctmissingselection is test_resource_claim_commands:4PASS311 and4PASS312; failedattemptsretained, notfullcombinedgreen",
+    "full_suite": false
+  },
+  "updated_at": "2026-11-18T20:41:27.677977+00:00",
+  "worker_cleanup": "Private r0250-default-client-closeout.json owns exact clean/file/remote custody and removal outcome. Root integration retained for named Native clock-source/transport followups; frozen Native/package5 retained for qualification custody.",
+  "worker_followup_correction": "Maintenance continuity followup initially queued to completed worker by send_message; explicitly activated with followup_task, both REDs and final exact result reconciled before integration.",
+  "protective_integration": {
+    "source": "53cb11bd",
+    "commits": [
+      "2c7a07ea",
+      "53cb11bd"
+    ],
+    "validation": "14 combined product/daemon/exact-owned-interrupt checks PASS Python3.11 and3.12; private Unix peers, not installed Native acceptance",
+    "logs": [
+      "st04-protective-integration-311.log",
+      "st04-protective-integration-312.log"
+    ],
+    "limits": "No provider calls or installed daemon changes. Broader migrations/fullPython/runtime/activation gates open."
+  },
+  "current_batch": {
+    "base": "bb33f963b7e5e01e545814cff7b538cb1027987e",
+    "tickets": [
+      "R0250-NATIVE-CLOCK-SOURCE",
+      "R0250-SHARED-TRANSPORT"
+    ],
+    "state": "native_behavior_validated_python_matrix_open",
+    "review": "Previous broad review retained; focused causal verification only.",
+    "native_decision": "Accepted best effort service instant; delay/suspension limitation explicit.",
+    "workers": {
+      "native_service_admission": "Native existing lane reader/tests",
+      "reconcile_695_gates": "read-only acceptance matrix"
+    }
+  },
+  "completed_batches": [
+    {
+      "base": "5d2919175664ae1e0ceab0843162b276d6ba6260",
+      "tickets": [
+        "ST04-CREATION",
+        "ST04-LOCAL-WAITS",
+        "ST04-CONTROLLER-WAITS",
+        "ST04-LOCAL-ACTOR"
+      ],
+      "review": "Onefinalreview for newbatch from5d291917 (questionasked; noanswer yet, stateddefault), thenoneboundedTDDfindingspass. Earlierbroadreview not repeated.",
+      "wip_limit": 3,
+      "live_grok": "Expiredwindow; unknownsamplepreserved, noproviderpermission inferredfromimplement-spec.",
+      "state": "closed_repo_local",
+      "implementation_tip": "781772f0",
+      "review_base": "5d2919175664ae1e0ceab0843162b276d6ba6260",
+      "focused_validation": [
+        "34creation/record/network checksPASS311/312",
+        "23combinedcontroller/localwait/authority/daemonchecksPASS311/312",
+        "RuffundefinednamesPASS",
+        "policywiringPASS"
+      ],
+      "retained_failure": "st04-current-batch-3.11.log:21PASS,2fixtureerrors due stricterissuer; finalv2same23PASSboth, not erased",
+      "live_effects": "none; expiredGrokallowance anduncertainsample unchanged",
+      "review_tip": "f0556ea0",
+      "review_passes": 1,
+      "remediation_passes": 1,
+      "review_results": {
+        "Standards": "0blocking/0backlog candidates",
+        "Spec": "1P1blocking accepted andfixed: finalwaitpublicationmustrecheckexpired/revokedauthority"
+      },
+      "review_evidence": "docs/dev/evidence/issue0695/st04-current-batch-review.md",
+      "remediation": "Public4subcaseRED, minimumfinal_ownedguard; 5focusedPASS311/312. No broadreview rerun.",
+      "adjacent_validation": "7unifiedterminal/presentationcasesPASS311; no sourcechangesafteractorissuance exceptreviewguard.",
+      "scope_limit": "Fourrepo-localticketsclosed; globalST04/#695/#628 andfullPython/activation/liveGrok remainopen. NoNativebuild/fullsuite/reviewrepeat/liveeffects."
+    },
+    {
+      "base": "c39eabd6cf29096fbb0cfc366ada11ae0bd6a089",
+      "tickets": [
+        "ST04-DAEMON-UTC",
+        "ST04-RECORD-EVENTS",
+        "ST04-SIGNAL-LEASES"
+      ],
+      "state": "closed_repo_local",
+      "wip_limit": 3,
+      "review": "Previousfinalreview/TDDpassretained; no repeatbroadreviewauthorizedfor0250 continuation.",
+      "gate_reporting": "AdditivePollResult.time_held countsheldlegacytime-dependentrecords whileindependentnativecounterintentworkremainsavailable.",
+      "implementation_tip": "fcf84a87",
+      "integration_delta": "Preservealreadyreservedmatcheswhenexpiryintervalstraddlesdeadline; causalsubcaseRED/GREEN; no renewal/newidentity.",
+      "evidence": "docs/dev/evidence/issue0695/st04-daemon-signal-validation.json",
+      "validation": "92combinedPASS311/312;27finaldeltaPASS311/312;Ruff/policywiring/diffPASS",
+      "integration_deltas": "Reservedsignalexpiryreplaypreserved;schema2unknownUTCmovesheldbeforeserialization;rootcausalRED/GREENchecks."
+    },
+    {
+      "base": "bf3799ec7f5146dd68cd8b76a51095773b3ce096",
+      "tickets": [
+        "ST04-ACK-WAIT",
+        "ST04-MONITOR"
+      ],
+      "state": "closed_repo_local",
+      "review": "Retain previous review; no broad review repeat.",
+      "implementation_tip": "4c78045f",
+      "evidence": "docs/dev/evidence/issue0695/st04-ack-monitor-validation.json",
+      "validation": "49 focused PASS each Python3.11/3.12; static PASS"
+    },
+    {
+      "base": "7c09353a89eb189380dd0b04b17dac70df22060a",
+      "tickets": [
+        "ST04-SIGNAL-CANCEL",
+        "ST04-INJECTOR-METADATA",
+        "ST04-HOST-STDIN",
+        "ST04-OUTPUT-FRAMES",
+        "ST04-GROK-EVENT-WAIT"
+      ],
+      "state": "closed_repo_local",
+      "review": "Previous broad review/TDD pass retained; no repeat.",
+      "implementation_tip": "1054d949",
+      "evidence": "docs/dev/evidence/issue0695/st04-terminal-stream-validation.json",
+      "validation": "85 terminal/input +10 network each311/312; final12 stream/custody/input each311/312; retained first failures and explicit flake disposition."
+    },
+    {
+      "base": "363394fe11935749a95f5984215aca09377540f9",
+      "tickets": [
+        "R0250-ACK",
+        "R0250-ORDINARY-WAITS",
+        "R0250-SERVICE-CONTRACT"
+      ],
+      "state": "closed_repo_local_corrective_components",
+      "authority": "User replacement AGENTS.md supersedes universal measurement rule",
+      "review": "Preserve prior review evidence; focused corrective validation only.",
+      "implementation_tip": "932ea539",
+      "validation": "41 waits +17 service checks PASS each311/312; real helper-free time inspection qualified_live; static PASS.",
+      "limits": "Reconciliation is incomplete for lower owner waits and strict helper-dependent scheduling clients; no whole-stack helper independence claimed."
+    },
+    {
+      "base": "9410932979dcf540e5143025c447126637d45b66",
+      "tickets": [
+        "R0250-OWNER-WAITS",
+        "R0250-STRICT-CLIENT"
+      ],
+      "state": "closed_repo_local_python_components",
+      "design": "Fresh Python decisions use explicit service-measurement basis; Native owns separate final-send expiry. No app helper required for service observations; no guest extrapolation or anchor renewal.",
+      "implementation_tip": "79f99c36",
+      "evidence": "docs/dev/evidence/issue0695/r0250-default-client-validation.json",
+      "limits": "Source Python components validated; Native clock-source runtime qualification, other transport wait reconciliation and fullPython remain open."
+    }
+  ],
+  "remaining_inventory": {
+    "as_of": "ffa2ac25",
+    "direct_raw_calls": 305,
+    "direct_files": 83,
+    "callable_bindings": 29,
+    "legacy_wrapper_calls": 16,
+    "limit": "Static pre-packet candidates only; current seven direct-call removals are not a new complete inventory. OpenClaw parked.",
+    "next_scope": "Classify owners by actual reliable-time requirements; no blanket tabs/raw-call migration. Correct lower ordinary waits and explicit service/receipt measurement bases first."
+  },
+  "policy_reconciliation": {
+    "authority": "Replacement user AGENTS.md",
+    "superseded": "Universal raw-clock elimination; separate counter helper for consuming service observations; clock qualification for every OS wait/log timestamp.",
+    "service_readback": "MCP health ready=true; get_time contract2 finite qualified_live, service measurement instant2026-11-18T21:23:03.671386358Z.",
+    "prior_inventory": "Historical static candidates, not remaining required migrations.",
+    "old_gates": "Native/permission/expiry evidence still required; no guest extrapolation or deadline renewal.",
+    "remaining_owners": [],
+    "updated_at": "2026-11-18T21:37:38.415472+00:00",
+    "timestamp_basis": "Incidental OS metadata; not authority or deadline evidence.",
+    "final_acceptance": "Current timing-policy packet validated at Wake 2ae7d0697b3606888a5a6cdbdf7e406ac46fd72e and Native e7286ffdc338457ea11b8becb26daa0f7f4855af; independent GR01 live-window tickets remain blocked."
+  },
+  "native_unit_cost_gap": {
+    "state": "deferred",
+    "owner": "root",
+    "scope": "Existing3test libtest dependency graph cost; source tests unexecuted, Native public API acceptance qualified.",
+    "evidence": "docs/dev/evidence/issue0695/service-instant-closeout.json",
+    "next_review": "Separate test-cost packet; no same-target retry in current packet."
+  },
+  "final_695_acceptance": {
+    "state": "validated",
+    "wake_source": "2ae7d0697b3606888a5a6cdbdf7e406ac46fd72e",
+    "native_source": "e7286ffdc338457ea11b8becb26daa0f7f4855af",
+    "python": "Both versions2805PASS1opt-in-skip; per-case resumable service-backed validation;312 focused reruns unchanged; historical failures retained",
+    "evidence": "docs/dev/evidence/issue0695/service-instant-closeout.json",
+    "exclusions": [
+      "Independent GR01 live-window renewal",
+      "Working-host deployment",
+      "Deferred Rust libtest compilation gap"
+    ]
+  }
+}

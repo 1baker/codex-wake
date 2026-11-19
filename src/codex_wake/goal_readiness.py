@@ -1,6 +1,6 @@
 """Public readiness explanations; enrollment and confirmed engagement are separate."""
 from datetime import datetime, timezone
-import time
+from . import measurements
 
 
 def engagement(receipt, controller):
@@ -13,6 +13,11 @@ def engagement(receipt, controller):
     action = 'Wait for the independent watcher to poll this enrollment; inspect goal-limits show.'
     accounting = receipt.get('accounting') or {}
     ack = receipt.get('poll_ack') or {}
+    ack_fresh=False;ack_clock_unavailable=False
+    if (receipt.get('state') in ('armed','checkpoint_requested') and not receipt.get('stop_latched')
+            and controller.get('fresh') and ack.get('clock_observation') is not None):
+        try:ack_fresh=measurements.fresh(ack['clock_observation'],max(3,3*controller.get('interval',1)))
+        except (measurements.TimeUnavailable,KeyError,TypeError):ack_clock_unavailable=True
     if not controller.get('fresh'):
         status = 'watcher_stale' if controller.get('active') and controller.get('process_alive',True) else 'watcher_not_running'
         action = ('Run goal-limits watcher-status for the configured service. An authorized operator '
@@ -32,10 +37,13 @@ def engagement(receipt, controller):
     elif receipt.get('state') not in ('armed', 'checkpoint_requested') or receipt.get('stop_latched'):
         status = 'continuation_held'
         action = 'Keep work stopped. Inspect the retained stop reason; native goal resume does not renew external authority.'
+    elif ack_clock_unavailable:
+        status='clock_unqualified'
+        action='Qualified Stable Time continuity is unavailable; hold continuation until a genuine new matching watcher poll is qualified.'
     elif (ack.get('enrollment_revision') == receipt.get('enrollment_revision')
             and ack.get('controller_generation') == controller.get('generation')
             and ack.get('receipt_generation') == receipt.get('generation')
-            and 0 <= time.clock_gettime(time.CLOCK_BOOTTIME)-ack.get('observed_boottime',float('-inf')) <= max(3,3*controller.get('interval',1))):
+            and ack_fresh):
         status = 'engaged'
         action = 'Continue within the displayed remaining allowance; checkpoint reserve is part of that allowance.'
     result = dict(status=status, engaged=status == 'engaged', next_action=action,
@@ -49,8 +57,12 @@ def engagement(receipt, controller):
             upper=receipt.get('clock_elapsed_upper',0)
             deadline_utc=None
         else:
-            elapsed = max(0, time.clock_gettime(time.CLOCK_BOOTTIME)-receipt['started_boottime'])
-            upper = receipt['started_upper']+elapsed
+            from .goal_time import upper as time_upper,GoalTimeUnavailable
+            try:upper=time_upper(dict(receipt))
+            except GoalTimeUnavailable:
+                result.update(status='clock_unqualified',engaged=False,enforcement='unverified',
+                    next_action='Qualified Stable Time is unavailable; keep continuation held and preserve the original allowance.')
+                return result
             deadline_utc=datetime.fromtimestamp(receipt['deadline'], timezone.utc).isoformat().replace('+00:00', 'Z')
         result['card'] = dict(thread_id=receipt['thread_id'], allocation_id=receipt['allocation_id'],
             generation=receipt['generation'], enrollment_revision=receipt['enrollment_revision'],
@@ -60,7 +72,7 @@ def engagement(receipt, controller):
             deadline_utc=deadline_utc,
             timezone=None if counter_time else 'UTC',
             time_basis='authenticated_host_counter' if counter_time else 'qualified_utc',
-            time_observation='last_authenticated_sample' if counter_time else 'same_boot_elapsed', remaining_seconds=max(0, receipt['deadline']-upper),
+            time_observation='last_authenticated_sample' if counter_time else 'qualified_utc', remaining_seconds=max(0, receipt['deadline']-upper),
             checkpoint_tokens=limit*receipt['checkpoint_token_percent']/100,
             checkpoint_seconds=receipt['checkpoint_seconds'], watcher_health='healthy',
             scope='shared_allocation' if receipt.get('allocation_path') else 'session',

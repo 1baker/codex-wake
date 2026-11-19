@@ -1,0 +1,270 @@
+{
+  "state": "validated",
+  "decision": "Best-effort fresh StableTime service-instant evidence at final native admission; observation-to-send suspension/delivery limitation accepted.",
+  "wake_source": "2ae7d0697b3606888a5a6cdbdf7e406ac46fd72e",
+  "native_base": "9af0e8e48d0c2dcfe1800a3deaadfcec7e2c0bd7",
+  "wire": {
+    "version": 2,
+    "basis": "service_measurement",
+    "receipt_time_bound": false,
+    "private_counter_bridge": false
+  },
+  "preserved": [
+    "original expiry and identities",
+    "qualified upper strictly before expiry",
+    "unavailable/overlap holds",
+    "no uncertain send replay",
+    "host peer/hash/qualification gates",
+    "v1 admitted records reconcilable"
+  ],
+  "executed": {
+    "python_reader": "2PASS311/312; causal RED retained",
+    "python_adapter": "12PASS311/312 plus task-permission fixture1PASS each; public v2/v1 reconciliation and invalid basis/receipt/private source refusal",
+    "actual_service": "Root and installed UID1017 reader qualified v2 with private helper forced unavailable; existing credential references, no copies",
+    "static": "Ruff undefined names and compileallPASS",
+    "transport_repairs": "Shared reader and native reconciliation ordinary waits:14PASS311/312 CIblank; original authorization and no-replay retained."
+  },
+  "reused": [
+    "package5 unchanged durable queue/cancel/restart/rollback/history/ownership controls",
+    "isolated factory activation proof",
+    "prior single broad review and bounded findings pass"
+  ],
+  "pending": [],
+  "runtime_effects": "Isolated public wheel installed UID1017 only. Working daemon unchanged. No external model calls or new credential copies.",
+  "native_source": "e7286ffdc338457ea11b8becb26daa0f7f4855af",
+  "validation_environment": "Comprehensive local service-backed run explicitly provisions approved existing StableTime; not hermetic. Missing-clock rejection tests override authority. Prior blank-config failures and stopped run retained.",
+  "package": {
+    "state": "validated",
+    "source": "e7286ffdc338457ea11b8becb26daa0f7f4855af",
+    "hashes": {
+      "codex-package.json": "86c4e272e7dd7875a27577da63bbde3fce22d6db552822ca21739b95d6876ee9",
+      "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+      "codex-resources/bwrap": "da1fe1635e7d3f087e65d840e807a9d7f9d2c05ab9af782c1bd6bb5f5f094220",
+      "bin/codex-code-mode-host": "8ef927abc0a07dd159ec2469bca8756c036163bf818375d01f0d362bf8cf32ee",
+      "bin/codex-exec-server": "18128078567613aa299b175bd0ef0c5efbc6bf3c9fb77e234f0df860673d63e5",
+      "bin/codex": "9f0da05d3c2d3b506ffaf2eebcb1639d840aedb0daee8626bb666a4c1460e4e5"
+    },
+    "profile": "dev-small",
+    "target": "host x86_64 GNU Linux",
+    "difference_from_working": "Separate UID1017 GNU package; working daemon was not replaced."
+  },
+  "installed_qualification": {
+    "uid": 1017,
+    "prepared": {
+      "state": "passed",
+      "eligible_when_hook_entered": true,
+      "expired_before_hook_return": true,
+      "expired_input_and_derived_context_absent_from_all_model_requests": true,
+      "post_reload_control_completed": true,
+      "provider_requests": 2,
+      "stop_exit_code": 0
+    },
+    "queue": {
+      "state": "passed",
+      "expired_and_canceled_absent_from_model_and_history": true,
+      "control_reached_model": true,
+      "negative_contract_holds": {
+        "legacy_v1": {
+          "reader_observed": true,
+          "inspections": {
+            "restart_expired": {
+              "state": "pending",
+              "queuedSubmission": {
+                "id": "01a1f1c8-d4f8-7c02-aa6e-d1f5358ab895",
+                "input": [
+                  {
+                    "type": "text",
+                    "text": "CW695_RESTART_EXPIRED",
+                    "text_elements": []
+                  }
+                ],
+                "clientUserMessageId": "37ea6d74-8f5e-4dba-af27-b186c2bca834",
+                "responsesapiClientMetadata": null,
+                "expiresAtUnixMicros": 1795057841991306
+              },
+              "turnId": null,
+              "clockEvidence": null
+            },
+            "restart_control": {
+              "state": "pending",
+              "queuedSubmission": {
+                "id": "01a1f1c8-dcdb-77c2-ad59-a43bdfa2e530",
+                "input": [
+                  {
+                    "type": "text",
+                    "text": "CW695_RESTART_CONTROL",
+                    "text_elements": []
+                  }
+                ],
+                "clientUserMessageId": "91219da5-5072-4f5e-890f-35ca94db655e",
+                "responsesapiClientMetadata": null,
+                "expiresAtUnixMicros": 1795057961991306
+              },
+              "turnId": null,
+              "clockEvidence": null
+            }
+          },
+          "provider_requests": 2,
+          "reader_calls": 1
+        },
+        "receipt_time_claim": {
+          "reader_observed": true,
+          "inspections": {
+            "restart_expired": {
+              "state": "pending",
+              "queuedSubmission": {
+                "id": "01a1f1c8-d4f8-7c02-aa6e-d1f5358ab895",
+                "input": [
+                  {
+                    "type": "text",
+                    "text": "CW695_RESTART_EXPIRED",
+                    "text_elements": []
+                  }
+                ],
+                "clientUserMessageId": "37ea6d74-8f5e-4dba-af27-b186c2bca834",
+                "responsesapiClientMetadata": null,
+                "expiresAtUnixMicros": 1795057841991306
+              },
+              "turnId": null,
+              "clockEvidence": null
+            },
+            "restart_control": {
+              "state": "pending",
+              "queuedSubmission": {
+                "id": "01a1f1c8-dcdb-77c2-ad59-a43bdfa2e530",
+                "input": [
+                  {
+                    "type": "text",
+                    "text": "CW695_RESTART_CONTROL",
+                    "text_elements": []
+                  }
+                ],
+                "clientUserMessageId": "91219da5-5072-4f5e-890f-35ca94db655e",
+                "responsesapiClientMetadata": null,
+                "expiresAtUnixMicros": 1795057961991306
+              },
+              "turnId": null,
+              "clockEvidence": null
+            }
+          },
+          "provider_requests": 2,
+          "reader_calls": 2
+        }
+      },
+      "unknown_time_held": true,
+      "original_deadlines_and_client_ids_survive_restart": true,
+      "restart_expired_absent_from_model_and_history": true,
+      "restart_control_reached_model": true,
+      "provider_requests": 3,
+      "stop_exit_code": 0
+    },
+    "owned_processes_remaining": 0,
+    "package_hashes_unchanged": true,
+    "external_model_calls": 0,
+    "clock_basis": "service_measurement; receipt_time_bound=false; no private bridge/handoff"
+  },
+  "native_source_unit_selection": {
+    "state": "unexecuted",
+    "classification": "deferred_nonblocking_validation_cost_gap",
+    "tests": 3,
+    "attempt_budgets_seconds": [
+      900,
+      900,
+      600
+    ],
+    "compiler_assertion_failures": false,
+    "executable_produced": false,
+    "decision": "Use exact installed package API as Native acceptance seam; all695 Native behavior criteria executed or validly reused. The cold libtest dependency graph is not a failed product assertion and does not invalidate primary runtime proof. No unit pass claimed and no further same-target retry.",
+    "retained_gap": "New source test target compilation/enumeration/execution remains unverified; track separately from qualified product behavior."
+  },
+  "native_reuse_scope": {
+    "wire_consumer": "codex-rs/ext/queue/src/clock.rs:29,76",
+    "sample_calls": "codex-rs/ext/queue/src/service.rs:644,696,718",
+    "persistence": "codex-rs/thread-store/src/queue_store.rs:195-201; state/runtime/queued_items.rs:383-385",
+    "goal_independence": "No native_queue_clock/QueueClock/config consumer in Goal/resource guards; unchanged nonqueue Goal token behavior proof retained, not renewed."
+  },
+  "python_validation_reconciliation": {
+    "source": "2ae7d0697b3606888a5a6cdbdf7e406ac46fd72e",
+    "complete": true,
+    "retained_python311_unique_passes": 2805,
+    "collection_unique_cases": 2806,
+    "duplicate_import_instances": 18,
+    "runner_repairs": [
+      "Restore maintained Rust toolchain PATH; prepare control passes",
+      "Guard private resumable runner main against multiprocessing spawn; discard156 ambiguous child result IDs",
+      "Discard failed subtest parent IDs; preserve all historical failures"
+    ],
+    "focused_repairs": [
+      "Shared refresh watcher now publishes structured clock_observation; no guest heartbeat fallback",
+      "Ordinary RPC read/reconciliation assertions updated; private revocation and no replay preserved:2PASS each Python version",
+      "Plan0250 canonical Current State heading:1PASS311",
+      "Crash checkpoints use finite fixture lease; synthetic consolidation record uses explicit creation time:2PASS each version",
+      "Supervisor result fixture includes time_held; Grok positive route uses structured clock:2PASS each version",
+      "Operator inventory structured freshness and owned self-limit watcher synchronized fixture evidence:9PASS each version; final owned fixture children0"
+    ],
+    "pending": [],
+    "validation_environment": "Local approved existing StableTime plus explicit deterministic fixture clocks; service-backed rather than blank-config hosted environment; no hosted CI or external model calls",
+    "python312_unique_passes": 2805,
+    "per_version_skipped": 1,
+    "skip": "Opt-in disposable systemd test; exact separate-UID Native runtime proofs remain distinct",
+    "final_results": {
+      "python311": "2805PASS/1skip across2806unique logical cases; resumable validation with affected results invalidated",
+      "python312": "Fullcollection2802PASS/1skip/3failedcases in2280.160s; unchanged focusedreruns1+3testsPASS, reconciled2805PASS/1skip",
+      "focused_windows_failures": "Two Windows helper process timeout receipts and one exit1 remain retained; cause not proven. No timeout/assertion relaxation or product edit.",
+      "duplicate_import_instances": 18,
+      "hermetic": false,
+      "hosted_ci": "Not run under operator cost policy",
+      "parked_openclaw": "Unchanged and excluded"
+    }
+  },
+  "known_validation_gaps": [
+    "Three Native Rust libtests never executed after bounded compilation; deferred nonblocking gap, required behavior qualified by exact installed Native API journeys",
+    "Original intermittent Windows interoperability full-run failures have unproven causes despite unchanged focused passes"
+  ],
+  "final_source_artifacts": {
+    "codex_wake-0.22.0.dev41-py3-none-any.whl": "91a78c2d0c76a16f5a450d174b1c669df57cbc315e75f43047c5c87ddc5e4f2a",
+    "codex_wake-0.22.0.dev41.tar.gz": "63aa8e1285b91c88726ae79e31852582242aa84b223990d1d1585a0e88f78223"
+  },
+  "deployment": "Separate installed UID1017 qualification only; working0.170daemon PID3161414 unchanged by this packet. Source branch delivery; no merge or deployment claimed.",
+  "final_local_checks": {
+    "source": "2ae7d0697b3606888a5a6cdbdf7e406ac46fd72e",
+    "ruff": "PASS --select F821,F822,F823 src scripts tests .codex/hooks",
+    "compileall": "PASS src tests .codex/hooks",
+    "policy_wiring": "PASS scripts/check_policy_wiring.py",
+    "active_planning_contract": "PASS --active-only; all-history audit reports32 unrelated legacy state/filename findings retained",
+    "package": "python -m build PASS wheel+sdist; isolated wheel installation PASS",
+    "installed_wheel_smokes": [
+      "source_registry_smoke PASS",
+      "session_discovery_smoke accepted18connections closed/no lifecycle effects/descriptors unchanged",
+      "a2a_mailbox_smoke --scheduler --operations accepted_provider_free;0children/no lifecycle effects; legacy synthetic scheduling fixture is not time-authority proof",
+      "Installed service snapshot authenticated_utc with private counter helper forced unavailable"
+    ],
+    "installed_source_content_parity": {
+      "compared_files": 345,
+      "mismatches": 0
+    },
+    "hosted_environment_differences": [
+      "WSL shared kernel versus hosted Ubuntu",
+      "Approved StableTime explicitly configured rather than blank configuration",
+      "Windows PowerShell interop present and observed intermittent failures; focused unchanged checks pass",
+      "Unchanged parked OpenClaw plugin checks excluded"
+    ]
+  },
+  "checkout_custody": {
+    "fixture_worker": "eed6d40c verified remote; clean checkout removed normally; ignored outputs only caches",
+    "wake_integration": "Exact final remote custody then normal checkout removal; independent Plan0250 blocked state retains refs/checkpoint",
+    "native": "Clean e7286ffdc3 branch and verified private delta bundle retained; upstream OpenAI origin is not an authorized archive target. Review custody on authorized fork/archive or working-package decision.",
+    "counts_after_fixture_cleanup": {
+      "wake": 123,
+      "native": 21
+    }
+  },
+  "tracker": {
+    "issue": 695,
+    "state": "CLOSED",
+    "reason": "completed",
+    "closed_at": "2026-11-19T05:03:01Z",
+    "url": "https://github.com/CochranResearchGroup/codex-wake/issues/695",
+    "acceptance_publication": "90b3fe305bcfd8a2eb2886c0bb38427b470fb806"
+  }
+}
