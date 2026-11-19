@@ -10568,3 +10568,35 @@ and working-host activation remain separate.
 
 #695 tracker CLOSED completed at 2026-11-19T05:03:01Z; GitHub MCP and independent
 CLI readback agree. Acceptance published90b3fe30 before closure.
+
+
+## Turn | 2026-11-19 | Dev43 reviewed, merged and frontend deployed
+
+User requested review/merge/deploy and a retrospective. Two-axis review against
+a71adb35 accepted two distinct blockers: stale Native patch provenance (P1 on
+both axes) and a protective qualification RPC timer requiring StableTime (SpecP2).
+Both remediated in one bounded pass. Artifact check fails stale9af then reconstructs
+exact Nativee728 tree14f5a8af; public queue read/delete/capability outage case red
+then20PASS311/312. Main's detached-MCPcwd and explicit immutable busy-policy
+intents survive conflict resolution;51affectedchecksPASS eachPythonversion.
+
+PR712 squashmerged47305ce2 before exactdev43 wheel build. Wheel2dd322ad656f
+passes22installedUID1017 checks; working355sourcefiles match and31runtime
+dependencies remain pinned. Synthetic record unchanged through new/old/new
+visibility. Nine CLIlaunchers and controller/connector selectdev43; actualfresh
+serviceprocesscommands usecandidate withnoPYTHONPATH contamination. Metadata200
+and anonymousMCP/controller401. All capturedNativegenerations preserved; no
+Native restart/selection or supervisorowner change. Oldprefixes/dropins retained.
+
+Native cutover is explicitly NOT complete: e728 lacks deployeda5806e Grok/worker
+carry, now tracked in713. UID1017's configuredtimeclient also fails transport
+inold/newprefixes; workingreader authenticated. No serviceoutage inference,
+credentialcopy/reset, liveGrokrenewal or uncertainrequestreplay. #628 remains
+the productobjective. Native3libtests still deferred; no rebuild/review loops.
+
+The retrospective covers visible session/artifacts and recommends product-goal
+anchoring, maintained validationrunner preflight/result custody, scheduling
+completedworkers withfollowup_task and compacttooloutput. Only the direct
+releaseprovenance guard is implemented; no globalAGENTS/policy expansion.
+See issue0695/dev43-deployment.json andretro-dev43.md; browserreview session
+https://previews.ecochran.dyndns.org/s/4200fe982425.

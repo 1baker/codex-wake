@@ -1,0 +1,69 @@
+{
+  "source": "47305ce21bf5f3adf52e2bbc1dddc47f9e5d0ce2",
+  "pull_request": 712,
+  "version": "0.22.0.dev43",
+  "wheel_sha256": "2dd322ad656fc96840f6732ee498816f331df7ab53e7ba69d461c310efbbe366",
+  "review": {
+    "standards_accepted": 1,
+    "spec_accepted": 2,
+    "distinct_findings": 2,
+    "state": "remediated",
+    "artifact": "release-review.json"
+  },
+  "validation": {
+    "affected_source_checks_each_python_version": 51,
+    "prior_per_case_collection": "2805PASS1opt-in-skip each version at2ae7d069; unchanged passing results reused",
+    "artifact_reconstruction_tree": "14f5a8af7675acd48098ba38c19bba7e94683272",
+    "uid1017_installed_checks": 22,
+    "uid1017_python": "3.12.3",
+    "working_python": "3.12.13",
+    "hosted_ci": "skipped under operator cost policy"
+  },
+  "working": {
+    "installed_source_files_verified": 355,
+    "dependencies_preserved": 31,
+    "launchers": 9,
+    "services_refreshed": [
+      "codex-wake-controller.service",
+      "codex-wake-connector.service"
+    ],
+    "services_active": true,
+    "service_command_prefix_verified": true,
+    "http": {
+      "metadata": 200,
+      "anonymous_mcp": 401,
+      "anonymous_controller": 401
+    },
+    "root_service_reader": "authenticated_utc"
+  },
+  "runtime": {
+    "native_generations_before": 25,
+    "native_generations_preserved": 25,
+    "native_missing_or_changed_count": 0,
+    "native_restart_issued": false,
+    "supervisor_owner_preserved": true,
+    "supervisor_restarted": false,
+    "profile_build_selection_changed": false
+  },
+  "rollback": {
+    "previous_working_release": "0.22.0.dev42-a71adb3",
+    "previous_connector_override": "issue703/dev41 retained",
+    "launchers_and_immutable_prefixes_retained": true,
+    "synthetic_wake_visibility_rollback_reupgrade": "passed; original record bytes unchanged"
+  },
+  "limits": [
+    "Native cutover is NOT deployed: e728 expiry candidate lacks current Grok/worker carry; combined source/package qualification tracked in713",
+    "UID1017 old and new configured time clients report transport failure; working-account service reader authenticated; no service-outage inference or credential copies",
+    "Three original Rust libtests remain deferred/unexecuted; no new Native build or runtime retry",
+    "Historical Windows full-collection failures retain unknown causes despite unchanged focused passes",
+    "Existing supervisor and loaded Native sessions keep their owners; release refreshes CLI/controller/connector"
+  ],
+  "grok": {
+    "parent": 628,
+    "native_carry_followup": 713,
+    "live_window_renewed": false,
+    "uncertain_sample_replayed": false,
+    "new_inference_probe_submitted": false
+  },
+  "retro": "https://previews.ecochran.dyndns.org/s/4200fe982425"
+}

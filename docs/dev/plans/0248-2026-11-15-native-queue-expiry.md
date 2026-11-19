@@ -682,3 +682,10 @@ the deployed Grok/worker carry. Do not change selected Native or restart its
 working daemon to deploy the frontend. See release-review.json and dev43 notes.
 Retro recommendations derive from the visible session and retained receipts;
 only the release-artifact mechanical guard is implemented in this packet.
+
+Wake frontend release complete: PR712 merged47305ce2, exactdev43 installed
+UID1017 checks22PASS, working355sourcefile hashes and31dependencies match,
+nine launchers/controller/connector activated with rollback and Native/supervisor
+owners preserved. Metadata200/anonymous401. Native binary cutover remains
+separateissue713; e728 must not replace the current Grok carry. Public evidence:
+issue0695/dev43-deployment.json; retrospective retro-dev43.md.
