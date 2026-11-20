@@ -1,0 +1,24 @@
+{
+  "state": "qualified_combined_source_and_UID1017_package",
+  "base": "d32063f96c2dff1dc96af839b3952abb6acfeda4",
+  "source_commit": "d907a42df3c8f097d4bd2d78aa5c27c33a9112c1",
+  "source_tree": "86740a06107e367beb14f27baf968bfcad8ec698",
+  "parents": [
+    "a5806e371bf306feb4513c7ef4ac2e77e1a3c5f2",
+    "e7286ffdc338457ea11b8becb26daa0f7f4855af"
+  ],
+  "patch_sha256": "907a768e4cf955473fb36fbfd124318891c6f4c36e723ae99b51f91cee637cf9",
+  "wire_contract": {
+    "contract_version": 2,
+    "basis": "service_measurement",
+    "receipt_time_bound": false
+  },
+  "validation": "22API/WSchecks;schema generator/consistency;exactzero-context patch reconstruction;complete6filepackage and9UID1017journeys;oneboundedreview withartifact-only remediation",
+  "working_installation_authorized": false,
+  "provider_calls": 0,
+  "issue": 713,
+  "native_sha256": "78d022a5e8c4c49a851d342ad41fe6058045f0a13064f22cc9163ac400c7e7b2",
+  "apply_flags": [
+    "--unidiff-zero"
+  ]
+}

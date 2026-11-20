@@ -1,6 +1,19 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: native-carry-713
+    owner: root / ecochran76
+    objective: Combine Grok and bounded expiry before Native cutover
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/713]
+    plan: docs/dev/plans/0252-2026-11-19-native-carry-713.md
+    branch: feat/native-carry-713
+    target: origin/main
+    plan_state: CLOSED
+    custody_state: REMOTE_PRESERVED
+    dependencies: []
+    overlaps: [native-expiry-695, P250]
+    updated_at: 2026-11-19
+    disposition: Native d907a42df3 combined;22checks and9UID1017journeysPASS; review1/artifact remediation1complete; owned Wake remote source custody verified; Native and superseded expiry checkouts retired; final Wake cleanup after readback;713cutover/628live remainopen
   - id: native-expiry-695
     owner: root / ecochran76
     objective: Enforce native queue expiry and qualified Stable Time migration

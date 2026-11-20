@@ -1,0 +1,44 @@
+{
+  "state": "unchanged_control_sources",
+  "selected_base": "a5806e371bf306feb4513c7ef4ac2e77e1a3c5f2",
+  "candidate": "d907a42df3c8f097d4bd2d78aa5c27c33a9112c1",
+  "files": [
+    {
+      "file": "codex-rs/core/src/agent/child_config.rs",
+      "sha256": "32e7f5b79f816d113af4badabc8659516d1e3bd7e8817fcccf7d58f85ee8dacd",
+      "selected_grok_bytes_preserved": true
+    },
+    {
+      "file": "codex-rs/core/src/inference_selection.rs",
+      "sha256": "a9b5508bae188515e3db953a89208071b71d6143d9c79eec8e644cf9f46e5dc8",
+      "selected_grok_bytes_preserved": true
+    },
+    {
+      "file": "codex-rs/core/src/agent/control/runtime.rs",
+      "sha256": "c5cedc0a0accf82e94bdc145e292a880d048a41950a3aba55b1dd617b2ec870d",
+      "selected_grok_bytes_preserved": true
+    },
+    {
+      "file": "codex-rs/core/src/rollout_budget.rs",
+      "sha256": "0fca7df5f4f78e09e2d538290e37b8db9bef8994574434e11fc92549d4098910",
+      "selected_grok_bytes_preserved": true
+    },
+    {
+      "file": "codex-rs/core/src/session/provider_safety.rs",
+      "sha256": "bfbaa9c4349c25a72f0beb00fe86c242e323741cc681cd637c2f2a9297657313",
+      "selected_grok_bytes_preserved": true
+    },
+    {
+      "file": "codex-rs/rollout/src/policy.rs",
+      "sha256": "798a9cbaab4ad1f5e26919af13dcc3d7f184e1746b34a5c0a622dc6fde5a1758",
+      "selected_grok_bytes_preserved": true
+    },
+    {
+      "file": "codex-rs/protocol/src/protocol.rs",
+      "sha256": "9d84fa947a7aff56a45e015191c7d86b9f62f8422a1b0a7d9004039de82b88d6",
+      "selected_grok_bytes_preserved": true
+    }
+  ],
+  "reuse": "P233T5/T7 source acceptance, retained routing/account/worker/usage/Stop invariants; affected Grok HTTP send seam freshly red/green tested and candidate package compiled",
+  "limits": "Not a renewed live provider or end-to-end mixed-provider inference acceptance"
+}

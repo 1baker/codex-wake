@@ -1,0 +1,18 @@
+{
+  "source_commit": "d907a42df3c8f097d4bd2d78aa5c27c33a9112c1",
+  "source_tree": "86740a06107e367beb14f27baf968bfcad8ec698",
+  "base": "d32063f96c2dff1dc96af839b3952abb6acfeda4",
+  "bundle": "native-carry-source.bundle",
+  "bundle_sha256": "7fe12d2334a32c6a651b0fa21374f813d5370f329a9edd41d67d7564093e235a",
+  "bundle_prerequisites": [
+    "cb1bc0ae4ed996c67a6e118bf79a7435f0d3f0d2",
+    "d32063f96c2dff1dc96af839b3952abb6acfeda4"
+  ],
+  "patch": "patches/codex/0252-native-carry.patch",
+  "patch_sha256": "907a768e4cf955473fb36fbfd124318891c6f4c36e723ae99b51f91cee637cf9",
+  "apply_flags": [
+    "--unidiff-zero"
+  ],
+  "reconstruction": "exact_tree_match",
+  "native_remote_push": false
+}

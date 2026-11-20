@@ -1,0 +1,167 @@
+{
+  "state": "validated_for_local_branch_delivery",
+  "native_source": "d907a42df3c8f097d4bd2d78aa5c27c33a9112c1",
+  "native_sha256": "78d022a5e8c4c49a851d342ad41fe6058045f0a13064f22cc9163ac400c7e7b2",
+  "journeys": [
+    {
+      "name": "account",
+      "state": "passed",
+      "exit_code": 0,
+      "receipt_sha256": "9e2bc5ec42cbb9fba74dbb6de2a7bf5940efca8ebef6e6d2e6c0633d6102a105",
+      "proved": {
+        "multiple_actual_clients": true,
+        "supported_stopped_rollback_and_reupgrade": true,
+        "account_history_prefixes_preserved": true,
+        "native_goals_and_budgets_preserved": true,
+        "old_binary_did_not_consume_bounded_work": true,
+        "failed_start_repair_passed": true
+      },
+      "provider_requests": 2
+    },
+    {
+      "name": "default",
+      "state": "passed",
+      "exit_code": 0,
+      "receipt_sha256": "172d0630804175b756463091508e4a1ee53a8ed1c537a7082b31d29399f9ac6c",
+      "proved": {
+        "multiple_actual_clients": true,
+        "supported_stopped_rollback_and_reupgrade": true,
+        "default_history_prefixes_preserved": true,
+        "native_goals_and_budgets_preserved": true,
+        "old_binary_did_not_consume_bounded_work": true,
+        "failed_start_repair_passed": true,
+        "default_home_selected_without_codex_home": true
+      },
+      "provider_requests": 2
+    },
+    {
+      "name": "shared",
+      "state": "passed",
+      "exit_code": 0,
+      "receipt_sha256": "0574dce116d4c3d582be3eb5ad89fd45f5282fa83937972f97917c2dc1ff8a04",
+      "proved": {
+        "multiple_actual_clients": true,
+        "old_clients_reconnected_after_stopped_rollback": true,
+        "supported_stopped_rollback_and_reupgrade": true,
+        "shared_history_prefixes_preserved": true,
+        "native_goals_and_budgets_preserved": true,
+        "old_binary_did_not_consume_bounded_work": true,
+        "failed_start_repair_passed": true,
+        "explicit_shared_codex_home": true
+      },
+      "provider_requests": 2
+    },
+    {
+      "name": "private",
+      "state": "passed",
+      "exit_code": 0,
+      "receipt_sha256": "fcb8fc53da72661378ead46e31f9eb6a963a0d674418138ee0da1014d7a30d6e",
+      "proved": {
+        "owner_identified": true,
+        "actionable_recovery": true,
+        "private_lock_refusal_and_normal_exit_recovery": true
+      },
+      "provider_requests": 0
+    },
+    {
+      "name": "prepared",
+      "state": "passed",
+      "exit_code": 0,
+      "receipt_sha256": "e2f1fada04bbc5542b98fcc1e2bc077c3cab609c5224d6a55a8eba12bbc4af29",
+      "proved": {
+        "eligible_when_hook_entered": true,
+        "expired_before_hook_return": true,
+        "expired_input_and_derived_context_absent_from_all_model_requests": true,
+        "post_reload_control_completed": true
+      },
+      "provider_requests": 2
+    },
+    {
+      "name": "queue",
+      "state": "passed",
+      "exit_code": 0,
+      "receipt_sha256": "1c17e40afc55d9ec6993b7ef8edc5f03933f68141883cdcf62bf96583af35394",
+      "proved": {
+        "expired_and_canceled_absent_from_model_and_history": true,
+        "control_reached_model": true,
+        "unknown_time_held": true,
+        "original_deadlines_and_client_ids_survive_restart": true,
+        "restart_expired_absent_from_model_and_history": true,
+        "restart_control_reached_model": true
+      },
+      "provider_requests": 3
+    },
+    {
+      "name": "cancel-reconnect",
+      "state": "passed",
+      "exit_code": 0,
+      "receipt_sha256": "f54a4cdaedf4f0186132a05e89c6277a1dd3924ed42590eb70e9546190408c3e",
+      "proved": {
+        "existing_client_reconnect_prompt_reached_provider": true,
+        "reconnect_notice_observed": true,
+        "cancel_tombstone_survives_restart": true,
+        "direct_cancel": true,
+        "lost_reply_reconciled_without_second_delete": true,
+        "already_admitted_not_canceled": true,
+        "canceled_inputs_absent_from_provider": true
+      },
+      "provider_requests": 3
+    },
+    {
+      "name": "nonzero-goal",
+      "state": "passed",
+      "exit_code": 0,
+      "receipt_sha256": "b77f02ebb8639330135f40770ac0db1b8f2539a6126fa952f091ba3724e4ebc0",
+      "proved": {
+        "nonzero_cumulative_usage_preserved": true
+      },
+      "provider_requests": 2
+    },
+    {
+      "name": "parallel-stop",
+      "state": "passed",
+      "exit_code": 0,
+      "receipt_sha256": "accc53f7ae32ad73d7616e3cee481c44a7086817693d27ac1d8ba5b4bb193335",
+      "proved": {
+        "both_tools_dead": true,
+        "no_post_stop_tool_marker": true,
+        "native_reaped": true
+      },
+      "provider_requests": 1
+    }
+  ],
+  "passing_journeys": 9,
+  "first_failure": {
+    "case": "cancel-reconnect-1",
+    "classification": "fixture UNIX socket109bytes exceeds tmux limit",
+    "native_started": false,
+    "external_provider_calls": 0,
+    "correction": "short unique labels; six prior passes reused, only three remaining journeys executed"
+  },
+  "uid1017_processes_before": 0,
+  "uid1017_processes_after": 0,
+  "working_selected_grok_preserved": true,
+  "working_baseline_generations": 23,
+  "working_baseline_generations_preserved": 21,
+  "working_standalone_exits_unexplained": 2,
+  "root_and_UID1017_package_hashes_after_acceptance": "exact6filematch",
+  "review": {
+    "passes": 1,
+    "remediation_passes": 1,
+    "standards_findings": 1,
+    "standards_resolved": 1,
+    "spec_blockers": 0,
+    "remediation": "artifact-only zero-context patch; source/package unchanged"
+  },
+  "known_limits": [
+    "Synthetic loopback providers; no live Grok/provider inference or entitlement proof",
+    "UID1017 shares the host kernel/resources",
+    "Mixed-worker/account/usage/Stop control sources unchanged from selected carry; prior source-seam acceptance reused, no fresh end-to-end mixed-provider inference claim",
+    "Three prior Rust libtests remain unexecuted/deferred; not retried",
+    "Stop journey covers two already-active local tools, not exhaustive scheduling",
+    "Two baseline standalone clients disappeared for unobserved reasons; selected Grok daemon generation/registry/hash are unchanged"
+  ],
+  "tracker_closed": false,
+  "working_cutover": false,
+  "external_provider_calls": 0
+}

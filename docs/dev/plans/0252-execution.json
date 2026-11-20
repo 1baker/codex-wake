@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "plan": "docs/dev/plans/0252-2026-11-19-native-carry-713.md",
+  "work_item": 713,
+  "owner": "root",
+  "worker": null,
+  "integration_branch": "feat/native-carry-713",
+  "wake_base": "8a5a86ba49a4cad474ae634285871c6b995d5d92",
+  "native_base": "a5806e371bf306feb4513c7ef4ac2e77e1a3c5f2",
+  "native_expiry_source": "e7286ffdc338457ea11b8becb26daa0f7f4855af",
+  "units": {
+    "CARRY": {
+      "state": "validated",
+      "blockers": [],
+      "evidence": "22 API+WS checks, schema generation and exact fixture, retained parent inventories and exact patch reconstruction; package/runtime acceptance separate"
+    },
+    "TIME": {
+      "state": "validated",
+      "blockers": [],
+      "evidence": "private uid1017-time-readback.json; existing client returned authenticated_utc without repair"
+    },
+    "PACKAGE": {
+      "state": "validated",
+      "blockers": [
+        "CARRY"
+      ],
+      "evidence": "complete6file package,1914.709s,exactUID1017transfer,allimports available"
+    },
+    "QUALIFY": {
+      "state": "validated",
+      "blockers": [
+        "PACKAGE",
+        "TIME"
+      ],
+      "evidence": "9 passing runtime journeys from retainedrun1+run2; initialfixturefailure retained; UID1017census0->0"
+    },
+    "REVIEW": {
+      "state": "validated",
+      "blockers": [
+        "QUALIFY"
+      ],
+      "evidence": "oneprimaryStandards/Spec review; oneartifact-onlyremediation, exacttree/policy/diffchecksPASS"
+    }
+  },
+  "validation": [
+    {
+      "check": "cargo-api-test-preflight",
+      "result": "metadata_validated; executable enumeration pending"
+    },
+    {
+      "check": "Grok async authentication expiry regression",
+      "state": "red_verified",
+      "command": "cargo test --locked --profile dev-small -p codex-api --test clients bounded_grok_rechecks_admission_after_async_authentication --message-format=json -- --exact",
+      "result": "build successful; 1 failed expected; 17 filtered out",
+      "duration_seconds": 272.889
+    },
+    {
+      "check": "first green clients",
+      "state": "failed",
+      "passed": 17,
+      "failed": 1,
+      "duration_seconds": 122.42,
+      "reason": "Grok sanitation mapped native RequestNotAdmitted to unknown inference; retain typed local refusal"
+    },
+    {
+      "check": "green2 API clients and responses websocket probes",
+      "state": "passed",
+      "tests": 21,
+      "duration_seconds": 19.769,
+      "command": "cargo test --locked --profile dev-small -p codex-api --test clients --test responses_websocket_probe --message-format=json"
+    },
+    {
+      "check": "combined experimental schema generation",
+      "state": "passed",
+      "tests": 1,
+      "duration_seconds": 591.713,
+      "generator": "existing protocol schema_fixtures_tests::write_schema_fixtures_from_env, experimental=1",
+      "verification": "generated embedded bundle still needs fixture verification"
+    },
+    {
+      "check": "bounded opaque transport retry regression",
+      "state": "red_verified",
+      "result": "2 sends observed; expected1",
+      "duration_seconds": 21.0
+    },
+    {
+      "check": "retry green",
+      "state": "passed",
+      "tests": 22,
+      "duration_seconds": 22.638
+    },
+    {
+      "check": "experimental schema consistency",
+      "state": "passed",
+      "tests": 1,
+      "duration_seconds": 188.035
+    },
+    {
+      "check": "combined patch reconstruction",
+      "state": "passed",
+      "tree": "86740a06107e367beb14f27baf968bfcad8ec698"
+    }
+  ],
+  "accepted_findings": [
+    {
+      "id": "GROK-ADMISSION",
+      "state": "validated",
+      "finding": "Grok separate adapter omitted final transport admission",
+      "red": "expected assertion after async authentication",
+      "fix": "Wire admission into Grok EndpointSession and preserve typed native refusal through sanitized provider error mapping"
+    },
+    {
+      "id": "BOUNDED-OPAQUE-RETRY",
+      "state": "validated",
+      "finding": "RetryPolicy.max_attempts1 allows retry after consumed admission; exact public client regression written",
+      "fix": "Bounded provider and EndpointSession retry counts0; unbounded configuration unchanged"
+    }
+  ],
+  "review_passes": 1,
+  "remediation_passes": 1,
+  "memory_disposition": "forbidden",
+  "runtime": {
+    "state": "completed",
+    "run1": "6PASS, fixturefailure retained",
+    "run2": "3PASS",
+    "evidence": "docs/dev/evidence/issue0713/runtime-acceptance.json"
+  },
+  "native_tip": "d907a42df3c8f097d4bd2d78aa5c27c33a9112c1",
+  "wake_tip": "8a5a86ba49a4cad474ae634285871c6b995d5d92",
+  "native_result": "combined merge committed locally; no upstream push",
+  "codegraph": {
+    "explore": "GrokClient stream_request EndpointSession request_admission succeeded",
+    "init": "database is locked; current-file reads and exact parent diffs used for changed source"
+  },
+  "wake_id": "wake_intent_66590b37e69c493ea6127575bdd9f87f",
+  "wake_state": "actual package completion delivery confirmed; native submission a3b66fa0-0b1b-473a-9211-64b526fabdca",
+  "wake_failure": {
+    "cause": "task-owned watcher inspected static job.json rather than terminal result.json",
+    "old_wake": "cancelled",
+    "new_trigger": "/home/ecochran76/.local/state/codex-wake/native-carry-713/schema-generate/job-20261119T230751Z-f3f549634f1b/result.json"
+  },
+  "native_tree": "86740a06107e367beb14f27baf968bfcad8ec698",
+  "package": {
+    "source": "d907a42df3c8f097d4bd2d78aa5c27c33a9112c1",
+    "native_sha256": "78d022a5e8c4c49a851d342ad41fe6058045f0a13064f22cc9163ac400c7e7b2",
+    "files": {
+      "codex-package.json": "bd8a164454f23c3b6aee5cea6c88d84a607347a5597ff6e54305bb74850144b7",
+      "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+      "codex-resources/bwrap": "d2176d7c09dc74973d02eb846dde262eeedaba0b473c27b70bab8b8305ff7597",
+      "bin/codex-code-mode-host": "0b9c725f74d98ae91d5b32d963bd0ec8713b388a0f3ba333912ad25a333bfa8b",
+      "bin/codex-exec-server": "bdcd14623b79cde0262ee53be41ecaa14b0635f38b2667ccae0248f8c94a8f51",
+      "bin/codex": "78d022a5e8c4c49a851d342ad41fe6058045f0a13064f22cc9163ac400c7e7b2"
+    },
+    "profile": "dev-small",
+    "target": "host GNU Linux",
+    "build_seconds": 1914.709,
+    "working_selection_changed": false
+  },
+  "qualification_first_failure": {
+    "case": "cancel-reconnect-1",
+    "classification": "fixture_setup_UNIX_socket_length",
+    "socket_bytes": 109,
+    "actual_error": "File name too long",
+    "native_started": false,
+    "external_provider_calls": 0,
+    "correction": "short case labels; only three remaining journeys run2; sixPASS reused"
+  },
+  "qualified_journeys": [
+    "account",
+    "default",
+    "shared",
+    "private",
+    "prepared",
+    "queue",
+    "cancel-reconnect",
+    "nonzero-goal",
+    "parallel-stop"
+  ],
+  "review_findings": [
+    {
+      "id": "ARTIFACT-CONTEXT",
+      "axis": "Standards",
+      "severity": "P2",
+      "state": "resolved",
+      "change": "zero-context patch with explicitflag; exact tree verified"
+    }
+  ],
+  "delivery": {
+    "implemented": true,
+    "integrated_on_local_native_branch": true,
+    "validated": true,
+    "tracker_resolved": false,
+    "working_cutover": false,
+    "owned_remote_publication": "verified",
+    "content_custody_commit": "b2aa6d8bde716afaf7d786629269ef3ab07e4a1d",
+    "branch": "https://github.com/CochranResearchGroup/codex-wake/tree/feat/native-carry-713"
+  },
+  "known_limits": [
+    "Synthetic loopback providers; no live Grok/provider inference or entitlement proof",
+    "UID1017 shares the host kernel/resources",
+    "Mixed-worker/account/usage/Stop control sources unchanged from selected carry; prior source-seam acceptance reused, no fresh end-to-end mixed-provider inference claim",
+    "Three prior Rust libtests remain unexecuted/deferred; not retried",
+    "Stop journey covers two already-active local tools, not exhaustive scheduling",
+    "Two baseline standalone clients disappeared for unobserved reasons; selected Grok daemon generation/registry/hash are unchanged"
+  ],
+  "cleanup": {
+    "native_owned_and_superseded_expiry_checkouts": "removed normally after exactbundle remote custody; native count22->20",
+    "derived_index": "task-owned804MiB removed after no matching sameUID file references",
+    "wake_checkout": "final removal after clean commit/push/readback; execution receipt retained outsideGit",
+    "packages_and_shared_build_cache": "retained for gatedcutover/rollback/audit",
+    "branches": "retained; noNativeupstream push or branchdeletion"
+  }
+}

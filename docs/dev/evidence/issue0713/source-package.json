@@ -1,0 +1,59 @@
+{
+  "state": "validated_local_branch_delivery",
+  "native_source": "d907a42df3c8f097d4bd2d78aa5c27c33a9112c1",
+  "source_tree": "86740a06107e367beb14f27baf968bfcad8ec698",
+  "base": "a5806e371bf306feb4513c7ef4ac2e77e1a3c5f2",
+  "expiry_parent": "e7286ffdc338457ea11b8becb26daa0f7f4855af",
+  "package_hashes": {
+    "codex-package.json": "bd8a164454f23c3b6aee5cea6c88d84a607347a5597ff6e54305bb74850144b7",
+    "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+    "codex-resources/bwrap": "d2176d7c09dc74973d02eb846dde262eeedaba0b473c27b70bab8b8305ff7597",
+    "bin/codex-code-mode-host": "0b9c725f74d98ae91d5b32d963bd0ec8713b388a0f3ba333912ad25a333bfa8b",
+    "bin/codex-exec-server": "bdcd14623b79cde0262ee53be41ecaa14b0635f38b2667ccae0248f8c94a8f51",
+    "bin/codex": "78d022a5e8c4c49a851d342ad41fe6058045f0a13064f22cc9163ac400c7e7b2"
+  },
+  "build_seconds": 1914.709,
+  "profile": "dev-small",
+  "jobs": 2,
+  "target": "hostGNU Linux",
+  "material_differences": "Local WSL/shared kernel, GNU package, syntheticloopback acceptance; no hostedCI or production effects",
+  "source_checks": "22 HTTP/WS checks, generator and experimental fixture, exactpatch reconstruction",
+  "rollback": "selectedGrok a5806e/f3213987 complete6file package transferred with exacthashmatch",
+  "working_cutover": false,
+  "live_provider_calls": 0,
+  "runtime_acceptance": "runtime-acceptance.json",
+  "review": "review.md",
+  "validation_commands": [
+    {
+      "command": "cargo test --locked --profile dev-small -p codex-api --test clients --test responses_websocket_probe --message-format=json",
+      "result": "22PASS on exact source; prior causal red receipts retained"
+    },
+    {
+      "command": "cargo test --locked --profile dev-small -p codex-app-server-protocol --lib schema_fixtures_tests::write_schema_fixtures_from_env --message-format=json -- --exact --ignored",
+      "environment": "CODEX_APP_SERVER_SCHEMA_EXPERIMENTAL=1; maintained schema root",
+      "result": "1PASS; generated combined experimental exports"
+    },
+    {
+      "command": "cargo test --locked --profile dev-small -p codex-app-server-protocol --lib schema_fixtures_tests::experimental_precomputed_exports_match_generated --message-format=json -- --exact",
+      "result": "1PASS"
+    },
+    {
+      "command": "cargo build --locked --profile dev-small --message-format=json-render-diagnostics --bin codex --bin codex-code-mode-host --bin codex-exec-server --bin bwrap",
+      "environment": {
+        "RUST_MIN_STACK": "8388608",
+        "CARGO_BUILD_JOBS": "2",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_TARGET_DIR": "retained compatible host-GNU cache"
+      },
+      "result": "PASS; maintained package assembler uses exact prebuilt outputs, GNU target and package version0.169.0-wake713.1+d907a42df3"
+    },
+    {
+      "command": "python scripts/check_policy_wiring.py",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS after artifact remediation"
+    }
+  ]
+}
