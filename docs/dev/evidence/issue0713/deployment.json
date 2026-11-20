@@ -1,0 +1,37 @@
+{
+  "state": "deployed_verified",
+  "authorization": "operator ok go after validated packet",
+  "source_pr": 717,
+  "source_main": "107958da62f5fe73c214d2ab4637b25aef60aef9",
+  "native_source": "d907a42df3c8f097d4bd2d78aa5c27c33a9112c1",
+  "native_sha256": "78d022a5e8c4c49a851d342ad41fe6058045f0a13064f22cc9163ac400c7e7b2",
+  "pid": 1468376,
+  "process_generation": {
+    "boot_id": "21e310d8-f6ac-42de-ac42-f1bc34090131",
+    "pid": 1468376,
+    "start_ticks": "38906870"
+  },
+  "all6_installed_hashes_verified": true,
+  "clock_capabilities": {
+    "version": 1,
+    "clockSource": "stable_time",
+    "clockConfigured": true,
+    "expiryAtAdmission": true,
+    "pendingIsolatedFromLegacy": true
+  },
+  "reader_wire": {
+    "state": "qualified",
+    "contract_version": 2,
+    "basis": "service_measurement",
+    "receipt_time_bound": false
+  },
+  "saved_history_visible": true,
+  "loaded_conversations_before_each_stop": 0,
+  "external_model_calls": 0,
+  "registry_scope": "one matching tenant in both controller and launcher registries; other entries preserved",
+  "retained_rollback": "selected predecessor a5806e/f3213987 completepackage",
+  "first_attempt": "Launcher registry alone left authoritative controller selection unchanged; predecessor restart reconciled. Correct controller registry then selected qualified candidate. No uncertain effect retried.",
+  "verification_helper": "Installer codex->bin/codex compatibility symlink accounted separately from six declared packagefiles",
+  "future_launch_requirement": "Preserve CODEX_NATIVE_QUEUE_CLOCK_CONFIG reference on subsequent explicit starts; absence safely holds bounded work",
+  "live_acceptance_628": "open; expired uncertain sample not renewed or replayed"
+}

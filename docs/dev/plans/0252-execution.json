@@ -40,6 +40,16 @@
         "QUALIFY"
       ],
       "evidence": "oneprimaryStandards/Spec review; oneartifact-onlyremediation, exacttree/policy/diffchecksPASS"
+    },
+    "CUTOVER": {
+      "state": "validated",
+      "blockers": [
+        "PACKAGE",
+        "QUALIFY",
+        "REVIEW"
+      ],
+      "authorization": "subsequent operator ok go",
+      "evidence": "docs/dev/evidence/issue0713/deployment.json"
     }
   },
   "validation": [
@@ -189,11 +199,12 @@
     "implemented": true,
     "integrated_on_local_native_branch": true,
     "validated": true,
-    "tracker_resolved": false,
-    "working_cutover": false,
+    "tracker_resolved": "pending deployment receipt publication",
+    "working_cutover": true,
     "owned_remote_publication": "verified",
     "content_custody_commit": "b2aa6d8bde716afaf7d786629269ef3ab07e4a1d",
-    "branch": "https://github.com/CochranResearchGroup/codex-wake/tree/feat/native-carry-713"
+    "branch": "https://github.com/CochranResearchGroup/codex-wake/tree/feat/native-carry-713",
+    "cutover_source_main": "107958da62f5fe73c214d2ab4637b25aef60aef9"
   },
   "known_limits": [
     "Synthetic loopback providers; no live Grok/provider inference or entitlement proof",

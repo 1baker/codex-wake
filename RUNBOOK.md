@@ -10682,3 +10682,19 @@ Shared build cache, qualified packages, rollback, receipts and branches remain.
 Final Wake checkout removal follows its last clean push/readback; the external
 closeout checkpoint records execution. No source working-tree remains necessary
 for this validated branch-delivery packet.
+
+
+## Turn | 2026-11-19 | Authorized #713 working cutover
+
+Operator “ok go” authorized source merge and exact-package working cutover.
+PR717 merged107958da. Exact selected daemon had zero loaded conversations.
+Supported stop/update/start receipts retain stable intent IDs. Launcher registry
+alone did not alter controller selection; the first predecessor restart was
+reconciled, then the authoritative controller tenant entry was updated. Qualified
+Native78d022a5 now runs atPID1468376. All six installed files match; the native
+compatibility codex symlink is separately validated. Existing StableTime references
+and dev43 interpreter configure current Native clock; actual wirev2 is qualified
+and capabilities clockConfigured=true. No credentials copied or model calls made.
+Future explicit starts must preserve that clock config reference. Prior package
+retained, histories visible, other registry entries unchanged. Deployment receipt
+is issue0713/deployment.json; no parent628 live acceptance or sample renewal.
