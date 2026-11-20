@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: adjacent-tabs-716
+    owner: root / ecochran76
+    objective: Reliable adjacent placement before Grok acceptance
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/716, https://github.com/CochranResearchGroup/codex-wake/issues/719, https://github.com/CochranResearchGroup/codex-wake/issues/720, https://github.com/CochranResearchGroup/codex-wake/issues/721]
+    plan: docs/dev/plans/0253-2026-11-20-adjacent-tabs-716.md
+    branch: fix/adjacent-tabs-716
+    worker_branches: [fix/same-session-placement-720]
+    target: origin/main
+    plan_state: CLOSED
+    custody_state: REMOTE_PRESERVED
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-20
+    disposition: Three children closed;20checks each3.11/3.12 and exact installed native CLI/MCP PASS;review1 remediation1resolvedS1; worker remote-preserved and checkout removed; integration checkout retires after checkpoint; no merge/deploy/live effects
   - id: native-carry-713
     owner: root / ecochran76
     objective: Combine Grok and bounded expiry before Native cutover

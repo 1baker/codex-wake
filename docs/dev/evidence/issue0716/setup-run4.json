@@ -1,0 +1,19 @@
+{
+  "status": "FAIL",
+  "source_commit": "aa77b65b4d1a1db8d488c6a777f95bb487f1e12e",
+  "prefix": "/tmp/wake716-installed",
+  "wheel_sha256": "ee9fd0f32c0381ae93fa75d4095b2869599b44036cedbb138461d36cfe3ced6a",
+  "native_sha256": "78d022a5e8c4c49a851d342ad41fe6058045f0a13064f22cc9163ac400c7e7b2",
+  "python_members_verified": 353,
+  "checks": [],
+  "provider_turns": 0,
+  "production_touched": false,
+  "tier": "focused",
+  "budget_seconds": 180,
+  "error": "(('move', '--workspace', 'fixture', '--window', '@3', '--destination', 'fixture', '--index', '2', '--dry-run', '--request-id', 'preview'), '{\"error\": {\"code\": \"qualified_time_unavailable\", \"message\": \"Tab configuration is unavailable or invalid; inspect the selected controller and refresh workspaces.\"}, \"status\": \"held\"}\\n', '')",
+  "owned_processes_remaining": [],
+  "trap_requests": [],
+  "elapsed_seconds": 12.812,
+  "budget_breach": false,
+  "owned_namespace_removed": true
+}

@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "source_commit": "64ff8b22c99b074ac2e5a70723b180667c0884ba",
+  "prefix": "/tmp/wake716-installed",
+  "wheel_sha256": "7cf2385e07925702c4d77c9e64b55d738b44eb231a67c2983a31214c02fc57dd",
+  "native_sha256": "78d022a5e8c4c49a851d342ad41fe6058045f0a13064f22cc9163ac400c7e7b2",
+  "python_members_verified": 353,
+  "checks": [
+    "installed-cli-no-force-native-adjacency-retained-result-and-replay",
+    "actual-installed-sdk-mcp-metadata-stable-preview-apply-replay-and-stale-layout-refusal",
+    "both-native-conversation-bindings-pane-births-focus-and-unrelated-order-preserved"
+  ],
+  "provider_turns": 0,
+  "production_touched": false,
+  "tier": "focused",
+  "budget_seconds": 180,
+  "conversation_bindings_verified": 3,
+  "owned_processes_remaining": [],
+  "owned_environment_processes_remaining": [],
+  "trap_requests": [],
+  "elapsed_seconds": 51.413,
+  "budget_breach": false,
+  "owned_namespace_removed": true,
+  "elapsed_basis": "guest monotonic diagnostic only; not a trusted-time deadline",
+  "script_sha256": "a18098d592f8f1a9fd402381cf4bc070aa9a0cc3b784e09005c47142dfddda6f",
+  "fresh_os_census": {
+    "matching_owned_native_or_tmux_processes": [],
+    "scope": "completed disposable /tmp/w716-* native/terminal namespaces"
+  }
+}

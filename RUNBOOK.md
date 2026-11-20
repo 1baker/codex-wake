@@ -1,5 +1,9 @@
 # Codex Wake Runbook
 
+## Turn | 2026-11-20 | Adjacent placement / #716
+
+Primary719 and delegated720 integrated from42bbcb95;721installed qualification passed. One final review found S1 pinned sibling displacement, reopened720, and one bounded TDD pass fixed it. Final product64ff8b22;20checks eachPython3.11/3.12 and corrected exact-wheel CLI/SDK-MCP native acceptance PASS;353files match,3native bindings preserved,0provider requests and0owned processes. Three children closed again; parent716 and Grok628 remain open. Source, evidence and custody are in Plan0253. No working layout/service/provider effect; original dirty primary checkout preserved. Worker checkout normally removed after exact remote custody; integration checkout retires after final publication.
+
 ## Turn | 2026-11-15 | Native reconciliation discovery / #690
 
 Closed after operator-authorized review/merge/deploy and actual delivery proof.

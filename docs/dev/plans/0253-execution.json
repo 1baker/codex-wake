@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "spec": 716,
+  "base": "42bbcb95ba1b9ee5bc0616b7126b0c4942c59d8c",
+  "branch": "fix/adjacent-tabs-716",
+  "review_count": 1,
+  "remediation_count": 1,
+  "tickets": {
+    "719": {
+      "owner": "primary",
+      "state": "validated",
+      "blockers": [],
+      "result_sha": "6a125077",
+      "tracker": "closed"
+    },
+    "720": {
+      "owner": "placement worker",
+      "state": "validated",
+      "blockers": [],
+      "branch": "fix/same-session-placement-720",
+      "worker_handle": "/root/placement_720",
+      "result_sha": "6f1795665cde59bb1427fc0d2c27a0acc7cca7d4",
+      "integration_sha": "9b4e6b1e",
+      "tracker": "closed",
+      "worker_status": "completed",
+      "worker_custody": "remote exact6f179566 verified; integrated9b4e6b1e; clean worker checkout normally removed"
+    },
+    "721": {
+      "owner": "primary",
+      "state": "validated",
+      "blockers": [
+        719,
+        720
+      ],
+      "qualification_run1": {
+        "status": "setup_failed",
+        "reason": "Native listener path is a symlink; native_request requires resolved socket. Corrected setup to match existing recovery acceptance.",
+        "provider_requests": 0,
+        "owned_remaining": []
+      },
+      "setup_history": [
+        {
+          "run": 1,
+          "reason": "Native listener alias required resolving to actual owned Unix socket",
+          "provider_requests": 0,
+          "owned_recorded_processes_remaining": []
+        },
+        {
+          "run": 2,
+          "reason": "Synthetic saved threads had no names for existing metadata-matched session discovery",
+          "provider_requests": 0,
+          "owned_recorded_processes_remaining": []
+        },
+        {
+          "run": 3,
+          "reason": "Captured owned TUI confirmed clients responsive; same missing thread names, fixed by existing thread/name/set operation",
+          "provider_requests": 0,
+          "owned_recorded_processes_remaining": []
+        },
+        {
+          "run": 4,
+          "reason": "Isolated HOME hid existing StableTime client config; reference preserved via supported CODEX_WAKE_STABLE_TIME_CONFIG. No service outage inferred.",
+          "provider_requests": 0,
+          "owned_recorded_processes_remaining": []
+        }
+      ],
+      "evidence": "docs/dev/evidence/issue0716/installed-acceptance.json",
+      "tracker": "closed",
+      "final_evidence": "docs/dev/evidence/issue0716/installed-acceptance-final.json"
+    }
+  },
+  "validation": [
+    {
+      "ticket": 719,
+      "red_command": "PYTHONPATH=src dev43/bin/python -m unittest tests.test_tab_lifecycle_cli.LifecycleCLITests.test_cli_and_mcp_move_preview_accept_public_lifecycle_targets -v",
+      "red": "FAIL fresh discovery move preview retained uncertain/stale_target (destination strict-only versus source legacy+stable).",
+      "green": "same command PASS; whole caller module 2 PASS Python3.12",
+      "scope": "provider-free disposable tmux, public CommandRunner and CLI",
+      "private_logs": "wake719-red.log, wake719-green.log"
+    },
+    {
+      "ticket": 719,
+      "command": "PYTHONPATH=src /tmp/wake716-py311/bin/python -m unittest tests.test_tab_lifecycle_cli tests.test_tab_destination_scope tests.test_tab_contract -q",
+      "result": "9 PASS Python3.11;25.404s; parser stderr expected negative cases"
+    },
+    {
+      "tickets": [
+        719,
+        720
+      ],
+      "commands": [
+        "PYTHONPATH=src dev43/bin/python -m unittest tests.test_tab_lifecycle tests.test_tab_lifecycle_cli tests.test_tab_destination_scope tests.test_tab_contract -q",
+        "PYTHONPATH=src /tmp/wake716-py311/bin/python -m unittest tests.test_tab_lifecycle tests.test_tab_lifecycle_cli tests.test_tab_destination_scope tests.test_tab_contract -q"
+      ],
+      "result": "19 PASS each Python3.11/3.12;3.11 30.336s; no skips; expected parser negative stderr",
+      "tier": "focused",
+      "source": "9b4e6b1e"
+    },
+    {
+      "ticket": 721,
+      "result": "PASS installed public CLI + actual SDK MCP,2native conversation bindings,0provider trap requests,353wheel Python members,cleanup0remaining",
+      "command": "/tmp/wake716-installed/bin/python scripts/tab_adjacent_acceptance716.py --binary <qualified native package>/bin/codex --catalog /tmp/wake716-models.json --wheel /tmp/wake716-wheels/codex_wake-0.22.0.dev43-py3-none-any.whl --output /tmp/wake716-acceptance.json --source aa77b65b4d1a1db8d488c6a777f95bb487f1e12e",
+      "source": "aa77b65b4d1a1db8d488c6a777f95bb487f1e12e",
+      "difference_from_hosted": "Local WSL with installed0.169 Native and supported StableTime client; no hosted CI, no external inference",
+      "reused_prior_art": "native recovery acceptance setup + existing installed CLI/SDK MCP conventions"
+    },
+    {
+      "finding": "S1",
+      "red_command": "PYTHONPATH=src /tmp/wake716-py311/bin/python -m unittest tests.test_tab_lifecycle.TabLifecycleTests.test_same_session_insertion_reports_and_preserves_protected_siblings -v",
+      "red": "FAIL requires_force false for pinned crossed sibling",
+      "green": "PASS same command after existing protection checks applied to displaced siblings",
+      "private_logs": "wake716-S1-{red,green}.log"
+    },
+    {
+      "finding": "S1",
+      "commands": [
+        "PYTHONPATH=src /tmp/wake716-py311/bin/python -m unittest tests.test_tab_lifecycle tests.test_tab_lifecycle_cli tests.test_tab_destination_scope tests.test_tab_contract -q",
+        "PYTHONPATH=src dev43/bin/python -m unittest tests.test_tab_lifecycle tests.test_tab_lifecycle_cli tests.test_tab_destination_scope tests.test_tab_contract -q",
+        "/tmp/wake716-py311/bin/python scripts/generate_command_reference.py --check"
+      ],
+      "result": "20PASS Python3.11(34.194s),20PASS Python3.12(31.685s);generated referencePASS;no skips",
+      "tier": "focused"
+    },
+    {
+      "finding": "S1",
+      "result": "PASS exact corrected installed package,3native conversation bindings,public CLI and actual SDK MCP,no force,no provider traffic,353Python files match,OS and env census0",
+      "source": "64ff8b22c99b074ac2e5a70723b180667c0884ba",
+      "wheel_sha256": "7cf2385e07925702c4d77c9e64b55d738b44eb231a67c2983a31214c02fc57dd",
+      "command": "/tmp/wake716-installed/bin/python scripts/tab_adjacent_acceptance716.py --binary <qualified native package>/bin/codex --catalog /tmp/wake716-models.json --wheel /tmp/wake716-final-wheels/codex_wake-0.22.0.dev43-py3-none-any.whl --output /tmp/wake716-acceptance-final.json --source 64ff8b22c99b074ac2e5a70723b180667c0884ba",
+      "tier": "focused"
+    }
+  ],
+  "findings": [
+    {
+      "id": "S1",
+      "axis": "Spec",
+      "severity": "P1",
+      "disposition": "blocking",
+      "criterion": "Preserve existing focus, pin and input protections",
+      "evidence": "Same-session crossed siblings are swapped but only source protection checked; reviewer native reproducer displaced pinned@1 from1to2",
+      "remediation": "Check applicable crossed-sibling protections and report them in preview; refuse unforced protected displacement",
+      "state": "verified_resolved"
+    }
+  ],
+  "review_tip": "0c9df4f15536093275df34ed1f32eed9d3659729",
+  "review_command": "git diff 42bbcb95ba1b9ee5bc0616b7126b0c4942c59d8c...0c9df4f15536093275df34ed1f32eed9d3659729",
+  "reviewers": {
+    "standards": "/root/review_standards",
+    "spec": "/root/review_spec"
+  },
+  "source_tip": "64ff8b22c99b074ac2e5a70723b180667c0884ba",
+  "delivery": "validated published integration branch; no main merge/production install/live effects",
+  "cleanup": {
+    "baseline_registered_worktrees": 122,
+    "worker_removed": true,
+    "integration": "normal removal after final exact remote checkpoint; final readback retained privately and in turn closeout",
+    "unrelated_dirty_checkout": "preserved",
+    "private_qualification": "retained outside Git",
+    "memory_disposition": "forbidden"
+  },
+  "release": {
+    "authorization": "operator review merge deploy",
+    "version": "0.22.0.dev44",
+    "state": "prepared",
+    "review": "prior two-axis review1/remediation1 reused; current published diff and blocker resolution checked",
+    "target": "working CLI launchers/controller/connector only",
+    "native_restart": false,
+    "provider_calls": 0,
+    "gate": "UID1017 exact merged-package qualification before working install"
+  }
+}

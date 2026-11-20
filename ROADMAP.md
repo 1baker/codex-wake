@@ -1,5 +1,9 @@
 # Codex Wake Roadmap
 
+## P253 | Reliable adjacent tab placement
+
+[Plan0253](docs/dev/plans/0253-2026-11-20-adjacent-tabs-716.md): #719/#720/#721 closed on published integration branch. Fresh destination pins and same-session insertion are qualified with preserved sibling protections.20focused checks pass eachPython3.11/3.12; corrected exact-wheel installed CLI/actual MCP preserves3native conversation bindings with0provider calls. One review/one remediation complete. #716 remains open; merge, working deployment and #628 live Grok acceptance remain separate.
+
 ## #713 | Combined Grok and bounded-expiry Native carry
 
 [Plan0252](docs/dev/plans/0252-2026-11-19-native-carry-713.md) combines the selected

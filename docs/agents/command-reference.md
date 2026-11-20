@@ -2873,7 +2873,7 @@ Examples:
 
 ## tabs move
 
-Manage one exact owned attachment; preserve conversations and reconcile uncertain effects.
+Move one exact tab. Use lifecycle_target from tabs list/show for both source and destination; preserve conversations and reconcile uncertain effects.
 
 Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
 
@@ -2896,7 +2896,7 @@ usage: codex-wake tabs move [-h] [--arguments ARGUMENTS] [--json]
                             [--session SESSION_SELECTOR]
                             [--server SESSION_SERVER]
 
-Manage one exact owned attachment; preserve conversations and reconcile uncertain effects.
+Move one exact tab. Use lifecycle_target from tabs list/show for both source and destination; preserve conversations and reconcile uncertain effects.
 
 Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
 
@@ -2913,8 +2913,8 @@ options:
                         Destination terminal session name or stable ID;
                         compatible backend/server required.
   --expected-destination EXPECTED_DESTINATION
-                        Exact destination target; ordinary local CLI resolves
-                        it.
+                        Destination lifecycle_target from tabs list/show for
+                        move/park/restore; ordinary local CLI resolves it.
   --expected-target EXPECTED_TARGET
                         Exact current target object; ordinary local CLI
                         resolves it, remote callers must supply it.
@@ -2991,8 +2991,8 @@ options:
                         Destination terminal session name or stable ID;
                         compatible backend/server required.
   --expected-destination EXPECTED_DESTINATION
-                        Exact destination target; ordinary local CLI resolves
-                        it.
+                        Destination lifecycle_target from tabs list/show for
+                        move/park/restore; ordinary local CLI resolves it.
   --expected-target EXPECTED_TARGET
                         Exact current target object; ordinary local CLI
                         resolves it, remote callers must supply it.
@@ -3506,8 +3506,8 @@ options:
                         Destination terminal session name or stable ID;
                         compatible backend/server required.
   --expected-destination EXPECTED_DESTINATION
-                        Exact destination target; ordinary local CLI resolves
-                        it.
+                        Destination lifecycle_target from tabs list/show for
+                        move/park/restore; ordinary local CLI resolves it.
   --expected-target EXPECTED_TARGET
                         Exact current target object; ordinary local CLI
                         resolves it, remote callers must supply it.
@@ -3918,8 +3918,8 @@ options:
                         Destination terminal session name or stable ID;
                         compatible backend/server required.
   --expected-destination EXPECTED_DESTINATION
-                        Exact destination target; ordinary local CLI resolves
-                        it.
+                        Destination lifecycle_target from tabs list/show for
+                        move/park/restore; ordinary local CLI resolves it.
   --expected-target EXPECTED_TARGET
                         Exact current target object; ordinary local CLI
                         resolves it, remote callers must supply it.

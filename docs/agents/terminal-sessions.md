@@ -96,6 +96,10 @@ from `tabs.list`/`tabs.show`. It remains valid across those incidental pane meta
 updates. The ordinary `target` stays strict for input/capture. Local CLI resolves
 the appropriate pin automatically. Fresh legacy lifecycle targets remain accepted;
 retained version-one plans and receipts are read without rewriting their history.
+Moves use the destination resource's `lifecycle_target` for `expected_destination`
+as well as the source resource's `lifecycle_target` for `expected_target` and the
+request target. A fresh strict discovery target is also accepted on either side,
+but cannot survive a display change; refresh it or use the stable lifecycle pin.
 
 ## Transport and qualification boundaries
 
