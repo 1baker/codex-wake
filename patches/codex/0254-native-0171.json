@@ -1,5 +1,5 @@
 {
-  "state": "package_qualified_selected_account_pending",
+  "state": "qualified_installed_selected_account",
   "source": "691605707cb31e41d1082230d70e3449ee9cf526",
   "tree": "6e5f3682bb1c2c0d4f7c7397ec94b987527ff1df",
   "upstream_commit": "ccf9be8cc458bd6b8336fe84d68d8893f2691a5e",
@@ -39,5 +39,22 @@
       "bin/codex": "457abc88a0964de71ee471960a21a6ab08e455fb0d5eb92f63261407ed92c7c5"
     },
     "version": "0.171.0-wake254.1+691605707c"
+  },
+  "deployment": {
+    "source_pr": 724,
+    "source_merge": "bfa9e411a2021354ad2dccdf734f4f2c83fc4bed",
+    "exact_native_executable_verified": true,
+    "selected_modded_daemon_running": true,
+    "selected_saved_sessions_visible": 3,
+    "same_grok_history_resumed": true,
+    "startup_status_footer_identity": "Codex Wake / Wake",
+    "cached_input": "subset of input",
+    "reasoning": "separate reported field",
+    "cost_quota": "unavailable explicitly shown",
+    "inactive_governor": "hidden",
+    "credential_path": "supported registered broker; exact account revision retained",
+    "new_model_prompts": 0,
+    "old_complete_package_retained": true,
+    "test_owned_processes_sockets": 0
   }
 }

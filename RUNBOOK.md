@@ -10718,3 +10718,18 @@ guard is retained and no seamless live-update claim is made. Scripted localhost
 provider only; no live Grok replay, credential/historycopies or hosted CI.
 Source/package custody: patches/codex/0254-native-0171.json. Integration and
 selected-account activation remain pending; original dirty root preserved.
+
+## Turn | 2026-11-21 UTC | P254 installed acceptance
+
+PR724 mergedbfa9e411. Exact qualified native691605707c complete package installed
+and selected only for modified account; fresh preflight found no attached clients
+and three unloaded saved threads. Supported stop/update/start passed; running
+daemon hash matches qualified457abc88 and all three saved sessions remain visible.
+Owned idle Grok tab resumed the same history on exact0.171 binary without a model
+prompt/replay. Actual startup, /status and footer identify Wake and show input/
+output/cache/reasoning distinctly, unavailable cost/quota and no inactiveGovernor.
+Supported registered broker replaces temporary auth helper without credential
+copies. Stock and unrelated sessions unchanged; old complete0.169 rollback kept.
+UID1017 final census: zero case-owned processes/sockets; first refused live-update
+attempt retained as guard evidence. P254 CLOSED; parent628 and separate P253
+Python release remain distinct. Task checkouts retire after closeout integration.

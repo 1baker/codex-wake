@@ -1742,9 +1742,9 @@ lanes:
     plan: docs/dev/plans/0254-2026-11-20-grok-usage-codex-0171.md
     branch: feat/grok-usage-codex-0171
     target: origin/main
-    plan_state: OPEN
-    custody_state: ACTIVE_WORKTREE
+    plan_state: CLOSED
+    custody_state: INTEGRATED
     dependencies: []
     overlaps: [P233, P250, P253]
-    updated_at: 2026-11-20
-    disposition: Native merge resolved; local compile and rendered usage implementation in progress; working installation unchanged
+    updated_at: 2026-11-21
+    disposition: PR724 merged; complete native0.171 package qualified UID1017 and installed selected modded profile; same Grok history resumed with Wake usage/status; old package retained; closeout checkout cleanup pending
