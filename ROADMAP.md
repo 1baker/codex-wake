@@ -1,5 +1,15 @@
 # Codex Wake Roadmap
 
+## P260 | Accepted until-event source integration
+
+[Plan0260](docs/dev/plans/0260-2026-11-21-until-event-integration.md) closes #733
+at current-main source acceptance; original #697 remains closed. Explicit native
+file observation can await its event without registration-age expiry, followed by
+one original match-anchored bounded delivery window. Finite defaults unchanged;
+core9 and monitor capability distinguish support. Working/Auth continuation
+acceptance remains separate. Historical Wake blob counts from P258 are corrected
+as candidate overcounts; exact public-set subtraction governs further custody.
+
 ## P259 | Cancellation under delivery contention
 
 [Plan0259](docs/dev/plans/0259-2026-11-21-cancellation-contention-integration.md)

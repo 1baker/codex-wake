@@ -1,0 +1,39 @@
+{
+  "source": "6d0e52c605ae887b6d5175c255e5e1a4fdd16849",
+  "branch": "fix/native-until-event-port",
+  "base": "85c280d9763c6c2bac3c613476b3df2f3c3e0961",
+  "preserved_original": "2b9f7a9cf3f2e1831f3e3ab1bda79c067d56d821",
+  "archive_ref": "refs/archive/auth697-until-event-original",
+  "red": "red.log: public CLI rejects --observation-policy SystemExit2 before any source change",
+  "initial_green_attempt": "green312-first.log:5tests/2FAIL from obsolete fake monitor freshness/unbounded adapter test seams; adapted tests only",
+  "corrected_new_tests": "green312-r2.log:5PASS",
+  "initial_focused": "focused312.log:71tests/1ERROR(test module import requires tests on PYTHONPATH),70PASS; no fixture/product fix",
+  "modules": [
+    "tests.test_native_event_wait",
+    "tests.test_native_intent_recovery",
+    "tests.test_wake_session_modes",
+    "tests.test_native_explicit_policy",
+    "tests.test_wake_control",
+    "tests.test_wake_control_mcp",
+    "tests.test_bounded_native_delivery"
+  ],
+  "final_command": "PYTHONPATH=src:tests CODEX_WAKE_STABLE_TIME_CONFIG='' <python> -m unittest <listed modules>",
+  "python312": "71 PASS,54.116s,0skip/exclusions",
+  "python311": "71 PASS,61.008s,0skip/exclusions",
+  "exclusions": [],
+  "checks": [
+    "git diff --check source/tests PASS",
+    "ruff0.14.2 F821/F822/F823 PASS",
+    "scripts/check_policy_wiring.py PASS"
+  ],
+  "scope": "Source integration only. New core9 optin; finite core6 unchanged. Policy envelope8 accepts intent9. Old readers hold new core; matching monitor capability and native harness must be qualified separately. Synthetic time/runtime ports; no provider/input/deployment.",
+  "work_item": 733,
+  "original_source_ticket": 697,
+  "review": {
+    "passes": 1,
+    "fixed_base": "85c280d9763c6c2bac3c613476b3df2f3c3e0961",
+    "source": "6d0e52c605ae887b6d5175c255e5e1a4fdd16849",
+    "standards_accepted_findings": 0,
+    "spec_confirmed_defects": 0
+  }
+}

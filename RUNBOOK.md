@@ -10807,3 +10807,24 @@ no confirmed defects; a dedicated queued-success-race coverage limit is retained
 Source16129297; public acceptance docs/dev/evidence/plan0259/acceptance.json.
 No production cancellation, monitor deployment, model calls, credential/history
 copies or paid CI. Original dirty primary and unpublished575 history preserved.
+
+## Turn | 2026-11-21 UTC | P260 until-event and continued reconciliation
+
+Issue733 integrates original697 accepted source onto currentmain85c280 without
+reopening697 or publishing its original unreviewed history. Public CLI RED
+SystemExit2 for missing observation option becomes GREEN. Same seven-module
+selection71PASS on Python3.11/3.12, zero exclusions. Obsolete fake adapter/monitor
+ports were adapted; first70PASS/1importERROR is separately retained. One frozen
+Standards/Spec review has zero accepted findings. Source6d0e52c6; exact commands
+and scope in docs/dev/evidence/plan0260/acceptance.json. No production input,
+provider, monitor deployment, credentials/history copies or paidCI.
+
+Five independently reviewed historical checkouts archived with exact remote
+readback and normally retired; dispatch qualification logs preserved privately.
+Their review exposed a prior inventory error: exclusion-walk candidates may already
+be public objects. Fresh856 advertisedrefs/582heads contain95 of96 upgrade-worker
+candidates; only one curated historical acceptance document remains outside that
+public set and was explicitly reviewed by primary. P258 and PR454 reflect this
+correction; source outcome, exact history custody and deployment remain separate.
+PR454 still needs current integration; its historical review/453/457 acceptance
+were already complete. Final correction/cleanup receipts remain user-scoped.

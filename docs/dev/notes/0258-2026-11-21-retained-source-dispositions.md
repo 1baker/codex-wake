@@ -74,10 +74,19 @@ No retained history is merged simply to satisfy a cleanup count.
 
 ## Residual Wake history inventory
 
-Counts describe historical blob custody, not missing functions. SHA links identify
+Correction (P260): the original Wake counts below are conservative candidate
+counts, not proven unpublished blobs. The original exclusion walk did not
+explicitly subtract all objects already reachable from public refs. Six reviewed
+candidates match historical public main exactly. A deterministic public-set
+recount supersedes these counts; do not use them alone as a privacy/cleanup gate.
+Fresh856 advertised refs /582 distinct public heads explicitly contain95 of the
+96 upgrade-worker candidates; one remains outside that verified public set.
+The55 previously unavailable advertised SHAs were fetched successfully.
+
+Counts describe the original candidate inventory, not missing functions. SHA links identify
 the exact preserved source; payload privacy review remains a separate gate.
 
-| History | Exact head | Unreviewed historical blobs |
+| History | Exact head | Historical candidates (recount required) |
 |---|---|---:|
 | auth697-until-event | `2b9f7a9cf3f2e1831f3e3ab1bda79c067d56d821` | 15 |
 | cancel-contention | `575554403be6115d5b20367283c54d727e246036` | 9 |
@@ -113,15 +122,18 @@ published merely to make the inventory complete.
 
 Their delivered outcomes are represented by the accepted PR454 packet, not by
 current main. Do not reimplement them independently from worker names. Original
-history custody remains unresolved: the existing inventory found96 distinct
-historical blob revisions,1,517,002 bytes, across45 already-public paths. All41
+history custody requires explicit proof: the original inventory nominated96
+historical blob candidates,1,517,002 bytes, across45 already-public paths.
+P260 found its exclusion-walk algorithm could overcount public objects; these
+figures are not proof that the nominated bytes are unpublished. All41
 unique commit messages were reviewed; this is not a finding of secrets. The
 ancestry search covered438 available public heads and55 unavailable refs, so
 failure to find custody is bounded evidence, not universal absence proof.
 Source: the exact PR454 specification/ledger/final-review links above; P257's
 private object and ancestry receipts retain the complete per-history inventory.
 
-Next gate: review those96 historical revisions or locate exact public custody,
+Next gate: explicitly subtract reachable public objects, then review only the
+remaining historical revisions or locate exact public custody,
 then verify archive refs and fresh checkout/reference/ignored-artifact gates.
 This is a custody task independent of porting PR454. Keep all18 checkouts until
 that bounded decision; the paused parent alone is not a permanent checkout need.

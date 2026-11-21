@@ -613,3 +613,30 @@ tombstones, terminal lifecycle status and released-pin presence fence replay.
 Only cancellation supports untimed retirement: other terminal statuses return
 `TERMINAL_TIME_UNQUALIFIED` when no timestamp is supplied. Archival and cleanup
 keep their existing qualified-time and retention requirements.
+
+## Native until-event core9
+
+Opt-in `native file --observation-policy until_event_or_cancel` uses core9,
+possibly inside the existing schema8 policy envelope with `intent_schema_version:9`.
+Its original fingerprint contains the file path, observation policy, recipient,
+prompt, idempotency key scope and bounded delivery duration. Existing finite
+requests keep their core6 encoding/fingerprint; explicit `registration_window`
+is equivalent to omission.
+
+`scheduling_intent.schedule.observation_policy` is `until_event_or_cancel`.
+Before match there is no observation expiry. On the first file match qualified
+by the existing clock, `scheduling_intent.event_match` retains the observed
+`utc_anchor` and/or `counter_anchor`. At least one valid anchor is required for
+a stored match; later retries never replace it. The existing eligibility and
+pre-dispatch gate use this anchor for the original finite `ttl_seconds`.
+Receipt projection emits `observation_policy`, `observation_state`,
+`delivery_window_seconds` and capability `native_file_until_event_v1`.
+Pre-match `due_at`/`expires_at` are null; post-match dates remain unknown when only
+counter evidence exists. That is not a fabricated UTC timestamp.
+
+The native scheduling dispatch family is reused, including its existing internal
+`native_intent_v6` classification tag; the actual serialized core/version and
+capability above identify the new semantics. Old envelope readers reject unknown
+intent core9 and old unwrapped readers reject schema9, so a source writer cannot
+claim compatibility from schema8 support alone. A monitor must advertise the
+new capability; default finite behavior and legacy formats remain unchanged.
