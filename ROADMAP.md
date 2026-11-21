@@ -1,11 +1,20 @@
 # Codex Wake Roadmap
 
+## P257 | Continued integration and source custody
+
+[Plan0257](docs/dev/plans/0257-2026-11-21-custody-and-preserved-pr-integration.md)
+records accepted PR728/699 source integration, exact archived history custody and
+normal checkout retirement. Unreviewed unpublished histories remain protected;
+PR454, #420 dirty-root synchronization and #716 deployment retain real gates.
+Python working deployment remains dev43; this packet does not deploy dev44.
+
 ## P255 | Ticket/spec and worktree reconciliation
 
 [Plan0255](docs/dev/plans/0255-2026-11-21-status-and-worktree-reconciliation.md)
 records explicit acceptance closure for623/663/610/601/517/526/628/413/371/439;
 540 and716 retain real qualification/deployment gates. Six superseded PRs closed
-without merging;454/653/699 retain useful unmerged code. Reviewed124 Wake and20
+without merging. Subsequent P257 integrated the current-main port of653 through
+PR728 and explicit-policy699 through PR699;454 remains genuinely unmerged. Reviewed124 Wake and20
 native registrations;12 completed and1 paused Wake checkouts removed and2 missing published
 entries pruned, with unknown/private custody and all dirty work held. See the
 [evidence](docs/dev/evidence/plan0255/reconciliation.md) for boundaries and counts.

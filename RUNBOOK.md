@@ -10773,3 +10773,22 @@ records remain pending_time with zero attempts. Evidence is private under
 reconcile-status-20261121/pr699 and p699-reg-r5. No monitor, dispatch, provider,
 production renewal, service or working installation effects. See the native wake
 explicit-policy renewal note for baseline exclusions and remaining scope.
+
+## Turn | 2026-11-21 UTC | P257 preserved fixes and custody
+
+PR728 merged ae58668788d39e34bbf13228699216af4be9878a; original653 closed
+without obsolete-base merge. Grouped physical panes retain alias-aware profile
+membership and exact generation fences:141 focused tests pass on each Python
+3.11/3.12; isolated actual tmux grouping passes with synthetic client identity.
+PR699 merged5839038a10c808a973b49bb301908e0275afe5bd: native explicit-policy
+registration preserves persisted lifecycle and independent policy guards.48
+selected tests pass on each Python version;4 unchanged baseline fixture defects
+remain explicitly excluded. UID1017 exact-wheel CLI-to-stdio-MCP registration
+passes with zero dispatch/provider attempts; pending_time is not armed acceptance.
+Each fix received one Standards/Spec review with zero accepted findings.
+
+Reviewed source histories were archived with exact remote readback before normal
+checkout retirement. Unreviewed historical blobs, dirty roots and native build
+dependencies remain held. No force removal, branch deletion, production changes,
+provider replay, credential/history copies or paid CI. Final custody counts and
+remaining gates are recorded in docs/dev/evidence/plan0257/reconciliation.json.
