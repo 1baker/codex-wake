@@ -151,7 +151,9 @@ until explicitly resumed. It preserves scheduled work and original deadlines.
 
 **Wake cancellation**:
 Retiring an eligible wake so it no longer delivers, while preserving its history.
-It cannot retract work already submitted to a recipient.
+It cannot retract work already submitted to a recipient. A retained cancellation
+request may be pending while delivery is in flight; request acceptance is not
+proof of cancellation or owned-turn interruption.
 
 **Owned-turn interruption**:
 Stopping a running turn only when durable assignment evidence identifies it as
