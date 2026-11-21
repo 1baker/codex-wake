@@ -82,3 +82,27 @@ No broad full-suite or installed-monitor acceptance is claimed. Public exact
 commands and qualification: [acceptance](../evidence/plan0260/acceptance.json).
 One frozen review: Standards zero accepted findings; primary Spec zero confirmed
 defects. No second review or speculative remediation framework.
+
+## Post-integration custody audit
+
+PR734 mergede016b77b21eccb1410c33f081d83665670015dc0; #733 verified CLOSED.
+Native eight-history metadata was independently recounted using explicit object
+set subtraction: all prior tip/history candidate counts remain unchanged.
+Cached OpenAI refs, independent public upstream objects, published bundle/patch
+objects and hash-linked upstream ancestry behind shallow proof boundaries are
+separate coverage classes. Absent from those sets does not imply private content;
+no native builds, reconstruction, fetch, push or cleanup occurred.
+Remaining Wake worker histories are being reconciled against the corrected full
+public set before exact archival and checkout retirement.
+
+The final Wake recount uses856/856 available advertised refs,582 distinct commit
+heads,3101 public commits,28702 objects and3640 historical paths. All17 original
+upgrade workers have zero nonpublic blob/path candidates; the18th has one
+primary-reviewed historical acceptance document. All18 histories now have exact
+remote archive custody and their checkouts have retired. A further13 residual
+histories are public-equivalent; the slash history has one explicitly reviewed
+ordinary Python blob, archived without merging obsolete authorization code.
+The remaining three reviewed Wake histories require content/custody review:
+413, reconcile419 and runtime-bootstrap,50 distinct blob candidates/2701590bytes
+in the verified-set comparison. This does not claim those bytes are secret.
+Detailed corrected scope and review limits: [custody](../evidence/plan0260/custody.json).

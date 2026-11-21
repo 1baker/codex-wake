@@ -8,6 +8,11 @@ Branch: docs/retained-source-research-258
 Authority: current main4e2eea75d62d83181b66a9d9258ac0b5256cf83e; original PR454
 head ef156ba466f83e7adb692be248379f857c1157fe. No deployment authority added.
 
+Subsequent delivery: cancellation contention integrated by PR732/#731;
+until-event integrated by PR734/#733, preserving original closed #697.
+The research table below describes its pinned original comparison, not a claim
+that these two source gaps remain open. PR454 current-main integration remains.
+
 ## Research bound
 
 Question: which retained outcomes already exist on main, which warrant a current
@@ -195,10 +200,10 @@ Stop criterion reached: all24 histories have a supported disposition or an expli
 
 ## Recommended order and validation
 
-1. Reproduce and port cancellation contention through its existing public seam.
-2. Reconcile697 source publication with its original coordinator, then port the
-   accepted until-event behavior. Keep source acceptance and installation separate.
-3. Port PR454's existing owner onto current controller/package contracts.
+1. Completed: cancellation contention port, PR732/#731;38 focused tests per runtime.
+2. Completed: accepted697 until-event port, PR734/#733;71 focused tests per runtime.
+   Working/Auth continuation acceptance remains separate.
+3. Next feature integration: port PR454's existing owner onto current controller/package contracts.
 4. Review original historical blobs for exact custody; retire obsolete checkouts
    only after that independent gate. Do not merge the21 already-represented
    snapshots or restore the superseded application-specific clock bridge.

@@ -10828,3 +10828,13 @@ public set and was explicitly reviewed by primary. P258 and PR454 reflect this
 correction; source outcome, exact history custody and deployment remain separate.
 PR454 still needs current integration; its historical review/453/457 acceptance
 were already complete. Final correction/cleanup receipts remain user-scoped.
+
+P260 final custody: all18 original upgrade workers and14 additional residual
+checkouts archived by exact local/remote refs and normally retired after fresh
+owner/HEAD/reference/artifact checks. Together with the initialfive,37 historical
+checkouts retired this pass; original branches preserved. Five dispatch logs and
+two unique output-mode build copies retained privately. Observed50→13 Wake
+registrations before closing the current source/documentation checkout; native16
+unchanged. Final private closeout records actual post-removal inventory.
+413/reconcile419/bootstrap content review, eight native clean history holds,
+dirty/unknown owners and original local-only source refs remain explicit.
