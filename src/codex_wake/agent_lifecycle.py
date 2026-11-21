@@ -235,7 +235,7 @@ def advance_spawn(path, receipt, profile):
     from .app_server import resolve_codex_cmd
     from .native_protocol import native_request
     from .session_lifecycle import tmux_command
-    from .sessions import observe, revalidate_attachment
+    from .sessions import observe, revalidate_attachment, in_session
     from .native_delivery import native_evidence
     runtime = SimpleNamespace(**(dict(tmux_socket=None) | profile),
                               codex=resolve_codex_cmd(profile['codex_path'], required=True))
@@ -249,7 +249,7 @@ def advance_spawn(path, receipt, profile):
             rows = [r for r in snapshot['sessions'] if r['thread_id'] == receipt['thread_id']
                     and r['name'] == receipt['thread_name']]
             panes = [p for r in rows for p in r['attachments']
-                     if p['session_name'] == runtime.tmux_session]
+                     if in_session(p, runtime.tmux_session)]
             if not snapshot['complete'] or len(rows) != 1 or len(panes) != 1:
                 receipt.update(state='uncertain', reason='no_unique_existing_owned_tab')
                 save(path, receipt)
@@ -353,8 +353,8 @@ def advance_spawn(path, receipt, profile):
             lines = frame.splitlines()
             try:
                 x, y = map(int, cursor.strip().split(','))
-                empty = (x == 2 and y >= 0 and y < len(lines) and lines[y] ==
-                         '\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m')
+                from .refresh_goal import empty_composer_line
+                empty = x == 2 and 0 <= y < len(lines) and empty_composer_line(lines[y])
             except ValueError:
                 empty = False
             if not empty:

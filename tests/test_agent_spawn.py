@@ -172,6 +172,12 @@ class AgentSpawnTests(unittest.TestCase):
     def test_sampled_preflight_reports_degraded_before_costly_dispatch(self):
         self.spawn_scenario(host_preflight='sampled_stop')
 
+    def test_background_painted_empty_composer_is_accepted(self):
+        self.spawn_scenario(composer='background')
+
+    def test_grouped_clone_profile_spawns_one_owned_worker(self):
+        self.spawn_scenario(grouped=True, loss='new-window')
+
     def test_spawn_executes_exact_assignment_once_across_pending_observation(self):
         self.spawn_scenario()
 
@@ -247,7 +253,7 @@ class AgentSpawnTests(unittest.TestCase):
     def test_shared_profile_resource_checks_do_not_override_spawn_launch(self):
         self.spawn_scenario(resource_profile=True)
 
-    def spawn_scenario(self, *, loss=None, check_environment=False, expire_at_task=False,
+    def spawn_scenario(self, *, grouped=False, loss=None, check_environment=False, expire_at_task=False,
                        check_history=False, isolated_profile=False, normalized_input=False, auto_start=False, composer=None, interrupted_admission=False, recipient_guard=None, resource_profile=False,budget=False,budget_stop=False,budget_delayed=False,budget_read_error=False,budget_queue_stop=False,budget_overrun=False,brief_dispatch=False,full_history=False,governor_disabled=False,host_preflight=None):
         thread_id = '00000000-0000-7000-8000-000000000157'
         starts, tasks, windows = [], [], []
@@ -351,7 +357,7 @@ class AgentSpawnTests(unittest.TestCase):
             client_script.chmod(0o700)
             profile = {
                 'cwd': tmp, 'app_server': 'unix://' + str(endpoint), 'codex_path': str(client_script),
-                'tmux_session': 'fixture', 'timeout': 1,
+                'tmux_session': 'fixture-27' if grouped else 'fixture', 'timeout': 1,
             }
             if resource_profile:
                 profile['resources']={'version':{'kind':'mcp','server':'unused','tool':'version',
@@ -437,11 +443,15 @@ class AgentSpawnTests(unittest.TestCase):
                 elif 'capture-pane' in argv:
                     text = 'UNSUBMITTED_DRAFT_157' if composer == 'draft' else '\x1b[2mAsk Codex to do anything\x1b[0m'
                     output = '\n\n\x1b[1m›\x1b[0m ' + text + '\n\n  GPT-6.1-Sol low · fixture\n'
+                    if composer == 'background':
+                        output = output.replace('\x1b[0m', '\x1b[0m\x1b[48;2;41;41;41m')
                 elif 'display-message' in argv:
                     output = '23,2' if composer == 'draft' else '2,2'
                 elif 'list-panes' in argv:
                     output = (('%157\n%158' if recipient_guard == 'split' else '%157') if '-a' not in argv else '\t'.join([
-                        '$1', 'fixture', '@157', '1', 'worker', '%157', '0', state['name'], tmp, tty]))
+                        '$1', 'fixture', '@157', '1', 'worker', '%157', '0', state['name'], tmp, tty, 'fixture' if grouped else '']))
+                    if grouped and '-a' in argv:
+                        output += '\n' + output.replace('$1\tfixture\t', '$27\tfixture-27\t', 1)
                 else:
                     output = ''
                 return subprocess.CompletedProcess(argv, 0, output, '')

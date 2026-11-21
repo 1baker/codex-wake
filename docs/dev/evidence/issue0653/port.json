@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "work_items": [
+    "PR653",
+    "LOCAL-P256-CONTINUATION"
+  ],
+  "base": "7b9e9d961dac02fb3568595bc053b8e72758fe59",
+  "original_pr_head": "e486339de8ba6b22a76b3de18305f7c724acd21c",
+  "branch": "fix/grouped-pane-aliases-653",
+  "source_identity": "commit containing this receipt",
+  "source_sha256": {
+    "src/codex_wake/sessions.py": "a7ac915988df6de9b79ef675d9a85865fe27360cc96adfb9afbc358c8e40e9ea",
+    "src/codex_wake/agent_lifecycle.py": "344a07240717e7b686474422dca3d4e293f088ee6ad1e90267f2b4989491b940",
+    "src/codex_wake/agent_refresh.py": "f736954814a981288c19383e59331b2143e60d07303b771f95fb9f01b3ca4334",
+    "src/codex_wake/agent_handoff.py": "512af8db1e16f4da256d60ef7f8739cbc1f4d8e51a683e5eda41d979db20837b"
+  },
+  "tier": "focused",
+  "red": [
+    {
+      "test": "GroupedSessionAliasTests.test_inventory_preserves_both_names_for_one_grouped_physical_pane",
+      "result": "SharedSourceError: tmux metadata cannot be parsed unambiguously before session_group support"
+    },
+    {
+      "test": "AgentSpawnTests.test_background_painted_empty_composer_is_accepted",
+      "result": "FAILED: local_composer_not_proven_empty before predicate reuse"
+    },
+    {
+      "test": "AgentSpawnTests.test_grouped_clone_profile_spawns_one_owned_worker",
+      "result": "FAILED before alias-aware uncertain new-window recovery"
+    }
+  ],
+  "checks": [
+    {
+      "python": "3.11.15",
+      "command": "PYTHONPATH=src:tests python -m unittest test_sessions test_agent_spawn test_agent_refresh test_agent_handoff_preflight",
+      "tests": 141,
+      "result": "PASS"
+    },
+    {
+      "python": "3.12",
+      "command": "PYTHONPATH=src:tests python -m unittest test_sessions test_agent_spawn test_agent_refresh test_agent_handoff_preflight",
+      "tests": 141,
+      "result": "PASS"
+    },
+    {
+      "command": "ruff check --select F821,F822,F823 on four source and four test files",
+      "version": "0.14.2",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ],
+  "retained_first_failure": {
+    "python": "3.12",
+    "tests": 141,
+    "errors": 55,
+    "cause": "A missed in_session import in source_guard; corrected before final clean runs. Failed log retained; not classified as flaky or passing."
+  },
+  "setup_limit": "Bare Python3.12 lacked websockets; used existing installed Wake Python3.12 and a private Python3.11 venv with declared dependencies. No global environment changes.",
+  "runtime_smoke": {
+    "result": "PASS",
+    "surface": "Actual isolated tmux grouped sessions and public inventory/resolve functions",
+    "raw_rows": 2,
+    "physical_panes": 1,
+    "both_alias_selectors": true,
+    "shell_metadata": true,
+    "identity": "synthetic Codex client identity; real tmux pane and grouping",
+    "server_reachable_after_cleanup": false
+  },
+  "preserved": [
+    "batched process identity lookup",
+    "explicit private terminal absence",
+    "exact saved primary/client generation comparisons",
+    "ungrouped linked-window indices",
+    "unknown/draft composer refusal",
+    "modern brief/admission behavior"
+  ],
+  "hosted_ci": "Skipped; documented local checks satisfy repository cost policy. Local Linux/WSL differs from hosted Ubuntu; no hosted OS matrix tested.",
+  "provider_requests": 0,
+  "production_tabs_touched": 0,
+  "working_installation": false,
+  "native_build": false,
+  "coverage_limits": [
+    "No real-model traffic, installed Wake cutover, or real Codex client lifecycle acceptance in this port.",
+    "Synthetic lifecycle/Unix transport tests and actual tmux grouping prove their own named boundaries only."
+  ],
+  "private_evidence": "User-scoped reconcile-status-20261121/pr653 logs and tmux-smoke.json retained."
+}

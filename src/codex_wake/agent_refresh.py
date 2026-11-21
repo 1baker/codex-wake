@@ -114,7 +114,7 @@ def refresh_command(args, root):
 
 
 def rollback(path, receipt, profile):
-    from .sessions import observe, revalidate_attachment
+    from .sessions import observe, revalidate_attachment, in_session
     from .app_server import resolve_codex_cmd
     from .native_protocol import native_request
     receipt['rollback'] = dict(state='awaiting_preflight', thread_id=receipt['thread_id'])
@@ -123,7 +123,7 @@ def rollback(path, receipt, profile):
     rows = [r for r in snapshot['sessions'] if r['thread_id'] == receipt['thread_id']]
     panes = [p for r in rows for p in r['attachments']]
     pending_tabs = [p for r in snapshot['sessions'] for p in r['attachments']
-                    if p['session_name'] == profile['tmux_session']
+                    if in_session(p, profile['tmux_session'])
                     and p['window_name'] == receipt.get('tab_name')]
     if (snapshot['complete'] and len(rows) == 1 and not panes and not pending_tabs
             and receipt.get('old_generation_exit_observed')):
@@ -158,7 +158,7 @@ def rollback(path, receipt, profile):
 
 
 def preflight(path, receipt, profile, effect_guard=None):
-    from .sessions import observe, revalidate_attachment
+    from .sessions import observe, revalidate_attachment, in_session
     from .session_lifecycle import tmux_command
     runtime = SimpleNamespace(**(dict(tmux_socket=None) | profile), effect_guard=effect_guard)
     snapshot = observe(endpoint=runtime.app_server, socket_path=runtime.tmux_socket,
@@ -169,7 +169,7 @@ def preflight(path, receipt, profile, effect_guard=None):
             or rows[0]['runtime_state'] != 'idle' or rows[0]['active_flags']
             or rows[0]['can_accept_direct_input'] is not True
             or rows[0]['cwd'] != str(Path(runtime.cwd).resolve())
-            or attachments[0]['session_name'] != runtime.tmux_session
+            or not in_session(attachments[0], runtime.tmux_session)
             or not revalidate_attachment(attachments[0])):
         receipt.update(state='blocked', reason='exact_idle_owned_client_not_ready')
         save(path, receipt)
@@ -231,7 +231,7 @@ def preflight(path, receipt, profile, effect_guard=None):
 def advance_refresh(path, receipt, profile, effect_guard=None):
     from .app_server import resolve_codex_cmd
     from .native_protocol import native_request
-    from .sessions import observe, revalidate_attachment
+    from .sessions import observe, revalidate_attachment, in_session
     from .session_lifecycle import tmux_command
     runtime = SimpleNamespace(**(dict(tmux_socket=None) | profile),
                               effect_guard=effect_guard,
@@ -251,7 +251,7 @@ def advance_refresh(path, receipt, profile, effect_guard=None):
                                timeout=runtime.timeout)
             rows = [r for r in snapshot['sessions'] if r['thread_id'] == receipt['thread_id']]
             candidates = [p for r in rows for p in r['attachments']
-                          if p['session_name'] == runtime.tmux_session
+                          if in_session(p, runtime.tmux_session)
                           and p['window_name'] == receipt.get('tab_name')]
             if (not snapshot['complete'] or len(rows) != 1 or len(candidates) != 1
                     or not revalidate_attachment(candidates[0])):

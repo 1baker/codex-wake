@@ -399,7 +399,7 @@ def rollback_handoff(path,receipt,profile,policy,root):
 
 
 def source_guard(receipt,profile,root):
-    from .sessions import observe,revalidate_attachment
+    from .sessions import observe,revalidate_attachment,in_session
     from .session_lifecycle import pending_thread_work,tmux_command
     from types import SimpleNamespace
     snapshot=observe(endpoint=profile['app_server'],socket_path=profile.get('tmux_socket'),
@@ -438,7 +438,7 @@ def source_guard(receipt,profile,root):
         targets=[r for r in snapshot['sessions'] if r['thread_id']==receipt['successor_thread_id']]
         panes=[p for r in targets for p in r['attachments']]
         if (len(targets)!=1 or len(panes)!=1 or panes[0]['pane_id']!=old['pane_id']
-                or panes[0]['window_id']!=old['window_id'] or panes[0]['session_name']!=profile['tmux_session']
+                or panes[0]['window_id']!=old['window_id'] or not in_session(panes[0], profile['tmux_session'])
                 or panes[0]['client_pid']==old['client_pid'] or not revalidate_attachment(panes[0])):
             receipt['reason']='same_tab_successor_not_uniquely_ready';return
         try:
@@ -458,7 +458,7 @@ def source_guard(receipt,profile,root):
     if old and any(attachment.get(k)!=old.get(k) for k in
                    ('client_pid','client_start_time_ticks','pane_id','window_id','session_name')):
         receipt['reason']='source_attachment_generation_changed';return
-    if attachment['session_name']!=profile['tmux_session'] or not revalidate_attachment(attachment):
+    if not in_session(attachment, profile['tmux_session']) or not revalidate_attachment(attachment):
         receipt['reason']='source_client_not_uniquely_ready'
         return
     work=pending_thread_work(rows[0],root)

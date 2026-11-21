@@ -426,7 +426,7 @@ print('preflight:'+target+':'+nonce+':'+digest)
                 if 'list-panes' in argv:
                     if '-a' in argv:
                         out='\n'.join('\t'.join(['$1','owned','@'+pane[1:],'1',p['name'],pane,'0',
-                            threads[source]['name'] if visibility['stale_title'] and p['thread']==target else threads[p['thread']]['name'],tmp,p['tty']]) for pane,p in panes.items())
+                            threads[source]['name'] if visibility['stale_title'] and p['thread']==target else threads[p['thread']]['name'],tmp,p['tty'],'']) for pane,p in panes.items())
                     else:out='\n'.join(p for p in panes if '@'+p[1:] in argv)
                 elif 'capture-pane' in argv:
                     out=('\x1b[1mResume paused goal?\x1b[0m\n\x1b[1;7m› 1. Resume goal   Mark it active and continue when idle\n2. Leave paused  Keep it paused; use /goal resume later\nenter select · esc back' if modal['visible'] else '\n\n\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n')

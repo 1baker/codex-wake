@@ -154,7 +154,10 @@ class AgentRefreshTests(unittest.TestCase):
     def test_handoff_preserves_unsubmitted_source_draft(self):
         self.refresh_scenario(draft=True,operation='handoff')
 
-    def refresh_scenario(self, *, draft, stale_mcp=False, loss=None, expire_after_stop=False, unapproved_probe=False, advancing_usage=False, recipient_guard=None, goal_change=None, mcp_ready=False, rollback_requested=False, rollback_absence=False,operation='refresh', budget=False, session_limit=2000, twice=False, original_status='paused', resume_readback_loss=False, client_idle=False, client_idle_stop=0, managed_default=False, stale_catalog=False, managed_guard='', background=False):
+    def test_grouped_clone_profile_refreshes_the_same_owned_client(self):
+        self.refresh_scenario(draft=False, grouped=True)
+
+    def refresh_scenario(self, *, draft, grouped=False, stale_mcp=False, loss=None, expire_after_stop=False, unapproved_probe=False, advancing_usage=False, recipient_guard=None, goal_change=None, mcp_ready=False, rollback_requested=False, rollback_absence=False,operation='refresh', budget=False, session_limit=2000, twice=False, original_status='paused', resume_readback_loss=False, client_idle=False, client_idle_stop=0, managed_default=False, stale_catalog=False, managed_guard='', background=False):
         thread_id = '00000000-0000-7000-8000-000000000158'
         with tempfile.TemporaryDirectory() as tmp, patch.dict(
                 os.environ, {'XDG_CONFIG_HOME': str(Path(tmp) / 'config')}):
@@ -233,7 +236,9 @@ class AgentRefreshTests(unittest.TestCase):
                     return subprocess.CompletedProcess(argv,0,'','')
                 if 'list-panes' in argv:
                     value = (('%158\n%159' if recipient_guard == 'split' else '%158') if '-a' not in argv else '\t'.join([
-                        '$1','owned','@158','1',tab['name'],'%158','0','owned-worker',tmp,tty]))
+                        '$1','owned','@158','1',tab['name'],'%158','0','owned-worker',tmp,tty,'owned' if grouped else '']))
+                    if grouped and '-a' in argv:
+                        value += '\n' + value.replace('$1\towned\t', '$27\towned-27\t', 1)
                 elif 'capture-pane' in argv:
                     text = 'UNSUBMITTED_DRAFT_158' if draft else '\x1b[2mAsk Codex to do anything\x1b[0m'
                     value = '\n\n\x1b[1m›\x1b[0m ' + text + '\n'
@@ -259,7 +264,7 @@ class AgentRefreshTests(unittest.TestCase):
                 authority='operator fixture', next_packet='Check skill', pending_obligations=[])))
             profiles = root / 'profiles.json'
             profiles.write_text(json.dumps({'version':1,'profiles':{'worker':dict(cwd=tmp,
-                app_server='unix://'+str(endpoint),codex_path=str(client_script),tmux_session='owned',
+                app_server='unix://'+str(endpoint),codex_path=str(client_script),tmux_session='owned-27' if grouped else 'owned',
                 timeout=1,resources={'updated-skill':dict(kind='skill',path=str(skill),
                     description='Updated fixture',sha256=hashlib.sha256(skill.read_bytes()).hexdigest())})}}))
             if original_status == 'active':

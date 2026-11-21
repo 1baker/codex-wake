@@ -146,3 +146,126 @@ class SessionTests(unittest.TestCase):
             self.assertEqual(main(['sessions', 'list', '--timeout', 'nan', '--json']), 2)
         observe.assert_not_called()
         self.assertIn('"code": 2', out.getvalue())
+
+
+class GroupedSessionAliasTests(unittest.TestCase):
+    def test_inventory_preserves_both_names_for_one_grouped_physical_pane(self):
+        from codex_wake.sessions import tmux_inventory
+        line = ['{sid}', '{name}', '@64', '7', 'helper', '%64', '0', 'Session', '/repo', '/dev/pts/7', 'byobu']
+        output = "\n".join("\t".join(line).format(sid=sid, name=name)
+                           for sid, name in [('$27', 'byobu-27'), ('$1', 'byobu')])
+        with patch('codex_wake.sessions.subprocess.run', return_value=type('Result', (), {'stdout': output})()), \
+                patch('codex_wake.sessions.codex_client_identities_for_ttys', return_value={'/dev/pts/7': (123,456)}):
+            rows = tmux_inventory('/tmp/example', 5)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['session_aliases'], [['$1', 'byobu'], ['$27', 'byobu-27']])
+        observed = snapshot(panes=rows)
+        for session in ['byobu', 'byobu-27', '$1', '$27']:
+            self.assertEqual(resolve(observed, 'pane:%64', session=session)['thread_id'], 'full-thread-id')
+
+
+class GroupedAliasRegressionTests(unittest.TestCase):
+    """#214: byobu grouped sessions list one physical pane twice; exactly-one checks refused a healthy idle tab."""
+
+    def raw(self, session_id, session_name, group='byobu', **changes):
+        row = pane(index='64', name='temp-source', identifier='%64', pid=2802727)
+        row.update(session_id=session_id, session_name=session_name, session_group=group, **changes)
+        return row
+
+    def test_same_physical_pane_in_grouped_sessions_is_one_attachment(self):
+        from codex_wake.sessions import merge_grouped_session_aliases
+        rows = merge_grouped_session_aliases([self.raw('$27', 'byobu-27'), self.raw('$1', 'byobu')])
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['session_name'], 'byobu')            # the group's own session is primary
+        self.assertEqual(sorted(rows[0]['session_aliases']), [['$1', 'byobu'], ['$27', 'byobu-27']])
+        threads = [dict(id='helper-thread', name='Session', cwd='/repo', status={'type': 'idle'})]
+        s = build_snapshot(threads, rows, {k: dict(availability='available') for k in ['tmux', 'app_server']})
+        self.assertEqual(len(s['sessions'][0]['attachments']), 1)
+        self.assertEqual(resolve(s, 'pane:%64', session='byobu-27')['thread_id'], 'helper-thread')
+
+    def test_distinct_panes_or_client_generations_are_never_merged(self):
+        from codex_wake.sessions import merge_grouped_session_aliases
+        for change in (dict(pane_id='%65'), dict(window_id='@65'), dict(pane_tty='/dev/pts/9'),
+                       dict(client_pid=999), dict(client_start_time_ticks=1)):
+            with self.subTest(change=change):
+                rows = merge_grouped_session_aliases([self.raw('$1', 'byobu'), self.raw('$27', 'byobu-27', **change)])
+                self.assertEqual(len(rows), 2)
+
+    def test_tmux_inventory_merges_grouped_duplicates(self):
+        from codex_wake import sessions
+        line = '\t'.join(['{sid}', '{name}', '@64', '7', 'temp-source', '%64', '0', 'Session', '/repo', '/dev/pts/7', 'byobu'])
+        out = '\n'.join([line.format(sid='$1', name='byobu'), line.format(sid='$27', name='byobu-27')]) + '\n'
+        fake = type('R', (), {'stdout': out})()
+        with patch('codex_wake.sessions.subprocess.run', return_value=fake), \
+                patch('codex_wake.sessions.codex_client_identities_for_ttys', return_value={'/dev/pts/7': (2802727, 20886589)}):
+            rows = sessions.tmux_inventory('/tmp/sock', 5)
+        self.assertEqual([(r['pane_id'], r['session_name']) for r in rows], [('%64', 'byobu')])
+        self.assertEqual(len(rows[0]['session_aliases']), 2)
+
+
+class LinkedWindowIndexTests(unittest.TestCase):
+    """Review finding S214-SESSION-INDEX-01: ungrouped sessions that link the same window (tmux link-window) can
+    use different indices; merging them kept one session's index and mis-resolved session-qualified selectors."""
+
+    def rows(self):
+        def r(sid, name, index, pane_id, window, thread_title):
+            row = pane(index=index, name='w' + pane_id[1:], identifier=pane_id, title=thread_title)
+            row.update(session_id=sid, session_name=name, window_id=window, session_group='',
+                       pane_tty='/dev/pts/' + pane_id[1:])
+            return row
+        # A: W at 1, X at 2.  B: X at 1, W at 2 (swapped indices, no session group).
+        return [r('$1', 'A', '1', '%10', '@10', 'Wthread | repo'), r('$1', 'A', '2', '%11', '@11', 'Xthread | repo'),
+                r('$2', 'B', '1', '%11', '@11', 'Xthread | repo'), r('$2', 'B', '2', '%10', '@10', 'Wthread | repo')]
+
+    def test_ungrouped_linked_windows_keep_per_session_indices(self):
+        from codex_wake.sessions import merge_grouped_session_aliases
+        rows = merge_grouped_session_aliases(self.rows())
+        self.assertEqual(len(rows), 4)                                  # nothing merged across ungrouped sessions
+        threads = [dict(id='W', name='Wthread', cwd='/repo', status={'type': 'idle'}),
+                   dict(id='X', name='Xthread', cwd='/repo', status={'type': 'idle'})]
+        s = build_snapshot(threads, rows, {k: dict(availability='available') for k in ['tmux', 'app_server']})
+        self.assertEqual(resolve(s, '1', session='B')['thread_id'], 'X')  # B:1 is X, not W
+        self.assertEqual(resolve(s, '2', session='B')['thread_id'], 'W')
+        self.assertEqual(resolve(s, '1', session='A')['thread_id'], 'W')
+
+    def test_a_window_linked_at_a_different_index_still_resolves_there(self):
+        from codex_wake.sessions import merge_grouped_session_aliases
+        a = pane(index='1', identifier='%20', title='Session | repo')
+        b = dict(a, session_id='$2', session_name='B', window_index='7')
+        a.update(session_group=''); b.update(session_group='')
+        threads = [dict(id='T', name='Session', cwd='/repo', status={'type': 'idle'})]
+        rows = merge_grouped_session_aliases([a, b])
+        self.assertEqual(len(rows), 2)
+
+
+class AliasJsonStabilityTests(unittest.TestCase):
+    """Review finding S214-ALIASES-JSON-STABILITY-02: saved attachments are JSON round-tripped and later compared to
+    fresh observations (lifecycle_correction); tuple aliases made a fresh attachment never equal its saved copy."""
+
+    def test_merged_attachment_survives_a_json_round_trip_unchanged(self):
+        import json
+        from codex_wake.sessions import merge_grouped_session_aliases
+        base = pane(index='64', identifier='%64', pid=2802727)
+        rows = merge_grouped_session_aliases([dict(base, session_id='$27', session_name='byobu-27', session_group='byobu'),
+                                              dict(base, session_id='$1', session_name='byobu', session_group='byobu')])
+        saved = json.loads(json.dumps(rows[0]))
+        self.assertEqual(saved, rows[0])
+        reordered = merge_grouped_session_aliases([dict(base, session_id='$1', session_name='byobu', session_group='byobu'),
+                                                  dict(base, session_id='$27', session_name='byobu-27', session_group='byobu')])
+        self.assertEqual(reordered, rows)
+        single = merge_grouped_session_aliases([dict(base, session_group='')])[0]
+        self.assertEqual(json.loads(json.dumps(single)), single)
+
+
+class EmptyComposerRenderTests(unittest.TestCase):
+    """#214 S214-EMPTY-COMPOSER-RENDER-03: the exact empty-composer frame captured from a held helper pane."""
+    CAPTURED = '\x1b[1m›\x1b[0m\x1b[48;2;41;41;41m \x1b[2mAsk Codex to do anything\x1b[0m\x1b[48;2;41;41;41m'
+
+    def test_background_paint_is_ignored_but_the_placeholder_proof_is_kept(self):
+        from codex_wake.refresh_goal import empty_composer_line
+        self.assertTrue(empty_composer_line(self.CAPTURED))
+        self.assertTrue(empty_composer_line('\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m'))
+        for draft in (self.CAPTURED.replace('Ask Codex to do anything', 'my unsent draft'),
+                      '\x1b[1m›\x1b[0m\x1b[48;2;41;41;41m UNSUBMITTED_DRAFT',
+                      self.CAPTURED.replace('\x1b[2m', '')):           # placeholder no longer dim = real text
+            self.assertFalse(empty_composer_line(draft), draft)
