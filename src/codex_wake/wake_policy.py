@@ -171,7 +171,7 @@ def core_record(record, expected_version):
         from .permission_wake import valid_progress
         if not valid_progress(record):raise WakeError('invalid_wake_route_progress')
     intent = record['scheduling_intent']
-    if expected_version == 6:
+    if expected_version in (6, 9):
         canonical = dict(root=intent['canonical_root'], cwd=record['cwd'], target=record['target'],
                          schedule=intent['schedule'], ttl_seconds=intent['ttl_seconds'], prompt=record['prompt'],
                          tolerance_seconds=intent['tolerance_seconds'], stop_at=intent['stop_at'],

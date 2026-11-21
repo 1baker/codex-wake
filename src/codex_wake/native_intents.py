@@ -13,6 +13,8 @@ import re
 from .records import WakeError, WakeLifecycleLock, all_records, parse_duration, write_record
 
 SCHEMA_VERSION = 6
+EVENT_SCHEMA_VERSION = 9
+EVENT_CAPABILITY = "native_file_until_event_v1"
 
 
 def _save(root, record):
@@ -27,6 +29,9 @@ def _request(args, root):
     root = Path(root).resolve()
     prompt = normalize_prompt(args.prompt)
     ttl = parse_duration(args.ttl).total_seconds()
+    observation = getattr(args, 'observation_policy', 'registration_window')
+    if observation not in ('registration_window', 'until_event_or_cancel') or observation != 'registration_window' and args.native_command != 'file':
+        raise WakeError('invalid_native_observation_policy')
     if args.native_command == "after":
         schedule = {"kind": "after", "delay_seconds": parse_duration(args.trigger).total_seconds()}
         predicate = {"type": "not_before", "due_at": None}
@@ -37,6 +42,8 @@ def _request(args, root):
     else:
         schedule = {"kind": "file", "path": str(Path(args.trigger).resolve())}
         predicate = {"type": "file_exists", "path": schedule["path"]}
+        if observation == 'until_event_or_cancel':
+            schedule['observation_policy'] = observation
     tolerance = getattr(args, "time_tolerance", None)
     tolerance = parse_duration(tolerance).total_seconds() if tolerance else max(1.0, min(300.0, schedule.get("delay_seconds", 0) / 50))
     if tolerance > 300:
@@ -97,10 +104,33 @@ def _existing(root, fingerprint, key):
     return None
 
 
+def until_event(record):
+    return record.get('scheduling_intent', {}).get('schedule', {}).get('observation_policy') == 'until_event_or_cancel'
+
+
+def _observe_event_match(record, clock):
+    intent = record['scheduling_intent']
+    if not until_event(record) or intent.get('event_match') is not None:
+        return
+    if not Path(intent['schedule']['path']).exists():
+        return
+    utc, counter = clock.get('utc'), clock.get('counter')
+    if not valid_utc(utc) and not valid_counter(counter):
+        return  # The durable state can be rechecked; no match time is fabricated.
+    intent['event_match'] = dict(utc_anchor=dict(utc) if valid_utc(utc) else None,
+                                counter_anchor=dict(counter) if valid_counter(counter) else None)
+    record['events'] = list(record['events']) + [dict(at=None, type='event_matched', message='Original file condition observed; delivery window anchored once')]
+
+
 def schedule_projection(record):
     """Display original anchored dates; never rebase or grant dispatch authority."""
     intent = record['scheduling_intent']
     schedule = intent['schedule']
+    if until_event(record):
+        match = intent.get('event_match')
+        if match is None:
+            return dict(due_at=None, expires_at=None, basis='awaiting_event')
+        intent = dict(intent, **match)
     due = None
     if schedule['kind'] == 'at':
         from .network_wakes import precise_deadline
@@ -131,19 +161,32 @@ def _receipt(args, record, path, deduplicated):
     from .monitor import read_monitor_health
     health = read_monitor_health(root) or {}
     required_capabilities = ['wake_session_modes_v1'] if record.get('target', {}).get('session_mode') else []
+    if until_event(record):
+        required_capabilities.append(EVENT_CAPABILITY)
     monitored = (reader is not None and record['schema_version'] in reader.schema_versions and health.get('mode') == 'loop'
                  and all(c in health.get('reader_capabilities', []) for c in required_capabilities))
     if getattr(args, 'require_monitor', False) and not monitored:
         raise WakeError(f"schema{record['schema_version']} intent retained as {record['id']}; active compatible worker unavailable; upgrade or enroll the owning monitor")
     intent = record['scheduling_intent']
-    unanchored = (intent['schedule']['kind'] != 'at' and intent.get('counter_anchor') is None
-                  and intent.get('utc_anchor') is None)
+    anchors = intent.get('event_match') or intent
+    unanchored = (not until_event(record) and intent['schedule']['kind'] != 'at' and anchors.get('counter_anchor') is None
+                  and anchors.get('utc_anchor') is None)
     recovery = 'requires_original_clock_evidence' if unanchored else 'on_monitor_poll'
     value = {"id": record["id"], "path": str(path), "status": record["status"],
              "time_recovery": record["time_recovery"], "deduplicated": deduplicated,
              "automatic_recovery": recovery, "requires_original_clock_evidence": unanchored,
              "requires_worker_schema": record["schema_version"], "requires_worker_capabilities": required_capabilities, "wake_policy": record.get("wake_policy")}
     projection = schedule_projection(record)
+    current_time = record['time_recovery']
+    if until_event(record) and intent.get('event_match') is not None:
+        from .native_clock import snapshot
+        current_time = eligibility(record, args._schedule_clock if hasattr(args, '_schedule_clock') else snapshot())
+        value['time_recovery'] = current_time
+    value.update(capabilities=[EVENT_CAPABILITY],
+                 observation_policy='until_event_or_cancel' if until_event(record) else 'registration_window')
+    if until_event(record):
+        value['observation_state'] = 'matched' if intent.get('event_match') is not None else 'waiting'
+        value['delivery_window_seconds'] = intent['ttl_seconds']
     if record.get("target", {}).get("session_mode"):
         value["session_mode"] = record["target"]["session_mode"]
     owner_held = record.get('policy_outcome', {}).get('state') in ('held', 'retired')
@@ -155,7 +198,7 @@ def _receipt(args, record, path, deduplicated):
         value['harness'] = harness
     harness_held = harness is not None and harness['state'] != 'ready'
     armed = bool(monitored and not harness_held and not unanchored and not owner_held and not unsupported
-                 and record['time_recovery'].get('state') not in ('pending_time', 'missed_deadline')
+                 and current_time.get('state') not in ('pending_time', 'missed_deadline')
                  and record['status'] in ('pending', 'firing'))
     value.update(projection, armed=armed,
         scheduling_status=('held_harness' if harness_held else 'held_owner_policy' if owner_held else 'unsupported_calendar' if unsupported else 'armed' if armed else 'retained_unmonitored' if not monitored
@@ -191,7 +234,8 @@ def retain(args, root):
         if found:
             return _receipt(args, found.record, found.path, True)
         clock = args._schedule_clock if hasattr(args, "_schedule_clock") else snapshot()
-        record = {"schema_version": SCHEMA_VERSION, "id": "wake_intent_" + uuid4().hex,
+        version = EVENT_SCHEMA_VERSION if content['schedule'].get('observation_policy') == 'until_event_or_cancel' else SCHEMA_VERSION
+        record = {"schema_version": version, "id": "wake_intent_" + uuid4().hex,
                   "created_at": "", "updated_at": "", "cwd": content["cwd"],
                   "target": content["target"], "predicate": predicate, "prompt": content["prompt"],
                   "status": "pending", "attempts": 0, "max_attempts": 3,
@@ -208,10 +252,11 @@ def retain(args, root):
                                     "alert": "Retained intent needs an active monitor to recover; no dispatch authorized"}}
         from .wake_policy import decorate, register_owner
         policy = content.get("wake_policy")
-        decorate(record, policy, 6)
+        decorate(record, policy, version)
         register_owner(root, policy)
         from .wake_policy import apply_owner_state
         apply_owner_state(root, record)
+        _observe_event_match(record, clock)
         record['time_recovery'] = eligibility(record, clock)
         project_schedule(record)
         path = _save(root, record)
@@ -237,7 +282,8 @@ def valid_counter(value):
 
 
 def valid_record(record):
-    return valid_scheduling_record(record, 6, _valid_native_target)
+    version = record.get('intent_schema_version') if record.get('schema_version') == 8 else record.get('schema_version')
+    return version in (6, EVENT_SCHEMA_VERSION) and valid_scheduling_record(record, version, _valid_native_target)
 
 
 def _valid_native_target(target):
@@ -273,12 +319,23 @@ def valid_scheduling_record(record, version, target_validator):
             return False
         if intent.get("stop_at") is not None:
             precise_deadline(intent["stop_at"])
-        delivery = record.get('native_delivery' if version == 6 else 'runtime_delivery')
+        delivery = record.get('native_delivery' if version in (6, EVENT_SCHEMA_VERSION) else 'runtime_delivery')
         if delivery is not None:
             if not isinstance(delivery, dict) or delivery.get('state') not in {'uncertain', 'accepted'}:
                 return False
             if str(UUID(delivery['submission_id'])) != delivery['submission_id']:
                 return False
+        if version == EVENT_SCHEMA_VERSION:
+            if schedule.get('observation_policy') != 'until_event_or_cancel' or schedule.get('kind') != 'file':
+                return False
+            match = intent.get('event_match')
+            if match is not None and (not isinstance(match, dict) or set(match) != {'utc_anchor', 'counter_anchor'}
+                    or match['utc_anchor'] is not None and not valid_utc(match['utc_anchor'])
+                    or match['counter_anchor'] is not None and not valid_counter(match['counter_anchor'])
+                    or not (valid_utc(match['utc_anchor']) or valid_counter(match['counter_anchor']))):
+                return False
+        elif 'observation_policy' in schedule or 'event_match' in intent:
+            return False
         if schedule["kind"] == "after":
             return type(schedule["delay_seconds"]) in (int, float) and math.isfinite(schedule["delay_seconds"]) and schedule["delay_seconds"] > 0
         if schedule["kind"] == "at":
@@ -294,6 +351,10 @@ def eligibility(record, clock):
     intent = record["scheduling_intent"]
     schedule = intent["schedule"]
     kind = schedule["kind"]
+    waiting_event = until_event(record) and intent.get('event_match') is None
+    if until_event(record) and not waiting_event:
+        intent = dict(intent, **intent['event_match'])
+        kind = 'after'  # A durable match is not erased when a one-shot file disappears.
     origin = intent.get("counter_anchor")
     observed = clock.get("counter")
     delay = schedule.get("delay_seconds", 0)
@@ -310,6 +371,11 @@ def eligibility(record, clock):
         if utc["upper"] >= stop:
             return dict(result, reason="stop_boundary_uncertain")
         stop_remaining = stop - utc["upper"]
+    if waiting_event:
+        exists = Path(schedule['path']).exists()
+        return dict(result, state='pending_time' if exists else 'pending',
+                    reason='event_match_time_unavailable' if exists else 'awaiting_event',
+                    alert='Original match needs a qualified clock' if exists else None)
     if kind != 'at' and not valid_counter(origin) and not valid_utc(intent.get('utc_anchor')):
         return dict(result, reason='relative_origin_unanchored',
                     alert='Original relative origin unavailable; reconcile the original deadline before creating a replacement intent')
@@ -371,6 +437,7 @@ def evaluate(root, identifier, clock, *, record_validator=None):
             record["policy_outcome"] = dict(state="held" if record["status"] != "cancelled" else "retired", reason=held)
             _save(root, record)
             return record["status"]
+        _observe_event_match(record, clock)
         verdict = eligibility(record, clock)
         project_schedule(record)
         previous = record["time_recovery"]
