@@ -10838,3 +10838,21 @@ registrations before closing the current source/documentation checkout; native16
 unchanged. Final private closeout records actual post-removal inventory.
 413/reconcile419/bootstrap content review, eight native clean history holds,
 dirty/unknown owners and original local-only source refs remain explicit.
+
+## Turn | 2026-11-21 | P261 tame remaining worktrees
+
+Operator requested checkout chaos tamed. Starting12Wake/16native, classified
+remaining source/private boundaries and archived inactive histories in independent
+owner-only private Git custody stores, with matching refs and standalone integrity
+verification. No private native source newly published. Original branch tips and
+primary files preserved;15dirty linked states became separate WIP/unqualified
+checkpoints. Primary independently read back56changed files by original SHA256.
+
+All26obsolete linked states accounted for; own bootstrap checkout reused for
+closeout then retired after exact merged custody. Fresh reference/installed-prefix
+and artifact gates accompany normal removals; no force, discard, stash/reset,
+branch deletion, model/provider, service, build or credential/history effects.
+One private recovery index holds original/checkpoint refs and restore guidance.
+Private archives are same-host recovery, not offhostbackup. Public acceptance:
+docs/dev/evidence/plan0261/acceptance.json. Final private receipt verifies actual
+primary-only inventory; #420/#716/PR454 remain separate source/deployment work.

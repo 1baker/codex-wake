@@ -1,5 +1,15 @@
 # Codex Wake Roadmap
 
+## P261 | Worktree chaos tamed
+
+[Plan0261](docs/dev/plans/0261-2026-11-21-worktree-taming.md) preserves all26
+obsolete linked checkout states in verified private archives or exact public
+closeout custody, leaving only the two primary repositories after final cleanup.
+Fifteen dirty linked states retain exact WIP checkpoints; original branches and
+primary files stay intact. One private recovery index replaces idle checkouts.
+Private archival does not claim integration, release, off-host backup or closure
+of #420 synchronization, #716 deployment or PR454 feature integration.
+
 ## P260 | Accepted until-event source integration
 
 [Plan0260](docs/dev/plans/0260-2026-11-21-until-event-integration.md) closes #733
