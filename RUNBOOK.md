@@ -10856,3 +10856,7 @@ One private recovery index holds original/checkpoint refs and restore guidance.
 Private archives are same-host recovery, not offhostbackup. Public acceptance:
 docs/dev/evidence/plan0261/acceptance.json. Final private receipt verifies actual
 primary-only inventory; #420/#716/PR454 remain separate source/deployment work.
+
+## Turn P262 | 2026-11-21 | Current-main upgrade owner port
+
+Closed #738, #739 and #740. Disposable wsl-test and dedicated UID1017 verified the exact retained native packages using current Wake, with StableTime readings from the Windows host. Plan 0262 records installed qualification, future selection, public rollback and the public lost-result regression. One Standards and Spec review and one red-to-green remediation pass fenced staging and replacement admission. Final affected suite passed 85 tests on each Python runtime. Integration custody is on feat/issue-737-upgrade-owner.

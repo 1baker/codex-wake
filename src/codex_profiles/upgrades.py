@@ -140,19 +140,20 @@ def _commands(commands,cwd,receipt,phase, *, timeout=600):
     for command in commands:
         if not isinstance(command,list) or not command or any(not isinstance(x,str) for x in command):
             raise UpgradeError('commands must be explicit argv arrays')
-        env={key:os.environ[key] for key in ('PATH','LANG','LC_ALL') if key in os.environ}
+        env={key:os.environ[key] for key in ('PATH','LANG','LC_ALL','CARGO_BUILD_JOBS','CARGO_TARGET_DIR','CODEX_UPGRADE_OWNED_GROUP','CODEX_UPGRADE_TEMP_ROOT') if key in os.environ}
         env['CODEX_UPGRADE_PACKAGE']=str(cwd)
         try:
-            with tempfile.TemporaryDirectory(prefix='codex-upgrade-home-') as home:
+            with tempfile.TemporaryDirectory(prefix='codex-upgrade-home-', dir=env.get('CODEX_UPGRADE_TEMP_ROOT')) as home:
                 env.update(HOME=home,CODEX_HOME=str(Path(home)/'.codex'),XDG_CONFIG_HOME=str(Path(home)/'.config'),XDG_DATA_HOME=str(Path(home)/'.local/share'))
                 Path(env['CODEX_HOME']).mkdir(mode=0o700)
-                process=subprocess.Popen(command,cwd=cwd,env=env,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
+                process=subprocess.Popen(command,cwd=cwd,env=env,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=env.get('CODEX_UPGRADE_OWNED_GROUP') != '1')
                 try:
                     stdout,stderr=process.communicate(timeout=timeout)
                 except subprocess.TimeoutExpired:
-                    os.killpg(process.pid,signal.SIGKILL);process.communicate();raise
+                    (process.kill() if env.get('CODEX_UPGRADE_OWNED_GROUP') == '1' else os.killpg(process.pid,signal.SIGKILL));process.communicate();raise
                 finally:
-                    try:os.killpg(process.pid,signal.SIGKILL)
+                    try:
+                        if env.get('CODEX_UPGRADE_OWNED_GROUP') != '1':os.killpg(process.pid,signal.SIGKILL)
                     except ProcessLookupError:pass
                 run=subprocess.CompletedProcess(command,process.returncode,stdout,stderr)
         except subprocess.TimeoutExpired as error:
@@ -178,7 +179,7 @@ def _source_tree(source, destination, receipt):
     try:
         if not fixture:
             final=urlparse(stream.geturl())
-            if final.scheme!='https' or not (final.hostname=='github.com' or final.hostname.endswith('.githubusercontent.com')):
+            if final.scheme!='https' or not (final.hostname in ('github.com','codeload.github.com') or final.hostname.endswith('.githubusercontent.com')):
                 raise UpgradeError('upstream archive redirected outside official hosting')
         digest=hashlib.sha256();size=0;deadline=time.monotonic()+300
         with archive_path.open('xb') as output:
@@ -229,6 +230,15 @@ def _source_tree(source, destination, receipt):
         if archive_path.exists():archive_path.unlink()
 
 
+def official_source_url(value):
+    """Official release assets or a source archive pinned to an exact commit."""
+    if not isinstance(value, str):return False
+    parsed=urlparse(value)
+    return (parsed.scheme=='https' and parsed.netloc=='github.com' and not parsed.query and not parsed.fragment
+        and (parsed.path.startswith('/openai/codex/releases/download/')
+             or re.fullmatch(r'/openai/codex/archive/[0-9a-f]{40}\.tar\.gz', parsed.path) is not None))
+
+
 def stage(root:Path, recipe_path:Path):
     root=root.resolve();recipe_path=recipe_path.resolve()
     recipe=_json(recipe_path)
@@ -236,7 +246,7 @@ def stage(root:Path, recipe_path:Path):
     identifier=_name(recipe.get('id'));channel=recipe.get('channel')
     if channel not in ('stock','modded'):raise UpgradeError('invalid channel')
     source=recipe.get('source',{})
-    if not str(source.get('official_url','')).startswith('https://github.com/openai/codex/releases/download/'):
+    if not official_source_url(source.get('official_url', '')):
         raise UpgradeError('official upstream source provenance required')
     for key in ['upstream_version','revision']:_name(recipe.get(key))
     receipt={'schema_version':1,'id':identifier,'channel':channel,'status':'building','phase':'source','recipe_sha256':hashlib.sha256(recipe_path.read_bytes()).hexdigest(),'source':source['official_url'],'created_at':time.time()}
@@ -313,7 +323,7 @@ def _schemas(home):
     return result
 
 
-def _hold_unmanaged_native(home):
+def _hold_unmanaged_native(home, *, allow_private=None):
     """Same-user native processes outside our lock also fence selection."""
     if not Path('/proc').is_dir():raise UpgradeError('native process census unavailable')
     for process in Path('/proc').iterdir():
@@ -330,6 +340,7 @@ def _hold_unmanaged_native(home):
                 if not user_home:raise UpgradeError('native home ownership unknown; selection held')
                 selected=user_home+b'/.codex'
             if Path(os.fsdecode(selected)).resolve()==home.resolve():
+                if allow_private is not None and allow_private(process):continue
                 raise UpgradeError('unmanaged native client owns tenant home; selection held')
         except (FileNotFoundError,ProcessLookupError):continue
         except PermissionError as error:raise UpgradeError('native process census incomplete') from error
@@ -372,6 +383,143 @@ def select(root:Path, home:Path, *, identifier=None, channel=None, rollback=Fals
         active.setdefault('tenants',{})[tenant_home]=selection
         _atomic(active_path,active)
         operation['status']='selected';_atomic(root/'operation.json',operation)
+        return operation
+
+
+def _future_private_writer(root,home,selection,active,channel):
+    """Observe the exact active private launcher without taking its ownership."""
+    from .build_channels import _process_start_ticks
+    path=home/'.build-channel.lock'
+    try:descriptor=os.open(path,os.O_RDWR|getattr(os,'O_NOFOLLOW',0))
+    except FileNotFoundError:return None,None
+    try:
+        metadata=os.fstat(descriptor)
+        if metadata.st_uid!=os.getuid() or not stat.S_ISREG(metadata.st_mode) or stat.S_IMODE(metadata.st_mode)!=0o600:
+            raise UpgradeError('private launcher ownership metadata is not qualified')
+        try:
+            fcntl.flock(descriptor,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            return None,None
+        except BlockingIOError:pass
+        record=json.loads(os.pread(descriptor,4096,0))
+        pid=record.get('pid');sha=record.get('build_sha256')
+        if type(pid) is not int or record.get('start_ticks')!=_process_start_ticks(pid) or not isinstance(sha,str) or re.fullmatch('[0-9a-f]{64}',sha) is None:
+            raise UpgradeError('active legacy private launcher identity is unqualified; future selection held')
+        identifiers=list(selection.get('history',{}).get(channel,[]))
+        current=selection.get('stages',{}).get(channel,active.get('stages',{}).get(channel))
+        if current:identifiers.append(current)
+        for identifier in identifiers:
+            receipt=_qualified(root,identifier)
+            if receipt['build']['sha256']==sha:
+                return receipt,dict(record,device=metadata.st_dev,inode=metadata.st_ino)
+        raise UpgradeError('active private launcher build is absent from retained qualified catalog')
+    finally:os.close(descriptor)
+
+
+def _owned_private_native(process,receipt,owner):
+    if receipt is None or owner is None:return False
+    try:
+        if Path(os.readlink(process/'exe')).resolve()!=Path(receipt['build']['executable']).resolve():return False
+        # Inherited exact ownership descriptor, immutable build pin and living
+        # launcher ancestry jointly prove this private instance. SHA alone does not.
+        if not any((entry.stat().st_dev,entry.stat().st_ino)==(owner['device'],owner['inode']) for entry in (process/'fd').iterdir()):return False
+        pid=int(process.name)
+        for _ in range(64):
+            if pid==owner['pid']:return True
+            fields=Path(f'/proc/{pid}/stat').read_text().rsplit(')',1)[1].split()
+            parent=int(fields[1])
+            if parent<=1 or parent==pid:return False
+            pid=parent
+    except (OSError,ValueError,IndexError):return False
+    return False
+
+
+def select_future(root:Path, home:Path, *, identifier=None, channel=None, rollback=False,
+                  operation_id, expected_registry_sha256=None, guard=None):
+    """Atomically select only future private launches; active clients are pinned.
+
+    Caller owns admission authority. ``guard`` runs with the registry lock held
+    and must not acquire locks ordered outside this registry (notably job locks).
+    No home ownership lock, daemon operation or process signal is performed.
+    """
+    root=root.resolve();home=home.absolute();guard=guard or (lambda:None)
+    _name(operation_id)
+    if not home.is_dir() or home.is_symlink() or home.stat().st_uid!=os.getuid():
+        raise UpgradeError('existing owned real tenant home required')
+    with _locked(root):
+        guard()
+        if os.path.lexists(home/'packages/app-server-daemon/current') or os.path.lexists(home/'app-server-control/app-server-control.sock'):
+            raise UpgradeError('existing managed account backend requires qualified cutover; #413/#380 remain held')
+        active_path=root/'builds.json'
+        raw=active_path.read_bytes() if active_path.exists() else None
+        active=json.loads(raw) if raw else {'schema_version':1,'builds':{},'stages':{},'history':{}}
+        if active.get('schema_version')!=1:raise UpgradeError('unknown active registry schema')
+        tenant_home=str(home.resolve())
+        selection=active.get('tenants',{}).get(tenant_home)
+        if selection is None:
+            selection=dict(builds={},stages={},history={key:list(value) for key,value in active.get('history',{}).items()})
+        channel=channel or 'modded'
+        if channel not in ('stock','modded'):raise UpgradeError('unknown build channel')
+        marker=selection.get('future_operations',{}).get(channel)
+        if marker==operation_id:
+            selected=selection.get('stages',{}).get(channel)
+            if identifier is not None and selected!=identifier:raise UpgradeError('future selection operation identity changed')
+            receipt=_qualified(root,selected)
+            return dict(status='already_selected',id=selected,channel=channel,operation_id=operation_id,
+                        tenant_home=tenant_home,build_sha256=receipt['build']['sha256'])
+        actual=hashlib.sha256(raw).hexdigest() if raw is not None else 'absent'
+        if expected_registry_sha256 is not None and expected_registry_sha256!=actual:
+            raise UpgradeError('future registry selection changed during preparation')
+        if rollback:
+            history=selection.get('history',{}).get(channel,[])
+            if not history:raise UpgradeError('no qualified rollback retained')
+            identifier=history[-1]
+        receipt=_qualified(root,identifier)
+        if receipt['channel']!=channel:raise UpgradeError('candidate channel differs from requested future scope')
+        # Validate exactly the registration future launchers will read before
+        # publishing it, including channel provenance and metadata constraints.
+        from .build_channels import load_build
+        registration=root/'stages'/identifier/'future-build.json'
+        _atomic(registration,dict(schema_version=1,builds={channel:receipt['build']}))
+        load_build(registration,channel,home)
+        current=selection.get('builds',{}).get(channel,active.get('builds',{}).get(channel))
+        previous_id=selection.get('stages',{}).get(channel,active.get('stages',{}).get(channel))
+        previous=_qualified(root,previous_id) if previous_id else None
+        if current and current.get('backend','private')!='private':
+            raise UpgradeError('managed backend cutover is not qualified; #413/#380 remain held')
+        if receipt['build'].get('backend','private')!='private':
+            raise UpgradeError('managed candidate requires separately qualified daemon cutover')
+        reads=receipt.get('read_schemas');write=receipt.get('write_schema')
+        if not isinstance(reads,list) or not reads or any(type(v) is not int or v<1 for v in reads) or type(write) is not int or write not in reads:
+            raise UpgradeError('explicit candidate history read/write compatibility required')
+        observed=_schemas(home)
+        if not observed.issubset(reads):raise UpgradeError('candidate cannot read current tenant schemas')
+        if current:
+            old_reads=(previous or current).get('read_schemas')
+            old_write=(previous or current).get('write_schema')
+            if not isinstance(old_reads,list) or type(old_write) is not int:
+                raise UpgradeError('existing build history read/write compatibility is unqualified')
+            if write not in old_reads or old_write not in reads or not observed.issubset(old_reads):
+                raise UpgradeError('future selection or rollback is incompatible with pinned existing sessions')
+        writer,ownership=_future_private_writer(root,home,selection,active,channel)
+        if writer is not None and (write not in writer['read_schemas'] or writer['write_schema'] not in reads):
+            raise UpgradeError('candidate is incompatible with an older still-pinned private writer')
+        _hold_unmanaged_native(home,allow_private=lambda process:_owned_private_native(process,writer,ownership))
+        operation=dict(schema_version=1,operation='future_rollback' if rollback else 'future_activate',
+            operation_id=operation_id,id=identifier,previous_id=previous_id,channel=channel,
+            tenant_home=tenant_home,status='prepared',registry_before_sha256=actual,
+            observed_schemas=sorted(observed),build_sha256=receipt['build']['sha256'],at=time.time())
+        _atomic(root/'future-operation.json',operation)
+        selection.setdefault('builds',{})[channel]=dict(receipt['build'],tenant_home=tenant_home,
+            read_schemas=reads,write_schema=write,backend='private')
+        selection.setdefault('stages',{})[channel]=identifier
+        history=selection.setdefault('history',{}).setdefault(channel,[])
+        if rollback:history.pop()
+        elif previous_id and previous_id!=identifier:history.append(previous_id)
+        selection.setdefault('future_operations',{})[channel]=operation_id
+        active.setdefault('tenants',{})[tenant_home]=selection
+        guard()
+        _atomic(active_path,active)
+        operation['status']='selected';_atomic(root/'future-operation.json',operation)
         return operation
 
 

@@ -127,7 +127,7 @@ def _lock_owner(descriptor: int) -> str:
 
 
 @contextmanager
-def _home_ownership(home: Path, *, channel: str | None = None) -> Iterator[int]:
+def _home_ownership(home: Path, *, channel: str | None = None, build_sha256: str | None = None) -> Iterator[int]:
     if not home.is_dir() or home.is_symlink():
         raise BuildError('tenant home must be an existing real directory')
     if home.stat().st_uid != os.getuid():
@@ -149,7 +149,9 @@ def _home_ownership(home: Path, *, channel: str | None = None) -> Iterator[int]:
                 'Close the existing client for this account, then retry. '
                 f'Inspect processes using its lock with: fuser -- {shlex.quote(str(path))}'
             ) from exc
-        record = json.dumps(dict(pid=os.getpid(), start_ticks=_process_start_ticks(os.getpid()), channel=channel)).encode()
+        owner = dict(pid=os.getpid(), start_ticks=_process_start_ticks(os.getpid()), channel=channel)
+        if build_sha256 is not None:owner['build_sha256']=build_sha256
+        record = json.dumps(owner).encode()
         os.ftruncate(descriptor, 0)
         os.pwrite(descriptor, record, 0)
         yield descriptor
@@ -188,7 +190,7 @@ def inspect_account(build: Build, account_home: Path, *, timeout: float = 5.0, r
         {'method': 'initialized'},
     ]
     env = account_environment(home, home.name)
-    with _home_ownership(home, channel=build.channel) as lock, _pinned_executable(build) as executable:
+    with _home_ownership(home, channel=build.channel, build_sha256=build.sha256) as lock, _pinned_executable(build) as executable:
         validate_history(build, home)
         command = [f'/proc/self/fd/{executable}']
         if routing_url is not None:
@@ -399,7 +401,7 @@ def run_build(build: Build, account_home: Path, profile: str, args: list[str], *
     if args in (['--version'], ['-V']):
         return _inspect_version(build, profile, args, output)
     home = account_home.absolute()
-    with _home_ownership(home, channel=build.channel) as lock, _pinned_executable(build) as executable:
+    with _home_ownership(home, channel=build.channel, build_sha256=build.sha256) as lock, _pinned_executable(build) as executable:
         if (build.backend == 'private' and args not in (['--version'], ['-V'])
                 and (os.path.lexists(home / 'packages/app-server-daemon/current')
                      or os.path.lexists(home / 'app-server-control/app-server-control.sock'))):

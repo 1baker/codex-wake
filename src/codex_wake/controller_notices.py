@@ -102,6 +102,27 @@ class ControllerNotices:
             model_context=reply.get('modelContextAvailable') is True,
             notification_published=None if read else reply.get('notificationPublished') is True))
 
+    def authorize_upgrade_notice(self, actor, target, *, authorize):
+        """Validate an exact registered operator attachment before append intent."""
+        self._authorize(actor,target,'control',authorize)
+        self.binding(target)
+
+    def deliver_upgrade_event(self, actor, target, source_event_id, *, authorize,
+                              read=False, expected_source_digest=None):
+        """Deliver retained upgrade state; this method accepts no caller prose."""
+        from .upgrade_notices import source_event
+        event=source_event(self.root,source_event_id,target)
+        if expected_source_digest is not None and event['source_digest']!=expected_source_digest:
+            raise InventoryError('source_changed','original upgrade notice source changed')
+        self._authorize(actor,target,'observe' if read else 'control',authorize)
+        try:
+            return self._native(target,event,read=read)
+        except NativeCapabilityUnavailable:
+            if read:
+                raise
+            return dict(event,delivery=dict(status='unsupported',transcript=False,
+                model_context=False,notification_published=False))
+
     def execute(self, actor, operation, arguments, *, authorize):
         if not isinstance(arguments,dict):
             raise InventoryError('invalid_argument', 'notice arguments must be an object')

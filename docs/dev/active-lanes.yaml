@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: UPGRADE-OWNER-737
+    owner: primary / ecochran76
+    objective: Port the durable autonomous upgrade owner to current main
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/737, https://github.com/CochranResearchGroup/codex-wake/issues/738, https://github.com/CochranResearchGroup/codex-wake/issues/739, https://github.com/CochranResearchGroup/codex-wake/issues/740]
+    plan: docs/dev/plans/0262-2026-11-21-autonomous-upgrade-owner-port.md
+    branch: feat/issue-737-upgrade-owner
+    worker_branches: [feat/issue-739-upgrade-repair, feat/issue-740-upgrade-promotion]
+    target: origin/main
+    plan_state: CLOSED
+    custody_state: REMOTE_PRESERVED
+    dependencies: []
+    overlaps: []
+    updated_at: 2026-11-21
+    disposition: Three implementation tickets closed. Installed qualification and rollback passed. One review and remediation completed. Validated branch preserved.
   - id: ADJACENT-TABS-716
     owner: root / ecochran76
     objective: Reliable adjacent placement before Grok acceptance

@@ -9,6 +9,7 @@ import html
 import json
 import secrets
 import threading
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlencode, urlsplit
 
@@ -112,6 +113,9 @@ for name, spec in notice_specs().items():
 from .recovery_commands import tool_specs as recovery_specs
 for name, spec in recovery_specs().items():
     TOOLS[name] = (spec[1], dict(type='object',properties=spec[3],required=spec[4],additionalProperties=False))
+from .upgrade_commands import tool_specs as upgrade_specs
+for name, spec in upgrade_specs().items():
+    TOOLS[name] = (spec[1], dict(type='object',properties=spec[3],required=spec[4],additionalProperties=False))
 from .grok_commands import tool_specs as grok_specs
 for name, spec in grok_specs().items():
     TOOLS[name] = (spec[1], dict(type='object',properties=spec[3],required=spec[4],additionalProperties=False))
@@ -170,6 +174,8 @@ class ProtectedOperations:
         'grok_auth.revoke': ('account.revoke', None, None),
         'grok_models.list': ('account.observe', None, None),
         'grok_models.resolve': ('account.observe', None, None),
+        **{'upgrades.'+verb: ('observe' if verb in ('status','list','show','discovery') else 'admin',None,None)
+            for verb in ('status','list','show','enable','disable','start','advance','cancel','poll','discovery','rollback','reconcile','cache_cleanup')},
         **{'sessions.' + verb: ('observe' if verb in ('capabilities','wait','checkpoint') else 'control', None, None)
             for verb in ('capabilities','create','prompt','wait','cancel','checkpoint','fork')},
         'health.observe': ('observe', None, None),
@@ -284,6 +290,22 @@ class ProtectedOperations:
                 raise InventoryError('configuration_unavailable', 'Host Grok account owner unavailable.')
             result = observe(self.operations.inventory.root, operation, arguments, actor=actor,
                 authorize=lambda: self.authority.authenticate(token))
+        elif operation.startswith('upgrades.'):
+            from .upgrade_jobs import UpgradeJobs
+            if self.operations.inventory is None:
+                raise InventoryError('configuration_unavailable', 'host upgrade owner unavailable')
+            root=self.operations.inventory.root
+            owner=UpgradeJobs(root)
+            if operation in ('upgrades.poll','upgrades.discovery'):
+                from .upgrade_discovery import UpgradeDiscovery
+                config=owner.config()
+                owner.guard(actor,config['target'],arguments,lambda:self.authority.authenticate(token),write=operation=='upgrades.poll')
+                if set(arguments)!={'expected_target'}:
+                    raise InventoryError('invalid_argument','exact discovery arguments required')
+                value=UpgradeDiscovery(root).tick(actor,authorize=lambda:self.authority.authenticate(token)) if operation=='upgrades.poll' else UpgradeDiscovery(root).status()
+                result=dict(schema_version=1,operation=operation,status='completed',result=value)
+            else:
+                result = owner.execute(actor,operation,arguments,authorize=lambda: self.authority.authenticate(token))
         elif operation.startswith('grok.'):
             from .controller_grok import ControllerGrok
             if self.operations.inventory is None:
@@ -663,6 +685,8 @@ class ControllerHandler(BaseHTTPRequestHandler):
                 if ProtectedOperations.READ_POLICIES[operation][0] in actor.scopes
                 and (operation.startswith('inventory.')
                      or (operation == 'accounts.init' and self.server.operations.operations.inventory is not None)
+                     or (operation.startswith('upgrades.') and self.server.operations.operations.inventory is not None
+                         and (Path(self.server.operations.operations.inventory.root)/'upgrade-bot.json').is_file())
                      or (operation.startswith('operations.') and self.server.operations.operations.inventory is not None)
                      or (operation.startswith('hosts.') and self.server.operations.operations.hosts is not None)
                      or (operation.startswith('migration.') and self.server.operations.operations.migration is not None)

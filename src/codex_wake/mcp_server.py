@@ -185,6 +185,8 @@ from .health_commands import tool_specs as health_tool_specs
 SPECS.update(health_tool_specs())
 from .notice_commands import tool_specs as notice_tool_specs
 SPECS.update(notice_tool_specs())
+from .upgrade_commands import tool_specs as upgrade_tool_specs
+SPECS.update(upgrade_tool_specs())
 from .recovery_commands import tool_specs as recovery_tool_specs
 SPECS.update(recovery_tool_specs())
 from .grok_commands import tool_specs as grok_tool_specs
@@ -492,6 +494,13 @@ class CommandRunner:
                 return value, value['status'] != 'completed'
             except (ValueError, OSError, KeyError) as error:
                 return {'error': {'code': getattr(error, 'code', 'grok_held'), 'message': str(error)}}, True
+        if group == 'controller-upgrades':
+            from .upgrade_commands import protected_execute
+            try:
+                value = protected_execute(verb, arguments, self.wake_root)
+                return value, value['status'] != 'completed'
+            except (ValueError, OSError, KeyError) as error:
+                return {'error': {'code': getattr(error, 'code', 'upgrade_held'), 'message': str(error)}}, True
         if group == 'controller-recovery':
             from .recovery_commands import protected_execute
             try:
