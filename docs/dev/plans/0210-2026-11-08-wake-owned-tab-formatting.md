@@ -7,6 +7,15 @@ Branch: feat/tab-formatting-517
 Base: 3a02f9dc9e59eef8151cc6015f19a6cd4b22e2de
 Domain authority: GLOSSARY.md
 
+## Current tracker reconciliation | P255
+
+Issue #517 read back CLOSED after explicit acceptance disposition on2026-11-21.
+[Reconciliation](../evidence/plan0255/reconciliation.md) records the accepted
+boundary and remaining successor/runtime limits. Historical parent-open, early
+authentication and pre-deployment statements below describe their original
+milestones and are superseded for current tracker state. No original failures
+or operational evidence were erased.
+
 ## Current State
 
 Spec #517 and tickets #518–#524 were published with native dependency links.

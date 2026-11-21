@@ -385,5 +385,15 @@
     "native_sha256": "e8eb511af74de41d0d336a0afc6715df15cbd15583977996eb661981de3aea1d",
     "grok_readiness": "unavailable/native_auth_not_current",
     "shared_wake_services": "existing pins retained/not restarted"
+  },
+  "status_reconciliation": {
+    "plan": "0255-2026-11-21-status-and-worktree-reconciliation.md",
+    "parent_issue": 628,
+    "parent_state": "closed",
+    "reason": "native Grok implementation, live coding and P254 selected-profile installed usage accepted",
+    "latest_native": "0.171.0 source691605707c",
+    "latest_evidence": "docs/dev/plans/0254-2026-11-20-grok-usage-codex-0171.md",
+    "older_deployment_readiness": "historical; not current auth/provider verdict",
+    "new171_model_prompt_claim": false
   }
 }

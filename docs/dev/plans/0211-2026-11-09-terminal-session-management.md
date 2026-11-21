@@ -6,6 +6,15 @@ Work item: #526; implementation #527–#534; draft PR #535
 Branch: feat/terminal-sessions-526
 Domain authority: GLOSSARY.md
 
+## Current tracker reconciliation | P255
+
+Issue #526 read back CLOSED after explicit acceptance disposition on2026-11-21.
+[Reconciliation](../evidence/plan0255/reconciliation.md) records the accepted
+boundary and remaining successor/runtime limits. Historical parent-open, early
+authentication and pre-deployment statements below describe their original
+milestones and are superseded for current tracker state. No original failures
+or operational evidence were erased.
+
 ## Current State
 
 All seventeen decisions are implemented. Tickets #527–#534 are integrated,

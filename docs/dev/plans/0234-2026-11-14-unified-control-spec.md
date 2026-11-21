@@ -6,6 +6,15 @@ Work item: #623
 Design: Plan0234, nineteen operator-confirmed decisions
 Base: 1aa498674a4907f93b5216a4a98dd75a22c6ecec
 
+## Current tracker reconciliation | P255
+
+Issue #623 read back CLOSED after explicit acceptance disposition on2026-11-21.
+[Reconciliation](../evidence/plan0255/reconciliation.md) records the accepted
+boundary and remaining successor/runtime limits. Historical parent-open, early
+authentication and pre-deployment statements below describe their original
+milestones and are superseded for current tracker state. No original failures
+or operational evidence were erased.
+
 ## Current State
 
 All eleven child tickets are validated and CLOSED. Canonical CLI/API/MCP control,

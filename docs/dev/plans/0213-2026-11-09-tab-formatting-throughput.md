@@ -1,6 +1,6 @@
 # LOCAL-P213 | Formatting throughput and STALE regression
 
-State: OPEN
+State: CLOSED
 Ticket: LOCAL-P213
 Owner: primary
 Priority: P1
@@ -33,18 +33,13 @@ predictions: native per-option spawn cost dominates; repeated statewrites contri
 
 ## Current State
 
-Reconciled 2026-11-12: PR537 integrated the throughput fix and its exact wheel
-was deployed; live public rollback passed. P214/P215 subsequently record compact
-presentation and approved palette readbacks. P216 later records installed100-tab
-and46-tab acceptance, so its delivered monitor work must not be treated as a new
-implementation prerequisite here. This older plan remains OPEN pending explicit
-remaining-scope disposition; this edit does not silently close its acceptance.
-
-Current automation state belongs to later [P223](0223-2026-11-11-tmux-subscription-crash.md),
-which records disabled automation after native crash containment. Historical
-activation below is not current runtime authority. No fresh installed readback
-was performed for this documentation patch.
-[Original deployment receipt](../evidence/plan0213/deployment.json).
+CLOSED by explicit P255 reconciliation: the original throughput criterion passed
+at275 native launches versus1728, below its500-process budget. PR537 integrated
+and deployed the fix; installed public rollback passed. Original failures remain
+in the historical delivery record. Later P216 owns broader monitor qualification
+and540 retains natural-feed/current-resource evidence limits; P223 owns disabled
+automation. Those successor boundaries do not leave this completed fix open. No
+new runtime qualification or automatic formatting activation is claimed.
 
 ## Historical source qualification and deployment
 

@@ -2,6 +2,15 @@
 
 State: APPROVED_FOR_IMPLEMENTATION. Owner: ecochran76 / primary coordinator. Coordinating issue: https://github.com/CochranResearchGroup/codex-wake/issues/369. Related workspace recovery: #368. This draft consolidates the approved interview; test boundaries and ticket breakdown approved by the explicit implement-spec invocation. Implementation is not complete.
 
+## Current tracker reconciliation | P255
+
+Issue #371 read back CLOSED after explicit acceptance disposition on2026-11-21.
+[Reconciliation](../../evidence/plan0255/reconciliation.md) records the accepted
+boundary and remaining successor/runtime limits. Historical parent-open, early
+authentication and pre-deployment statements below describe their original
+milestones and are superseded for current tracker state. No original failures
+or operational evidence were erased.
+
 ## Problem Statement
 
 Operating-mode correction: [Plan0205](../0205-2026-11-06-stock-home-and-independent-profiles.md) records the later requirement to retain stock's shared home across logout/login switches and seed independent Wake profiles with explicit transfer. For this mode it supersedes the assumptions below about replacing plain codex or sharing managed-profile configuration. The corrected mode is not yet implemented or activated.

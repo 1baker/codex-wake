@@ -1,0 +1,91 @@
+{
+  "source_readback": "926dd512df46fc7f2ea4734ae2772f3e9ab3cd34",
+  "actor": "ecochran76",
+  "repository": "github.com/CochranResearchGroup/codex-wake",
+  "authority": "operator requested ticket/spec reconciliation and worktree merge/closure review",
+  "closed_completed_issues": [
+    623,
+    663,
+    610,
+    601,
+    517,
+    526,
+    628,
+    413,
+    371,
+    439
+  ],
+  "closed_superseded_prs": [
+    312,
+    314,
+    332,
+    341,
+    347,
+    348
+  ],
+  "retained_prs": [
+    {
+      "number": 454,
+      "disposition": "useful unmerged autonomous upgrade implementation; source-bound current-main integration review required; stale initial166 hold is not latest branch acceptance"
+    },
+    {
+      "number": 653,
+      "disposition": "useful grouped-pane alias fix; reconcile old base/current session semantics and qualify before merge"
+    },
+    {
+      "number": 699,
+      "disposition": "useful explicit wake-policy renewal fix; qualify exact installed package before effects"
+    }
+  ],
+  "open_issues_after_readback": 33,
+  "worktree_review": {
+    "wake_initial": 124,
+    "wake_existing": 106,
+    "wake_missing": 18,
+    "native_initial": 20,
+    "wake_completed_checkouts_removed": 12,
+    "wake_missing_published_registrations_pruned": 2,
+    "wake_missing_unpublished_held": 16,
+    "new_reconciliation_checkout": 1,
+    "wake_before_reconciliation_checkout_retirement": 110,
+    "wake_expected_after_reconciliation_checkout_retirement": 109,
+    "native_disposition": {
+      "primary_protected": 1,
+      "dirty_protected": 7,
+      "clean_unique_or_unknown_protected": 8,
+      "clean_ancestor_candidates_held_for_owner_custody_dependency_reconciliation": 4
+    },
+    "native_checkouts_removed": 0,
+    "branches_deleted": 0,
+    "force_removals": 0,
+    "wake_blocked_checkouts_retired": 1
+  },
+  "remaining_boundaries": [
+    "540 independently attributable stock/modded natural feeds and exact-runtime resource proof",
+    "716 mergeddev44 Python package awaits dedicated test-client setup and installed acceptance; workingdev43 unchanged",
+    "282/310/318/370 original ordinary-session lifecycle operational qualification",
+    "343-346/350 explicit original-to-successor governor acceptance crosswalk",
+    "364 original affected shared-runtime target/cutover relationship",
+    "369/380 broader account activation and legacy storage migration",
+    "420 original dirty primary remains on main at retained baseline; exact current-main synchronization withheld to preserve overlapping dirtywork",
+    "135/142 managed webhook activation/visible dispatch",
+    "715 partial discovery and723 interrupted-poll recovery remain genuine open implementation/design work"
+  ],
+  "validation": "readback/custody/reference/ignored-artifact checks; docs-only local checks; no new provider calls, native builds, runtime tests or service effects",
+  "local_plans_reconciled_closed": [
+    "P213 originalthroughputcriterion",
+    "P214 originalcompactpresentation",
+    "P233 deliverednativeprovider"
+  ],
+  "known_status_scope": "33 remaining GitHub issues are not blanket-classified as implementation gaps; explicit remaining gates retained",
+  "catalog_audit": {
+    "baseline_ref": "926dd512df46fc7f2ea4734ae2772f3e9ab3cd34",
+    "legacy_findings": 499,
+    "verdict": "not clean; inherited duplicate claims, absent custody metadata, stale plan refs/checkpoints and overlaps retained for evidence-based disposition",
+    "scope": "full catalog at original HEAD; not suppressed or called passing",
+    "after_findings": 492,
+    "resolved_findings": 7,
+    "new_findings": 0,
+    "lane_alias_normalization": "ADJACENT-TABS-716 = historical adjacent-tabs-716"
+  }
+}

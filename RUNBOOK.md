@@ -10733,3 +10733,26 @@ copies. Stock and unrelated sessions unchanged; old complete0.169 rollback kept.
 UID1017 final census: zero case-owned processes/sockets; first refused live-update
 attempt retained as guard evidence. P254 CLOSED; parent628 and separate P253
 Python release remain distinct. Task checkouts retire after closeout integration.
+
+## Turn | 2026-11-21 UTC | P255 status and custody reconciliation
+
+Operator requested ticket/spec reconciliation and worktree merge/closure review.
+Canonical926dd512 plus current tracker/installed readbacks: completed parents
+623/663/610/601/517/526/628/413/371/439 explicitly closed from accepted outcome
+evidence, superseding old administrative parent-open rules.540 and716 stay open
+for real monitoring/deployment gates. Closed supersededPR312/314/332/341/347/348
+without merge;454/653/699 remain useful unmerged work with integration gates.
+P213/P214 original delivered outcomes and P233 design are CLOSED; P253 BLOCKED
+for dev44 working deployment, not unmergedsource or a pending credential-copy
+approval. P254 deployed acceptance remains intact.
+
+Reviewed124Wake/20native registrations.13 clean completed/paused Wake checkouts
+retired after exact custody/reference/ignored-artifact checks;2 missing published
+entries pruned through maintained plan/apply.16 absent unpublished entries and all
+dirty/unknown/native custody remain held; no global prune, force removal, branch
+deletion or OpenAIpush. Original dirty primary preserved on mainbaseline. This
+sole new checkout retires after matching merge/remote custody, final109Wake/20native.
+Planning audit passes with20 accepted legacybaseline findings; full old catalog
+has499 inherited findings, explicitly retained as unresolved metadata debt.
+No sourcefeature/provider/build/deployment/service effects. Public evidence and
+remaining limits: docs/dev/evidence/plan0255/reconciliation.md/.json.

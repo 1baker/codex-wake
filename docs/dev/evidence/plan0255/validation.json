@@ -1,0 +1,67 @@
+{
+  "scope": "documentation/status projections only; no production source edits",
+  "source_base": "926dd512df46fc7f2ea4734ae2772f3e9ab3cd34",
+  "environment": {
+    "python": "3.12.13",
+    "platform": "local WSL/Linux",
+    "hosted_ci": "not run; local checks satisfy cost policy"
+  },
+  "checks": [
+    {
+      "command": "git diff --check",
+      "result": "PASS; trailing blank corrected before final check"
+    },
+    {
+      "command": "audit_planning_contract.py --repo-root . --active-only --json",
+      "result": "PASS; zero problems;20 existing accepted baseline findings"
+    },
+    {
+      "command": "scripts/check_policy_wiring.py",
+      "result": "PASS"
+    },
+    {
+      "command": "scripts/check_native_expiry_artifact.py",
+      "result": "PASS; existing source artifact provenance unchanged"
+    },
+    {
+      "command": "PYTHONPATH=src python3 -m unittest discover -s tests -p test_ci_scope.py",
+      "result": "PASS;1 test;2.878s"
+    },
+    {
+      "command": "uv tool run --from ruff==0.14.2 ruff check --select F821,F822,F823 src scripts tests .codex/hooks",
+      "result": "PASS; declared pinned checker"
+    },
+    {
+      "command": "added local Markdown link resolution",
+      "result": "PASS;13 existing-file targets"
+    },
+    {
+      "command": "tracker postconditions",
+      "result": "10 accepted issues CLOSED;6 superseded PRs CLOSED/unmerged;3 useful PRs OPEN"
+    },
+    {
+      "command": "worktree postconditions",
+      "result": "13 source checkouts absent;2 missing registrations pruned; source refs preserved; final lane retirement follows merge"
+    },
+    {
+      "command": "scripts/check_ci_scope.py --event pull_request --base926dd512 --head748b5a82",
+      "result": "full/path_requires_full: ROADMAP/plans/catalog are outside conservative evidence-only allowlist"
+    },
+    {
+      "command": "final whole-catalog comparison, same-lane ID normalized",
+      "result": "499\u2192492 findings;7 resolved;0 new; remaining492 are not claimed passing"
+    },
+    {
+      "command": "final committed added Markdown links/JSON/source-scope readback",
+      "result": "14 local links resolve; JSON parses;24 changed files, no executable source changes"
+    }
+  ],
+  "nonpassing_audit": {
+    "command": "audit_active_lanes.py --repo-root . --default-ref HEAD --catalog-only --json",
+    "reference": "original926dd512",
+    "result": "499 inherited catalog metadata/custody findings; not hidden or claimed passing"
+  },
+  "first_setup_failure": "ruff not in shell PATH; declared0.14.2 checker invoked through existing uv instead; no product change",
+  "not_executed": "runtime, provider, native compilation, broad unit suite, hosted Python3.11/3.12 jobs; unchanged runtime code and no runtime acceptance claim",
+  "selection_disposition": "Manual documentation-only local validation selected: Git proves no executable Python/JavaScript/Rust/workflow/dependency source changed. Planning/link/schema/provenance/static checks passed; broad runtime suite intentionally not rerun and not claimed passing. Hosted conservative full-lane selection is recorded, not altered."
+}

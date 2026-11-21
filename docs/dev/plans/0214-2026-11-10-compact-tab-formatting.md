@@ -1,6 +1,6 @@
 # LOCAL-P214 | Compact neutral tab formatting
 
-State: OPEN
+State: CLOSED
 Ticket: LOCAL-P214
 Owner: primary
 Priority: P1
@@ -19,15 +19,12 @@ No changes to provider/process identity or activity evidence semantics.
 
 ## Current State
 
-PR538 delivered compact/plain/no-STALE presentation; the original failed
-loaded-host deadline and manual reconciliation remain in the delivery record.
-Subsequent P216 installed100-tab/46-tab qualification is recorded separately in
-[accepted receipt](../evidence/plan0216/qualification547/accepted-eighth.md).
-That later delivery is not pending implementation. This plan's OPEN label is
-retained for explicit remaining-scope disposition rather than closing it by
-association. Later [P223](0223-2026-11-11-tmux-subscription-crash.md) owns the
-recorded disabled automation state. No new runtime qualification or activation
-is claimed here.
+CLOSED by explicit P255 reconciliation: PR538 delivered and deployed the original
+compact/plain/no-STALE presentation; private acceptance and44-tab working readback
+passed. The original10s loaded-host failure and manual90s reconciliation remain
+historical evidence. Remaining automatic monitoring/performance acceptance belongs
+to540/P216, and P223 records disabled automation. This disposition does not claim
+that automatic formatting is enabled or the old deadline failure was erased.
 
 ## Delivery
 

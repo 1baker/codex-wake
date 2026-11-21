@@ -8,6 +8,15 @@ Work item: #610 / children #611–#616
 Integration branch: docs/persistent-wake-design
 Base: e8c79a79da0b0482e2403e634394c70f5c66e333
 
+## Current tracker reconciliation | P255
+
+Issue #610 read back CLOSED after explicit acceptance disposition on2026-11-21.
+[Reconciliation](../../evidence/plan0255/reconciliation.md) records the accepted
+boundary and remaining successor/runtime limits. Historical parent-open, early
+authentication and pre-deployment statements below describe their original
+milestones and are superseded for current tracker state. No original failures
+or operational evidence were erased.
+
 ## Current State
 
 All six implementation tickets #611–#616 are CLOSED. One two-axis review and one

@@ -1,6 +1,8 @@
 # CW-0235: Native registration from a detached MCP working directory
 
-Owner: Codex. Priority: high. State: DONE (source implementation and focused validation; not integrated or deployed). WIP limit: one.
+State: CLOSED
+Owner: Codex. Priority: high. WIP limit: one.
+Outcome boundary: completed source/focused-validation packet; later integration and operational rearm remain separately evidenced.
 Source request: operator invoked diagnosing-bugs, then tdd after the SoyLei monitor failed to rearm.
 
 ## Scope and acceptance

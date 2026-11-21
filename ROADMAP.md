@@ -1,21 +1,43 @@
 # Codex Wake Roadmap
 
+## P255 | Ticket/spec and worktree reconciliation
+
+[Plan0255](docs/dev/plans/0255-2026-11-21-status-and-worktree-reconciliation.md)
+records explicit acceptance closure for623/663/610/601/517/526/628/413/371/439;
+540 and716 retain real qualification/deployment gates. Six superseded PRs closed
+without merging;454/653/699 retain useful unmerged code. Reviewed124 Wake and20
+native registrations;12 completed and1 paused Wake checkouts removed and2 missing published
+entries pruned, with unknown/private custody and all dirty work held. See the
+[evidence](docs/dev/evidence/plan0255/reconciliation.md) for boundaries and counts.
+
+## P254 | Native0.171 usage and identity
+
+CLOSED: PR724/725 integrated and exact complete native package691605707c is
+qualified/installed for the selected modified profile and resumed Grok client.
+Actual startup/status/footer identifies Codex Wake; token/cache/reasoning fields
+are distinct, unavailable quota/cost explicit, inactive Governor hidden. Same
+coding history resumed without provider replay. Stopped update/rollback and
+private ownership accepted; no seamless live-upgrade or full-fleet claim.
+
 ## P253 | Reliable adjacent tab placement
 
-[Plan0253](docs/dev/plans/0253-2026-11-20-adjacent-tabs-716.md): #719/#720/#721 closed on published integration branch. Fresh destination pins and same-session insertion are qualified with preserved sibling protections.20focused checks pass eachPython3.11/3.12; corrected exact-wheel installed CLI/actual MCP preserves3native conversation bindings with0provider calls. One review/one remediation complete. #716 remains open; merge, working deployment and #628 live Grok acceptance remain separate.
+BLOCKED at deployment: source and private CLI/MCP acceptance passed;719–721 are
+CLOSED and PR722 mergedf75a44c8. Working Python remainsdev43; dev44 release awaits
+proper dedicated test-client setup and exact installed acceptance. Rejected
+production-token copying is not a pending approval. #716 stays OPEN; see
+[Plan0253](docs/dev/plans/0253-2026-11-20-adjacent-tabs-716.md).
 
-## #713 | Combined Grok and bounded-expiry Native carry
+## #713 | Combined Grok and bounded-expiry native carry
 
-[Plan0252](docs/dev/plans/0252-2026-11-19-native-carry-713.md) combines the selected
-Grok carry with qualified expiry before package qualification. Source integration,22clientchecks,completepackage and9UID1017journeys are validated.
-One bounded review/artifact remediation completed; working cutover and liveGrok
-remain gated. See issue0713 evidence; tracker713 staysOPEN for cutover.
+CLOSED cutover delivery: PR717 installed qualified0.169 carry; P254 subsequently
+retained it in the qualified0.171 package. Earlier packet-only and cutover-held
+text in Plan0252 is historical. Native Grok parent628 is now CLOSED by P255;
+remaining limits are retained rather than interpreted as missing implementation.
 
 ## P231 | Specialist bot families
 
 Delivered source: Wake607/Bots77 plus corrective Bots78; five implementation
-tickets closed; one review and one bounded remediation complete. Spec #601 stays
-open. Durable specialist/account/task
+tickets closed; one review and one bounded remediation complete. Spec #601 is CLOSED after explicit P255 acceptance disposition. Durable specialist/account/task
 hierarchy and inherited guidance in codex-bots; Wake supplies exact tab bindings,
 background family placement, reversible accents/navigation and accepted temporary
 worker cleanup. Execution: [Plan0231](docs/dev/plans/0231-2026-11-13-bot-tab-hierarchy.md)
@@ -34,8 +56,9 @@ tab16 reconnect error detected, preserving pane identities and settings. See
 This bounded documentation reconciliation uses delivery base `1a276d0f` and
 canonical issue/receipt evidence; it is not a fresh installed-runtime readback.
 P197/P198 are integrated and have recorded package deployment. P209's bounded
-implementation/qualification is complete. P213/P214 retain OPEN plan labels for
-explicit disposition, but P216's later monitor qualification is already delivered.
+implementation/qualification is complete. P213/P214 were later explicitly reconciled CLOSED by P255 for their delivered
+throughput/presentation outcomes; P216 monitor qualification remains separately
+bounded.
 The local OBS draft chain was superseded; canonical #541–#547 remain CLOSED and
 parent #540 remains OPEN. Current automation history belongs to later P223, which
 records disabled automation; older enabled/stopped statements below describe
@@ -1609,12 +1632,12 @@ question/claim/reply remains separate.
 
 ## P213 | Formatting throughput and STALE hardening
 
-[LOCAL-P213](docs/dev/plans/0213-2026-11-09-tab-formatting-throughput.md) OPEN.
+[LOCAL-P213](docs/dev/plans/0213-2026-11-09-tab-formatting-throughput.md) CLOSED by P255.
 Native process churn and per-tab durable saves reproduced/fixed at source; private
 42tab refresh1.143s. Original production rollback/monitor stop preceded PR537 deployment and the
 later P214/P215 display evidence. P216 subsequently records monitor qualification;
-P223 later records disabled automation. The plan remains OPEN pending explicit
-remaining-scope disposition, not a new duplicate implementation chain.
+P223 later records disabled automation. P255 closes the delivered throughput
+packet; remaining monitor qualification stays with540/P216.
 
 
 ## P215 | Named muted tab palettes
@@ -1785,7 +1808,8 @@ PR661 deployed as dev28; original ChatGPT round-trip result now reports complete
 
 ## P241 | External connector acceptance
 
-Status: COMPLETE. All nine childtickets #664–#672 closed from actual deployed acceptance. One final Standards/Spec review and one bounded TDD remediation pass completed; no blocking findings remain. Plan [0241](docs/dev/plans/0241-2026-11-14-connector-acceptance.md), review evidence [0241](docs/dev/evidence/0241-final-review.md). Product repairs merged/deployeddev34; PR676 publishes acceptance artifacts; parent663 unchanged.
+Status: COMPLETE. All nine childtickets #664–#672 closed from actual deployed acceptance. One final Standards/Spec review and one bounded TDD remediation pass completed; no blocking findings remain. Plan [0241](docs/dev/plans/0241-2026-11-14-connector-acceptance.md), review evidence [0241](docs/dev/evidence/0241-final-review.md). Product repairs merged/deployeddev34; PR676 publishes acceptance artifacts; P255 subsequently closes parent663 from
+that accepted evidence.
 
 
 ## P242 | Bounded native history reconciliation
@@ -1861,3 +1885,11 @@ waits from genuine authorization. Native final-send protocol/package/runtime and
 remaining ordinary-wait owners are validated under #695. Independent live Grok
 renewal remains blocked. Historical
 raw-clock counts are discovery aids, not a migration target or release gate.
+
+### P255 status correction
+
+P213/P214 local delivery plans and P233 design are CLOSED. Parent specs closed
+by explicit outcome disposition are listed in P255 evidence; historical parent-
+open language below describes earlier workflow boundaries. P221 catalog status
+now matches its CLOSED plan. No current enablement, qualification or service
+readiness is inferred from a historical deployment paragraph.

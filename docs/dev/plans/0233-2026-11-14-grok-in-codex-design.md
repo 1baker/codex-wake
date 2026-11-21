@@ -1,11 +1,20 @@
 # LOCAL-P233 | Grok inference in the modded Codex harness
 
-State: OPEN
-Workflow: CONFIRMED_IMPLEMENTATION_PACKET_PREPARATION
+State: CLOSED
+Workflow: DELIVERED_AND_RECONCILED
 Work item: LOCAL-P233; related prior intake621 / draft622 is a separate CLI path
 Owner: primary / ecochran76
 Scope: provider and authentication design; no implementation before shared understanding
 WIP limit: one coordinator; one completed read-only provider-auth fact discovery
+
+## Current tracker reconciliation | P255
+
+Issue #628 read back CLOSED after explicit acceptance disposition on2026-11-21.
+[Reconciliation](../evidence/plan0255/reconciliation.md) records the accepted
+boundary and remaining successor/runtime limits. Historical parent-open, early
+authentication and pre-deployment statements below describe their original
+milestones and are superseded for current tracker state. No original failures
+or operational evidence were erased.
 
 ## Objective and settled terminology
 

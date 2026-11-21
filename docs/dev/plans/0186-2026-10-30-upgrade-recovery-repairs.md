@@ -4,6 +4,15 @@ State: CLOSED
 Outcome boundary (preserved): COMPLETE (isolated ticket scope). Owner: primary for operator ecochran76.
 Spec: GitHub #413; child tickets #414–#418. Task is ticket completion, followed by exactly one broad Standards/Spec review and one bounded TDD remediation pass.
 
+## Current tracker reconciliation | P255
+
+Issue #413 read back CLOSED after explicit acceptance disposition on2026-11-21.
+[Reconciliation](../evidence/plan0255/reconciliation.md) records the accepted
+boundary and remaining successor/runtime limits. Historical parent-open, early
+authentication and pre-deployment statements below describe their original
+milestones and are superseded for current tracker state. No original failures
+or operational evidence were erased.
+
 ## Current State
 
 Tickets #414–#418 are closed and validated on native `fbe6dbfacff79360b00f2b38345b8aec991fb160`. The requested one broad review and one bounded TDD remediation are complete; all four accepted findings are resolved. Final candidateC passed30 isolated managed journeys, including real fresh TUI `/goal` creation and legacy/external authority holds, plus6 recovery and5 admission tests. [Final qualification](../evidence/plan0186/qualification.md) governs current evidence. Parent#413 remains open as the unchanged specification under the ticket-publishing skill. Working installation and governor activation remain outside scope.
