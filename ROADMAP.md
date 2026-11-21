@@ -1,5 +1,12 @@
 # Codex Wake Roadmap
 
+## P259 | Cancellation under delivery contention
+
+[Plan0259](docs/dev/plans/0259-2026-11-21-cancellation-contention-integration.md)
+and #731 integrate retained cancellation intent through the existing CLI/monitor.
+Source acceptance and working deployment remain separate; older monitors do not
+consume the new request files. See the plan for exact validation and review.
+
 ## P257 | Continued integration and source custody
 
 [Plan0257](docs/dev/plans/0257-2026-11-21-custody-and-preserved-pr-integration.md)

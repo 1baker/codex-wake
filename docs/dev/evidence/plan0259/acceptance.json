@@ -1,0 +1,41 @@
+{
+  "work_item": 731,
+  "base": "b42a8ec09d6360f2be44d06aee75225b3b9ee189",
+  "source": "1612929762df242f5b4861fd7d26d8290b18c7cd",
+  "original_source_preserved_locally": "575554403be6115d5b20367283c54d727e246036",
+  "seams": [
+    "public CLI under real OS-process delivery lock",
+    "fresh process monitor reconciliation",
+    "frozen bulk and exact caller/record identity",
+    "uncertain native bounded cancellation and no-replay terminal reconciliation",
+    "MCP verified-self control"
+  ],
+  "red": "One cross-process CLI failure:5 != accepted0",
+  "setup_failure": "Legacy fixture lacked explicit creation instant; retained separately, not product red",
+  "first_focused": "38 tests,2 failures; one actual native-reconciliation port defect corrected, one explicit-now fixture adaptation",
+  "final_focused": {
+    "modules": [
+      "tests.test_wake_control",
+      "tests.test_wake_control_mcp",
+      "tests.test_bounded_native_delivery"
+    ],
+    "python311": "38 PASS,0 skip/excluded",
+    "python312": "38 PASS,0 skip/excluded"
+  },
+  "commands": [
+    "PYTHONPATH=src:tests <runtime>/bin/python -m unittest tests.test_wake_control tests.test_wake_control_mcp tests.test_bounded_native_delivery",
+    "uv tool run --from ruff==0.14.2 ruff check --select F821,F822,F823 src scripts tests .codex/hooks",
+    "git diff --check"
+  ],
+  "compatibility": "Separate private request files version1; no wake-record migration. Old monitors do not consume them; adoption requires upgraded monitor or repeating exact cancellation on upgraded CLI. Pending queue acceptance does not prove cancellation/interruption.",
+  "effects": "Source-only local temporary state; no production cancellation, monitor changes, providers, credential/history copies or hosted CI",
+  "review": {
+    "fixed_base": "b42a8ec09d6360f2be44d06aee75225b3b9ee189",
+    "frozen_head": "1612929762df242f5b4861fd7d26d8290b18c7cd",
+    "passes": 1,
+    "standards_accepted_findings": 0,
+    "spec_confirmed_defects": 0,
+    "nonblocking_coverage_observation": "No dedicated successful-delivery-between-queue-and-poll race regression. Existing bulk terminal unchanged and positive bounded-native cancellation/lost-reply regressions pass. No exhaustive race qualification claim.",
+    "primary_disposition": "accepted source-only outcome"
+  }
+}

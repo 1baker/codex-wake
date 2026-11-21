@@ -10792,3 +10792,18 @@ checkout retirement. Unreviewed historical blobs, dirty roots and native build
 dependencies remain held. No force removal, branch deletion, production changes,
 provider replay, credential/history copies or paid CI. Final custody counts and
 remaining gates are recorded in docs/dev/evidence/plan0257/reconciliation.json.
+
+## Turn | 2026-11-21 UTC | P259 cancellation contention source
+
+Issue731 ports the retained57555440 repair onto current main without publishing
+unknown old history. Actual public cross-process contention RED5!=0 becomes
+GREEN: exact authorized requests persist while delivery owns the gate; a fresh
+monitor process reconciles after release. Frozen bulk, caller/identity and
+uncertainty barriers remain; modern bounded-native cancel/reconciliation survives.
+First38-case run exposed a real reconciliation guard regression, corrected before
+final38PASS on each Python3.11/3.12, no exclusions. Initial creation-time fixture
+setup failure remains separate from product RED. One Standards/Spec review finds
+no confirmed defects; a dedicated queued-success-race coverage limit is retained.
+Source16129297; public acceptance docs/dev/evidence/plan0259/acceptance.json.
+No production cancellation, monitor deployment, model calls, credential/history
+copies or paid CI. Original dirty primary and unpublished575 history preserved.

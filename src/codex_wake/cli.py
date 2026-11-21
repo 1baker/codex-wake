@@ -2115,7 +2115,12 @@ def target_for_args(args: argparse.Namespace) -> dict[str, object]:
 def list_records(args: argparse.Namespace, root: Path) -> int:
     records = all_records(root, include_archive=args.archived)
     if args.as_json:
-        print(json.dumps([item.record for item in records], indent=2, sort_keys=True))
+        from .wake_cancellation import cancellation_status
+        rows = []
+        for item in records:
+            cancellation = cancellation_status(root, item.record['id'])
+            rows.append({**item.record, **({'cancellation': cancellation} if cancellation is not None else {})})
+        print(json.dumps(rows, indent=2, sort_keys=True))
         return 0
     if not records:
         print("No wakes.")

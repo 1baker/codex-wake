@@ -64,7 +64,7 @@ def _lock(root, name, operation):
         yield stream
 
 
-def _write(root, state):
+def _write(root, state, *, name="state.json"):
     directory = _directory(root)
     fd, temporary = tempfile.mkstemp(dir=directory, prefix='.state-')
     try:
@@ -73,7 +73,7 @@ def _write(root, state):
             stream.write('\n')
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, directory / 'state.json')
+        os.replace(temporary, directory / name)
         fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
         try: os.fsync(fd)
         finally: os.close(fd)
@@ -183,43 +183,10 @@ def _owned_by(record, subject):
 
 
 def _cancel(root, args):
-    from .records import all_records, cancel_record
-    if bool(args.wake_id) == bool(args.all):
-        raise WakeError('select one wake ID or --all')
-    # Root lock excludes delivery, including retained legacy dispatch paths.
-    # Nonblocking acquisition reports busy instead of hiding an in-flight effect.
-    with _lock(root, 'effects.lock', fcntl.LOCK_EX | fcntl.LOCK_NB):
-        candidates = all_records(root) if args.all else [dict(id=args.wake_id)]
-        results = [dict(state='held',reason='record_unreadable',path=path) for path in inventory_errors(root)]
-        for item in candidates:
-            record = item.record if hasattr(item, 'record') else item
-            identifier = record['id']
-            subject = getattr(args, 'caller_wake_subject', None)
-            if args.all and not _owned_by(record, subject):
-                continue
-            if args.all and record.get('status') not in ('pending','firing'):
-                results.append(dict(wake_id=identifier,state='skipped',reason='not_cancellable'))
-                continue
-            try:
-                from .records import find_record
-                current = find_record(root,identifier).record
-                if not _owned_by(current, subject):
-                    raise WakeError('wake outside verified caller scope')
-                # An ambiguous external submission may already have been consumed.
-                if current.get('app_server_delivery',{}).get('state') == 'uncertain':
-                    raise WakeError('submission uncertain; reconcile original effect before cancellation')
-                if current.get('native_delivery',{}).get('state') == 'uncertain':
-                    from .native_delivery import cancel_native_pending
-                    from .records import WakeLifecycleLock
-                    with WakeLifecycleLock(root, identifier):
-                        state = cancel_native_pending(root, find_record(root, identifier))
-                    results.append(dict(wake_id=identifier, state=state))
-                    continue
-                cancel_record(root,identifier)
-                results.append(dict(wake_id=identifier,state='cancelled'))
-            except (OSError, ValueError) as exc:
-                results.append(dict(wake_id=identifier,state='held',reason=str(exc)))
-        return results
+    from .wake_cancellation import request_cancellation
+    results = request_cancellation(root, args)
+    return [dict(state='held', reason='record_unreadable', path=path)
+            for path in inventory_errors(root)] + results
 
 
 def _control_command(args, root):
@@ -249,8 +216,11 @@ def _control_command(args, root):
                     dates = (schedule_projection(record) if classify_record(record) in ('native_intent_v6', 'runtime_intent_v7') else
                         dict(due_at=record.get('predicate', {}).get('due_at'),
                             expires_at=record.get('target', {}).get('expires_at')))
+                    from .wake_cancellation import cancellation_status
+                    cancellation = cancellation_status(selected, record['id'])
                     row['wakes'].append(dict(wake_id=record.get('id'), status=record.get('status'),
-                        target=record.get('target'), next_attempt_at=record.get('next_attempt_at'), **dates))
+                        target=record.get('target'), next_attempt_at=record.get('next_attempt_at'), **dates,
+                        **({'cancellation': cancellation} if cancellation is not None else {})))
                 row['paused'] = paused(selected)
                 row['inventory_errors'] = inventory_errors(selected,args.archived)
             elif args.command == 'pause-status':
@@ -287,6 +257,14 @@ def guard_dispatch(function):
             from .wake_policy import effect_guard, apply_owner_state
             from .records import WakeLifecycleLock, replace_record
             with delivery_guard(root), effect_guard(root, found.record):
+                from .wake_cancellation import cancellation_pending
+                if cancellation_pending(root, found.record['id']):
+                    # Native uncertain submissions enter reconciliation only;
+                    # retaining cancellation must not hide terminal evidence.
+                    native_reconciliation = (found.record.get('target', {}).get('transport') == 'native'
+                        and found.record.get('native_delivery', {}).get('state') == 'uncertain')
+                    if not native_reconciliation:
+                        raise WakeError('cancellation_pending: reconcile before this wake can deliver')
                 active = find_record(root,found.record['id'])
                 if active.record != found.record or active.record.get('status') != 'firing':
                     return DispatchResult('skipped','wake changed before dispatch admission')

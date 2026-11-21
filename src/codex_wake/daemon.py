@@ -355,6 +355,8 @@ def poll_once(
     time_provider=None,
     lifecycle_supervision=None,
 ) -> PollResult:
+    from .wake_cancellation import reconcile_cancellations
+    reconcile_cancellations(root)
     from .agent_handoff import poll_handoffs
     from .wake_control import read_control
     emergency = read_control(root)

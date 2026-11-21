@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from datetime import UTC, datetime
 from codex_wake.cli import main
 
 class WakeControlTests(unittest.TestCase):
@@ -29,7 +30,8 @@ class WakeControlTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)/'wake'
             record=build_record(predicate={'type':'not_before','due_at':'2020-01-01T00:00:00Z'},prompt='hello',cwd=Path(tmp),
-                target={'transport':'tmux','pane_id':'%1','session_id':'fixture','socket_path':'/fixture'})
+                target={'transport':'tmux','pane_id':'%1','session_id':'fixture','socket_path':'/fixture'},
+                            now=datetime(2025,1,1,tzinfo=UTC))
             record['status']='firing'
             path=write_record(root,record)
             self.command(root,'pause')
@@ -43,7 +45,8 @@ class WakeControlTests(unittest.TestCase):
     def write_wake(self,root,identifier,status='pending',uncertain=False):
         from codex_wake.records import build_record,write_record
         record=build_record(predicate={'type':'not_before','due_at':'2030-01-01T00:00:00Z'},prompt='payload',cwd=root,
-                            target={'transport':'tmux','pane_id':'%1','session_id':'fixture','socket_path':'/fixture'})
+                            target={'transport':'tmux','pane_id':'%1','session_id':'fixture','socket_path':'/fixture'},
+                            now=datetime(2025,1,1,tzinfo=UTC))
         record.update(id=identifier,status=status)
         if uncertain:record['native_delivery']={'state':'uncertain','submission_id':'submission'}
         return write_record(root,record)
@@ -145,7 +148,7 @@ class WakeControlTests(unittest.TestCase):
                 self.assertEqual(self.command(root,'cancel','wake_race')[0],0)
                 return True,'ready'
             with patch('codex_wake.daemon.predicate_is_ready',side_effect=predicate):
-                poll_once(root,dispatch=False)
+                poll_once(root,now=datetime(2031,1,1,tzinfo=UTC),dispatch=False)
             self.assertTrue((root/'cancelled/wake_race.json').exists())
             self.assertFalse((root/'firing/wake_race.json').exists())
 
@@ -176,12 +179,27 @@ class WakeControlTests(unittest.TestCase):
                 self.assertTrue(select.select([child.stdout],[],[],5)[0])
                 self.assertEqual(child.stdout.readline().strip(),'ready')
                 self.assertTrue(self.command(root,'pause')[1]['roots'][0]['in_flight'])
-                self.assertEqual(self.command(root,'cancel','--all')[0],5)
+                code,queued=self.command(root,'cancel','--all')
+                self.assertEqual(code,0)
+                self.assertEqual(queued['roots'][0]['results'],[dict(wake_id='wake_owned',state='pending',reason='delivery_in_flight')])
                 self.assertTrue((root/'pending/wake_owned.json').exists())
+                listed=self.command(root,'list')[1]
+                self.assertEqual(listed[0]['cancellation']['state'],'pending')
+                self.assertEqual(self.command(root,'cancel','wake_owned')[1]['roots'][0]['results'][0]['state'],'pending')
+                # Bulk cancellation freezes only the wakes present at request time.
+                self.write_wake(root,'wake_later')
             finally:
                 child.communicate('\n',timeout=5)
             self.assertEqual(child.returncode,0)
-            self.assertEqual(self.command(root,'cancel','--all')[0],0)
+            # A fresh monitor process consumes the persisted cancellation, not
+            # an in-memory callback from the original cancelling process.
+            observed=subprocess.run([sys.executable,'-c',
+                'from pathlib import Path; import sys; from codex_wake.daemon import poll_once; poll_once(Path(sys.argv[1]),dispatch=False)',str(root)],
+                capture_output=True,text=True,env={**os.environ,'PYTHONPATH':'src'},timeout=10)
+            self.assertEqual(observed.returncode,0,observed.stderr)
+            self.assertTrue((root/'cancelled/wake_owned.json').exists())
+            self.assertTrue((root/'pending/wake_later.json').exists())
+            self.assertEqual(self.command(root,'cancel','wake_owned')[1]['roots'][0]['results'],[dict(wake_id='wake_owned',state='cancelled')])
 
     def test_pause_keeps_marker_but_reports_observed_incompatible_worker_as_held(self):
         from unittest.mock import patch
@@ -192,3 +210,41 @@ class WakeControlTests(unittest.TestCase):
             self.assertEqual(code,5)
             self.assertTrue(result['roots'][0]['paused'])
             self.assertEqual(result['roots'][0]['state'],'held')
+
+    def test_uncertain_cancellation_is_retained_without_blocking_peer_effects(self):
+        from codex_wake.daemon import poll_once
+        from codex_wake.wake_control import delivery_guard
+        from codex_wake.injector import dispatch_firing_record
+        from codex_wake.records import find_record
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)/'wake';path=self.write_wake(root,'wake_uncertain','firing',True)
+            before=path.read_bytes()
+            code,result=self.command(root,'cancel','wake_uncertain')
+            self.assertEqual(code,5)
+            self.assertEqual(result['roots'][0]['results'][0]['state'],'held')
+            poll_once(root,dispatch=False)
+            self.assertEqual(path.read_bytes(),before)
+            # A request to stop this wake is not a root-wide emergency pause.
+            with delivery_guard(root):pass
+            runner=Mock()
+            stopped=dispatch_firing_record(root,find_record(root,'wake_uncertain'),runner=runner)
+            self.assertEqual(stopped.status,'skipped')
+            self.assertEqual(runner.mock_calls,[])
+            value=json.loads(path.read_text());value.pop('native_delivery');path.write_text(json.dumps(value))
+            poll_once(root,dispatch=False)
+            self.assertTrue((root/'cancelled/wake_uncertain.json').exists())
+
+    def test_queued_cancellation_cannot_apply_to_changed_wake_identity(self):
+        from codex_wake.wake_control import delivery_guard
+        from codex_wake.daemon import poll_once
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)/'wake';path=self.write_wake(root,'wake_changed')
+            with delivery_guard(root):
+                self.assertEqual(self.command(root,'cancel','wake_changed')[0],0)
+            value=json.loads(path.read_text());value['target']['pane_id']='%different';path.write_text(json.dumps(value))
+            poll_once(root,dispatch=False)
+            self.assertTrue(path.exists())
+            wake=self.command(root,'list')[1][0]
+            self.assertEqual(wake['cancellation']['reason'],'cancellation_identity_changed')
+            self.assertEqual(wake['status'],'pending')
