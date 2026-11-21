@@ -1734,3 +1734,17 @@ lanes:
     overlaps: [P247]
     updated_at: 2026-11-16
     disposition: PR703 merged96f85564; dev41 exact-wheel UID1017 qualification and working rollout accepted;40 completion receipts retained; task checkout retires after evidence custody
+
+  - id: P254
+    owner: primary / ecochran76
+    objective: Upgrade native Codex to 0.171 with Grok usage and Wake identity
+    work_items: [LOCAL-P254-UPGRADE-USAGE, '#628']
+    plan: docs/dev/plans/0254-2026-11-20-grok-usage-codex-0171.md
+    branch: feat/grok-usage-codex-0171
+    target: origin/main
+    plan_state: OPEN
+    custody_state: ACTIVE_WORKTREE
+    dependencies: []
+    overlaps: [P233, P250, P253]
+    updated_at: 2026-11-20
+    disposition: Native merge resolved; local compile and rendered usage implementation in progress; working installation unchanged

@@ -559,3 +559,8 @@ rechecked at dispatch. Unreconciled prior submissions hold admission.
 The current intent's qualified CLI used only to observe an exact old native
 submission when its saved executable is gone. It never replaces the original
 binding, grants authority, or authorizes submission replay.
+
+**Codex Wake session**:
+A conversation running in the Codex Wake coding harness, independently of its
+inference provider and whether a Governor is active.
+_Avoid_: Grok session as a synonym for harness identity

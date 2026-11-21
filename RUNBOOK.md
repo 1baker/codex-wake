@@ -10702,3 +10702,19 @@ and capabilities clockConfigured=true. No credentials copied or model calls made
 Future explicit starts must preserve that clock config reference. Prior package
 retained, histories visible, other registry entries unchanged. Deployment receipt
 is issue0713/deployment.json; no parent628 live acceptance or sample renewal.
+
+## Turn | 2026-11-21 UTC | P254 native0.171 package qualification
+
+Native691605707c (upstream0.171 plus Wake/Grok carry) built all four maintained
+binaries; maintained six-file assembly and exact UID1017 transfer passed.
+Focused126, schema4, SDK, UI clippy and fmt passed. Native exec compatibility
+correction removes an upstream-deleted request arm. Paired Codex V8 inputs were
+verified against frozen pins after the default Deno binding URL returned404.
+UID1017 private owner refusal/normal-exit recovery passed0providercalls. Existing
+supported stopped-update recipe passed55.892s: two histories/three clients,
+paused goals/budgets, rollback0.169, reupgrade0.171, injected startupfail/repair.
+Initial cooperative recipe safely refused live changedpackage; that pre-existing
+guard is retained and no seamless live-update claim is made. Scripted localhost
+provider only; no live Grok replay, credential/historycopies or hosted CI.
+Source/package custody: patches/codex/0254-native-0171.json. Integration and
+selected-account activation remain pending; original dirty root preserved.

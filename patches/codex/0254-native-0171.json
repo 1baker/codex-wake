@@ -1,0 +1,43 @@
+{
+  "state": "package_qualified_selected_account_pending",
+  "source": "691605707cb31e41d1082230d70e3449ee9cf526",
+  "tree": "6e5f3682bb1c2c0d4f7c7397ec94b987527ff1df",
+  "upstream_commit": "ccf9be8cc458bd6b8336fe84d68d8893f2691a5e",
+  "upstream_tag": "rust-v0.171.0",
+  "upstream_tag_object": "295eca93394bb83a6ec8e0841033f3997f97fcbd",
+  "carry_parent": "d907a42df3c8f097d4bd2d78aa5c27c33a9112c1",
+  "patch": "patches/codex/0254-native-0171.patch",
+  "patch_sha256": "a67e44510b08242b39199e8c4ddebd5b1507e48c8007d4b9f8d43497e0e122c3",
+  "bundle": "runtime/native-0171-p254/native-0171-source.bundle",
+  "bundle_sha256": "733bafa1582b1b8572126eaed6ee291495d9856a24260af61567bc01ecf03aff",
+  "bundle_prerequisites": [
+    "d907a42df3c8f097d4bd2d78aa5c27c33a9112c1",
+    "ccf9be8cc458bd6b8336fe84d68d8893f2691a5e"
+  ],
+  "patch_reconstructed_tree": "6e5f3682bb1c2c0d4f7c7397ec94b987527ff1df",
+  "validation": {
+    "focused": "126 passed;15018 skipped; no retries; original4MiB stack guard retained",
+    "schema": "four checks passed after maintained stable/experimental export generation",
+    "sdk_contract": "passed",
+    "clippy": "prescribed codex-tui autofix passed; two equivalent idioms inspected",
+    "format": "just fmt passed",
+    "environment": "local WSL/Linux GNU, Rust1.99.1, dev-small; no hostedCI; exact package/runtime qualification pending",
+    "exec_compatibility": "full binary build exposed obsolete exec request variant; nine-line removal matches upstream; full build rerunning",
+    "full_binary_build": "four maintained first-party binaries passed; dev-small host GNU; complete six-file maintained assembly passed",
+    "private_owner": "UID1017 actual private owner refusal/actionable recovery/normal exit/new owner passed; zero provider requests",
+    "upgrade": "UID1017 supported stopped rollback to0.169 and reupgrade0.171 passed; two conversations/three actual clients; history prefixes, paused goals and budgets preserved; injected failed start repaired; intentional terminal interruption",
+    "coverage": "selected account history qualified; default/shared production stores unchanged and not migration-qualified; no seamless live-update claim; shared kernel/resources remain"
+  },
+  "package": {
+    "source_commit": "691605707cb31e41d1082230d70e3449ee9cf526",
+    "files": {
+      "codex-package.json": "22041d3a92393043a98973dc70533e1c803cdfabc007fc2f085d238f3a333f68",
+      "codex-path/rg": "e62198eb19b136b88c330af83647b5a962cb99b6b1f066758568f12de1974849",
+      "codex-resources/bwrap": "db243740fc2b5b464f223f8422f56bb114d0f15672ef1e15f506e77ee6da5339",
+      "bin/codex-code-mode-host": "1c0d42a946b676416fdf5c86300ca3e8dbed839ab8da3ef7ea5f01199e593a44",
+      "bin/codex-exec-server": "8128272cb9f599f9fd3ac02655a08cd42bd42f4716d738db96a00a200c22cb9c",
+      "bin/codex": "457abc88a0964de71ee471960a21a6ab08e455fb0d5eb92f63261407ed92c7c5"
+    },
+    "version": "0.171.0-wake254.1+691605707c"
+  }
+}
