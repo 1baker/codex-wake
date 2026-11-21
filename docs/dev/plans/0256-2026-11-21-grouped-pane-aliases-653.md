@@ -1,12 +1,12 @@
 # LOCAL-P256-CONTINUATION | Grouped physical-pane aliases (PR653 port)
 
-State: OPEN
+State: CLOSED
 Owner: root/ecochran76; implementation worker merge_ui
 Work item: PR653; LOCAL-P256-CONTINUATION
 Branch: fix/grouped-pane-aliases-653
 Target: origin/main
 Base: 7b9e9d961dac02fb3568595bc053b8e72758fe59
-Custody: ACTIVE_WORKTREE
+Custody: INTEGRATED; PR728; source 4b4f51ce75f00dd8b51e61a18447f11d9a46883a
 
 ## Scope and acceptance
 
@@ -37,3 +37,10 @@ this packet means locally validated, committed and remotely verified source;
 main integration, original PR653 closure and installation are separate root gates.
 
 Evidence: [port receipt](../evidence/issue0653/port.json).
+
+## Primary acceptance
+
+PR728 merged ae58668788d39e34bbf13228699216af4be9878a; superseded PR653
+closed without merging its obsolete base. One fixed-base Standards/Spec review
+accepted zero findings. This closes current-main source acceptance only; the
+synthetic-client tmux smoke does not prove real-client or fleet deployment.

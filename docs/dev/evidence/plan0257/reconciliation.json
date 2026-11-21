@@ -1,0 +1,46 @@
+{
+  "state": "ACCEPTED_SOURCE_AND_CUSTODY",
+  "source_base": "5839038a10c808a973b49bb301908e0275afe5bd",
+  "merged": [
+    {
+      "pr": 728,
+      "merge": "ae58668788d39e34bbf13228699216af4be9878a",
+      "replaces_closed_unmerged": 653,
+      "tests": "141 PASS each Python3.11/3.12; actual tmux synthetic-client grouping smoke PASS"
+    },
+    {
+      "pr": 699,
+      "merge": "5839038a10c808a973b49bb301908e0275afe5bd",
+      "tests": "48 selected PASS each Python3.11/3.12;4 baseline fixture defects excluded; UID1017 exact-wheel CLI/MCP registration PASS, zero dispatch"
+    }
+  ],
+  "review": "One Standards/Spec review per fix; zero accepted findings",
+  "custody": "Exact remote refs verified before normal removal; original branches preserved. Most archives contain public-equivalent source; goal-notices345 includes one explicitly reviewed ordinary Python source blob. No unreviewed historical payload published.",
+  "remaining_gates": [
+    "PR454 current compatibility port; retained public source, six merge-tree conflicts",
+    "P253/#716 dev44 working deployment qualification; working Python remainsdev43",
+    "Issue420 original dirty main synchronization",
+    "18 old upgrade-worker histories and24 residual Wake source histories have unpublished content/custody holds",
+    "8 clean native original-history holds plus7 dirty native checkouts and primary retained"
+  ],
+  "validation": {
+    "git_diff_check": "PASS",
+    "policy_wiring": "PASS",
+    "native_expiry_provenance": "PASS unchanged",
+    "active_planning_audit": "PASS,20 accepted legacy baseline findings",
+    "hosted_ci": "Skipped under cost policy",
+    "broad_tests": "Not rerun for documentation-only closeout; source checks above reused"
+  },
+  "limits": "No working deployment, production monitor/service/tab effects, model calls, credential/history copies, forced removal or branch deletion. Existing whole-catalog debt not claimed repaired.",
+  "worktree_census": {
+    "continuation_start": {
+      "wake": 109,
+      "native": 20
+    },
+    "verified_before_final_documentation_checkout_retirement": {
+      "wake": 52,
+      "native": 16
+    },
+    "final_documentation_checkout_cleanup": "One task-owned documentation checkout to retire after exact merged custody; final private closeout records actual readback."
+  }
+}
