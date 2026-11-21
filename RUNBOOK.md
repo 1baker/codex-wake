@@ -10756,3 +10756,20 @@ Planning audit passes with20 accepted legacybaseline findings; full old catalog
 has499 inherited findings, explicitly retained as unresolved metadata debt.
 No sourcefeature/provider/build/deployment/service effects. Public evidence and
 remaining limits: docs/dev/evidence/plan0255/reconciliation.md/.json.
+
+## PR699 current-main reconciliation | 2026-11-21
+
+Merged canonical7b9e9d96 into the retained explicit-policy branch without rewriting
+its history. The original positive public regression fails on modern-main product
+code with invalid_argument before the narrow native-only selector fix. Current
+busy policy, detached-directory recovery, bounded transport and recurring modes
+remain intact. Focused selection48/48 passes on Python3.11 and3.12; four excluded
+fixture defects reproduce unchanged on immutable7b9e9d96 (raw3FAIL/1ERROR).
+UID1017 exact-wheel public CLI → actual stdio MCP acceptance passes legacy
+ID/target/fingerprint/routes preservation, successor and five rejection checks.
+Wheel SHA2564cdb753370ce656ebbc7d2711b2461b298cfebaf3a08f8de98203a38d6f04c08;
+all353 installed Python files equal its contents. Owned native server exits0;
+records remain pending_time with zero attempts. Evidence is private under
+reconcile-status-20261121/pr699 and p699-reg-r5. No monitor, dispatch, provider,
+production renewal, service or working installation effects. See the native wake
+explicit-policy renewal note for baseline exclusions and remaining scope.

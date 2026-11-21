@@ -564,3 +564,8 @@ binding, grants authority, or authorizes submission replay.
 A conversation running in the Codex Wake coding harness, independently of its
 inference provider and whether a Governor is active.
 _Avoid_: Grok session as a synonym for harness identity
+
+**Explicit policy registration**:
+A native wake registration whose lifetime, recipient startup and ordered delivery
+routes are chosen independently of a session lifecycle preset. A retry retains
+its original policy and permission boundaries.

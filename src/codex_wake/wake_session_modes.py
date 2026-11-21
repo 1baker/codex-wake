@@ -6,6 +6,7 @@ from .process import boot_id_value, process_identity
 SESSION_OBSERVATION_TIMEOUT = 15
 
 MODES = ("session_only", "reopen_live", "background")
+REGISTRATION_MODES = (*MODES, "explicit_policy")
 STARTUP = {"session_only": "active_tab", "reopen_live": "create_load_run", "background": "background_saved"}
 
 
@@ -13,6 +14,19 @@ def bind_mode(args, root, target):
     mode = getattr(args, "session_mode", None)
     if mode is None:
         return  # Legacy CLI policy contract; new agent registrations require mode.
+    if mode == "explicit_policy":
+        # Reuse independent policy without migrating a frozen target lifecycle.
+        if any(getattr(args, field, None) is None for field in
+               ("wake_lifetime", "recipient_startup", "wake_routes")):
+            raise WakeError("explicit_wake_policy_required")
+        from .records import all_records
+        key = getattr(args, "idempotency_key", None)
+        for found in all_records(root, include_archive=True) if key else ():
+            if (found.record.get("scheduling_intent", {}).get("idempotency_key") == key
+                    and found.record.get("target", {}).get("session_mode") is not None):
+                raise WakeError("idempotency_conflict: session mode differs")
+        args.session_mode = None
+        return
     if mode not in MODES:
         raise WakeError("explicit_session_mode_required")
     expected = STARTUP[mode]

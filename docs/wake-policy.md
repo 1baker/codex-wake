@@ -157,3 +157,13 @@ An explicit caller entry takes precedence over the optional verified-self defaul
 that default cannot bypass a caller-specific restriction. Fresh connections use
 the configured host file; editing config does not prove resident MCP connections
 have reloaded. Existing supported refresh/idle boundaries still apply.
+
+## Native compatibility registration
+
+New native callers still select a session mode. Where an existing independent
+policy is required, select `session_mode: explicit_policy` and supply all of
+`wake_lifetime`, `recipient_startup`, and `routes` explicitly. This preserves the
+legacy target and fingerprint on an identical-key retry; it does not migrate a
+wake already bound to another mode. Lifetime, owners, exact-self identity, ordered
+route permissions and idempotency remain enforced. This native-only selector does
+not change recurring-schedule mode choices or grant deployment/dispatch authority.

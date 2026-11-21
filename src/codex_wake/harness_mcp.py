@@ -85,7 +85,7 @@ def tool_specs():
             dict(caller_thread_id=CALLER, trigger={'type': 'string', 'minLength': 1, 'maxLength': 1024},
                  prompt={'type': 'string', 'minLength': 1, 'maxLength': 32768},
                  busy_policy={'enum': ['wait', 'queue'], 'default': 'wait'},
-                 idempotency_key=TEXT, ttl=dict(TEXT, description='Delivery window after due for time wakes; from registration for file wakes.'), **POLICY),
+                 idempotency_key=TEXT, ttl=dict(TEXT, description='Delivery window after due for time wakes; from registration for file wakes.'), **{**POLICY, 'session_mode': {'enum': ['session_only', 'reopen_live', 'background', 'explicit_policy'], 'description': 'explicit_policy requires explicit wake_lifetime, recipient_startup and routes; preserves existing independent policy contracts.'}}),
             ['caller_thread_id', 'trigger', 'prompt', 'idempotency_key', 'session_mode'], False)
     for verb in ('register', 'list', 'show', 'revise', 'cancel'):
         properties = dict(caller_thread_id=CALLER)
@@ -224,7 +224,7 @@ def call(runner, group, verb, arguments, native_context):
         from .wake_policy import reconcile_owner_completion
         return reconcile_owner_completion(root, dict(kind=kind, id=owner), arguments['event_id'])
     if group == 'harness-native':
-        if arguments.get('session_mode') not in ('session_only', 'reopen_live', 'background'):
+        if arguments.get('session_mode') not in ('session_only', 'reopen_live', 'background', 'explicit_policy'):
             raise WakeError('explicit_session_mode_required')
         if any(isinstance(arguments.get(key), str) and arguments[key].startswith('-') for key in ('trigger', 'owner_id', 'idempotency_key', 'ttl')):
             raise WakeError('invalid_option_prefixed_argument')
