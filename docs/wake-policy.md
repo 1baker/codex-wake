@@ -167,3 +167,38 @@ legacy target and fingerprint on an identical-key retry; it does not migrate a
 wake already bound to another mode. Lifetime, owners, exact-self identity, ordered
 route permissions and idempotency remain enforced. This native-only selector does
 not change recurring-schedule mode choices or grant deployment/dispatch authority.
+
+## Until-event native file observation
+
+`native file --observation-policy until_event_or_cancel` (MCP/API
+`wake_native_file` field `observation_policy`) explicitly retains the original
+file observation until a qualified match or cancellation. The default remains
+`registration_window`, preserving existing finite-file behavior and retry
+fingerprints. This is not a long TTL or a recurring maintenance timer.
+
+For the new policy, `--ttl` bounds delivery **after the first qualified observed
+match**, not time spent waiting for the event. Before match, `due_at` and
+`expires_at` are null and `observation_state` is `waiting`. A file already present
+at registration can match immediately. First qualified observation persists one
+`event_match` clock anchor under the original record lock; restart, re-registration
+with the same key or later removal of a one-shot file cannot move that anchor or
+open another window. Without a qualified match clock, observation remains held
+and the durable source condition can be checked again; no time is invented.
+After match, `observation_state` is `matched`, the bounded expiry is projected
+from that anchor, and an elapsed window is not reported armed. Delivery misses
+remain technical outcomes, not owner decisions or new execution authority.
+
+`persistent` creator lifetime remains a different option. Current cancellation,
+pause, owner-completion policy, explicit `stop_at`, exact native recipient/harness,
+permission rechecks and uncertain-submission reconciliation still apply. A stop
+or denied execution is never bypassed merely because observation is indefinite.
+The original uncertainty cannot be replayed after a window ends.
+
+The opt-in uses native core schema9 (policy envelope8 with intent version9),
+while finite native records retain core6. Older readers hold the new core rather
+than silently impose the old registration expiry. `schema --json` and native
+receipts advertise `native_file_until_event_v1`; opted-in receipts also require
+that capability from the actual monitor. Source support alone is not an armed
+installation: inspect `requires_worker_capabilities`, `armed`, monitor and
+native harness readiness separately. No source test establishes installed
+owner-event resumption.

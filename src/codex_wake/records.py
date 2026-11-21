@@ -76,7 +76,7 @@ def classify_record(record: object) -> str:
         from .wake_policy import core_record
         try:
             version = record.get('intent_schema_version')
-            if type(version) is not int or version not in (6, 7):
+            if type(version) is not int or version not in (6, 7, 9):
                 return 'hold'
             return classify_record(core_record(record, version))
         except (WakeError, TypeError, KeyError):
@@ -90,7 +90,7 @@ def classify_record(record: object) -> str:
     if isinstance(record, dict) and record.get('schema_version') == 7:
         from .runtime_wakes import valid_record
         return 'runtime_intent_v7' if valid_record(record) else 'hold'
-    if isinstance(record, dict) and record.get('schema_version') == 6:
+    if isinstance(record, dict) and record.get('schema_version') in (6, 9):
         from .native_intents import valid_record
         return 'native_intent_v6' if valid_record(record) else 'hold'
     if isinstance(record, dict) and record.get('schema_version') == NATIVE_NETWORK_SCHEMA_VERSION:
@@ -387,7 +387,7 @@ def append_event(
     **extra: Any,
 ) -> dict[str, Any]:
     updated = dict(record)
-    event = dict(at=None, type=event_type, message=message) if record.get("schema_version") in (6, 7, 8) and now is None else make_event(event_type, message, now)
+    event = dict(at=None, type=event_type, message=message) if record.get("schema_version") in (6, 7, 8, 9) and now is None else make_event(event_type, message, now)
     event.update(extra)
     events = list(updated.get("events") or [])
     events.append(event)
@@ -427,7 +427,9 @@ def build_record(
 def schema_summary() -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
-        "read_versions": [1, 2, 3, 4, 5, 6, 7, 8],
+        "read_versions": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        "native_file_until_event_write_version": 9,
+        "capabilities": ["native_file_until_event_v1"],
         "policy_intent_write_version": 8,
         "runtime_intent_write_version": 8,
         "runtime_intent_base_version": 7,
@@ -499,13 +501,13 @@ def write_record(root: Path, record: dict[str, Any]) -> Path:
     # Schema6/7 keep one atomic authority file across all active/terminal states.
     # Status is in the record, not inferred from its directory. This prevents a
     # crash between status-directory writes from reviving a pre-submission copy.
-    target_dir = root / ("pending" if record.get('schema_version') in (6, 7, 8) else status)
+    target_dir = root / ("pending" if record.get('schema_version') in (6, 7, 8, 9) else status)
     target_dir.mkdir(parents=True, exist_ok=True)
     final_path = target_dir / f"{wake_id}.json"
     temp_path = final_path.with_suffix(".json.tmp")
     temp_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     temp_path.replace(final_path)
-    if record.get('schema_version') in (6, 7, 8):
+    if record.get('schema_version') in (6, 7, 8, 9):
         with final_path.open('rb') as stream:
             os.fsync(stream.fileno())
         for directory in (target_dir, root, root.parent):
@@ -580,7 +582,7 @@ def status_summary(root: Path) -> dict[str, Any]:
         record = item.record
         status = record.get("status")
         recovery = record.get('time_recovery')
-        if record.get('schema_version') in (6, 7, 8) and isinstance(recovery, dict):
+        if record.get('schema_version') in (6, 7, 8, 9) and isinstance(recovery, dict):
             state = recovery.get('state')
             if isinstance(state, str):
                 time_recovery_counts[state] = time_recovery_counts.get(state, 0) + 1
@@ -706,7 +708,7 @@ def move_record(
     if status not in VALID_STATUSES:
         raise WakeError(f"invalid wake status: {status}")
     record = dict(found.record)
-    untimed = record.get('schema_version') in (6, 7, 8) and now is None
+    untimed = record.get('schema_version') in (6, 7, 8, 9) and now is None
     current = None if untimed else _metadata_now(now)
     if current is None and found.record.get('schema_version') == 2:
         # Schema2 still requires a timestamp. Do not publish an unreadable

@@ -85,8 +85,10 @@ def tool_specs():
             dict(caller_thread_id=CALLER, trigger={'type': 'string', 'minLength': 1, 'maxLength': 1024},
                  prompt={'type': 'string', 'minLength': 1, 'maxLength': 32768},
                  busy_policy={'enum': ['wait', 'queue'], 'default': 'wait'},
-                 idempotency_key=TEXT, ttl=dict(TEXT, description='Delivery window after due for time wakes; from registration for file wakes.'), **{**POLICY, 'session_mode': {'enum': ['session_only', 'reopen_live', 'background', 'explicit_policy'], 'description': 'explicit_policy requires explicit wake_lifetime, recipient_startup and routes; preserves existing independent policy contracts.'}}),
+                 idempotency_key=TEXT, ttl=dict(TEXT, description='Bounded delivery window after due for time wakes; after registration or first qualified match according to file observation_policy.'), **{**POLICY, 'session_mode': {'enum': ['session_only', 'reopen_live', 'background', 'explicit_policy'], 'description': 'explicit_policy requires explicit wake_lifetime, recipient_startup and routes; preserves existing independent policy contracts.'}}),
             ['caller_thread_id', 'trigger', 'prompt', 'idempotency_key', 'session_mode'], False)
+        if verb == 'file':
+            result['wake_native_file'][3]['observation_policy'] = {'enum': ['registration_window', 'until_event_or_cancel'], 'description': 'Until-event observation has no pre-match expiry; TTL bounds delivery after first qualified match. Requires native_file_until_event_v1 reader capability.'}
     for verb in ('register', 'list', 'show', 'revise', 'cancel'):
         properties = dict(caller_thread_id=CALLER)
         required = ['caller_thread_id']
@@ -232,6 +234,10 @@ def call(runner, group, verb, arguments, native_context):
         argv = ['--wake-root', str(root), 'native', verb, '--endpoint', runner.app_server,
                 '--json', '--idempotency-key', arguments['idempotency_key'], '--ttl', arguments.get('ttl', '24h'),
                 '--busy-policy', arguments.get('busy_policy', 'wait')]
+        if 'observation_policy' in arguments:
+            if verb != 'file':
+                raise WakeError('invalid_native_observation_policy')
+            argv += ['--observation-policy', arguments['observation_policy']]
         for name in POLICY:
             if name=='routes':
                 for route in arguments.get('routes',[]):argv+=['--wake-route',route]

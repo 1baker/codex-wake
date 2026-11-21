@@ -571,3 +571,9 @@ _Avoid_: Grok session as a synonym for harness identity
 A native wake registration whose lifetime, recipient startup and ordered delivery
 routes are chosen independently of a session lifecycle preset. A retry retains
 its original policy and permission boundaries.
+
+**Until-event observation**:
+An explicit native-file policy that waits for the original condition or
+cancellation without a registration-age expiry. The first qualified observed
+match anchors a bounded delivery window; waiting does not grant execution
+authority or extend creator lifetime.

@@ -33,7 +33,9 @@ def add_native_parser(subparsers):
         command.add_argument('--session-mode', choices=REGISTRATION_MODES, help='session lifecycle mode, or explicit_policy with explicit lifetime/startup/routes')
         command.add_argument('--codex-path', default='codex')
         command.add_argument('--endpoint', default='unix://')
-        command.add_argument('--ttl', default='24h', help='expiry after time due, or after file registration')
+        command.add_argument('--ttl', default='24h', help='bounded delivery window after due/match; default file window starts at registration')
+        if verb == 'file':
+            command.add_argument('--observation-policy', choices=['registration_window', 'until_event_or_cancel'], default='registration_window', help='File observation lifetime; until_event_or_cancel starts the bounded TTL on first qualified match')
         command.add_argument('--idempotency-key', help='stable original scheduling intent; reuse only for that request')
         command.add_argument('--time-tolerance', help='maximum admitted clock interval, at most 5m')
         command.add_argument('--stop-at', help='absolute UTC stop; requires qualified UTC before any dispatch')
@@ -154,7 +156,7 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
     if existing.get('state') == 'uncertain':
         return reconcile_native(root, found, now, runtime_adapter=runtime_adapter)
     from .network_wakes import precise_deadline
-    intent = record.get('schema_version') in (6, 8)
+    intent = record.get('schema_version') in (6, 8, 9)
     if intent:
         from .native_intents import dispatch_gate
         verdict = dispatch_gate(record, clock_provider())

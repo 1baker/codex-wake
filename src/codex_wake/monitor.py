@@ -85,7 +85,7 @@ def write_monitor_health(
         "reader_generation": generation,
         "reader_schema_versions": schema_summary()['read_versions'],
         "recurring_monitor_generation": recurring_generation,
-        "reader_capabilities": ["signal_records_v2", "emergency_control_v1", "recurring_schedules_v1", "wake_session_modes_v1"],
+        "reader_capabilities": ["signal_records_v2", "emergency_control_v1", "recurring_schedules_v1", "wake_session_modes_v1", "native_file_until_event_v1"],
         "checked_at": format_utc(current) if current is not None else None,
         "poll_result": poll_result or {},
     }
