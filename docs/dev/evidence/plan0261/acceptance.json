@@ -1,0 +1,65 @@
+{
+  "work_item": "LOCAL-P261-WORKTREE-TAMING",
+  "source_base": "7e9fe130b720d0785c6087d6f67749b558ff14d0",
+  "purpose": "Remove obsolete linked checkouts without losing private source or dirty work",
+  "initial_registered": {
+    "wake": 12,
+    "native": 16
+  },
+  "retirement_accounting": {
+    "clean_wake": 3,
+    "dirty_wake": 8,
+    "clean_native": 8,
+    "dirty_native": 7,
+    "total_obsolete_linked": 26,
+    "own_documentation_checkout": "reused bootstrap checkout, normal retirement after merged custody"
+  },
+  "final_primary_only_target": {
+    "wake": 1,
+    "native": 1
+  },
+  "dirty_preservation": {
+    "checkpoints": 15,
+    "changed_source_files": 56,
+    "primary_independent_verification": "Every captured changed-file SHA256 equals bytes read from checkpoint in intended private archive; original source branch tips unchanged",
+    "status": "WIP/unqualified archival, no old feature integration or qualification claim"
+  },
+  "custody": {
+    "kind": "independent owner-only same-host bare Git archives",
+    "alternate_object_stores": false,
+    "verification": [
+      "matching local/private-remote archive refs",
+      "standalone fsck --full --strict",
+      "independent fetch/readback",
+      "original branch preservation",
+      "per-file dirty-byte readback"
+    ],
+    "limits": "Same-host recovery, not off-host backup; historical private native source was not newly made public"
+  },
+  "validation": [
+    "fresh exact clean-checkpoint/HEAD gates",
+    "inspected process/exe/FD, service/launcher/installed-prefix dependency census",
+    "ignored output classification and unique-evidence preservation",
+    "primary dirty status unchanged",
+    "selected documentation checks and JSON parsing"
+  ],
+  "process_scope_limit": "Protected unreadable environments/argv are disclosed in private receipts; no universal process absence claim",
+  "retained_primary_needs": [
+    "Wake primary exact original dirty state; #420 synchronization",
+    "native primary main anchor"
+  ],
+  "separate_programs": [
+    "PR454 current-main feature integration",
+    "#716 working deployment"
+  ],
+  "effects_excluded": [
+    "OpenAI or other public private-source push",
+    "discard/reset/stash/forced removal/branch deletion",
+    "provider/model replay",
+    "runtime/service changes",
+    "build/test campaigns",
+    "credential or private history copies",
+    "paid hostedCI"
+  ],
+  "recovery": "Single user-scoped recovery-index.json/README and per-checkout receipts; no machine-specific paths or raw source/history copied into this public record"
+}
