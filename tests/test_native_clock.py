@@ -99,6 +99,19 @@ class NativeClockTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 from_response(replacement, counter=10000010, frequency=10000000)
 
+    def test_contract_two_unbounded_holds_without_a_contract_error(self):
+        value = dict(response(), contract_version='2.0', status='unbounded',
+                     bound='unbounded', authentication='NTS-required',
+                     counter_policy=None, estimate=None, operators=[])
+        self.assertEqual(
+            from_response(value, counter=10000000, frequency=10000000, measurement_only=True),
+            {'utc': None, 'counter': None, 'reason': 'stable_time_utc_unqualified',
+             'basis': 'service_measurement'},
+        )
+        with self.assertRaises(ValueError):
+            from_response(dict(value, estimate=response()['estimate']),
+                          counter=10000000, frequency=10000000, measurement_only=True)
+
     def test_authenticated_unavailable_response_can_only_supply_elapsed_evidence(self):
         value = response()
         value.update(status='unavailable', authentication='NTS-required', estimate=None,

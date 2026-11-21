@@ -70,6 +70,13 @@ def from_response(response, *, counter, frequency, measurement_only=False):
     epoch = response["epoch"]
     if str(UUID(epoch)) != epoch:
         raise ValueError("invalid_clock_epoch")
+    if version_two and response.get('status') == 'unbounded':
+        if (response.get('authentication') != 'NTS-required'
+                or response.get('bound') != 'unbounded' or response.get('estimate') is not None
+                or response.get('operators') != []):
+            raise ValueError('invalid_unbounded_contract')
+        basis = {'basis': 'service_measurement'} if measurement_only else {}
+        return {'utc': None, 'counter': None, 'reason': 'stable_time_utc_unqualified', **basis}
     policy = response["counter_policy"]
     rate, max_age = policy["rate_ppm"], policy["maximum_age_ns"]
     measurement = response["measurement"]

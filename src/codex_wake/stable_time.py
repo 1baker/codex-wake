@@ -71,7 +71,18 @@ def service_time_result(config_path, *, measurement_only=False):
     Python consumers now use the service measurement; final Native admission
     owns its separate original-expiry check and handoff accounting.
     """
+    decision, observation, _ = _service_time_result(config_path, degraded=False)
+    return decision, observation
+
+
+def service_time_inspection(config_path):
+    """Read opt-in evidence for inspection without granting deadline authority."""
+    return _service_time_result(config_path, degraded=True)
+
+
+def _service_time_result(config_path, *, degraded):
     observation = None
+    fallback = None
     failure = 'stable_time_client_configuration_invalid'
     try:
         config = json.loads(Path(config_path).read_text())
@@ -91,7 +102,8 @@ def service_time_result(config_path, *, measurement_only=False):
         context.load_verify_locations(cafile=config['ca_file'])
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(),
                                             urllib.request.HTTPSHandler(context=context))
-        request = urllib.request.Request(origin.rstrip('/')+'/v1/time',
+        route = '/v1/fallback' if degraded else '/v1/time'
+        request = urllib.request.Request(origin.rstrip('/') + route,
                                          headers={'Authorization': 'Bearer '+token})
         failure = 'stable_time_client_transport_failed'
         with opener.open(request, timeout=3) as stream:
@@ -102,13 +114,23 @@ def service_time_result(config_path, *, measurement_only=False):
         response = json.loads(body)
         if not isinstance(response, dict):
             raise ValueError('invalid_stable_time_response')
+        if degraded:
+            fallback = response['fallback']
+            if fallback is not None and (
+                    not isinstance(fallback, dict)
+                    or fallback.get('assurance') not in ('single_source', 'windows_only')
+                    or not isinstance(fallback.get('utc'), str)):
+                raise ValueError('invalid_stable_time_fallback')
+            response = response['corroborated']
+            if not isinstance(response, dict):
+                raise ValueError('invalid_stable_time_response')
         observation = {key: response[key] for key in (
             'contract_version', 'status', 'bound', 'best_effort', 'estimate',
             'qualification', 'reason', 'exclusions', 'acquisition_age_ns',
             'counter_policy', 'epoch', 'evidence_generation', 'measurement',
             'operators', 'authentication', 'time_scale') if key in response}
         if response.get('status') in ('unavailable', 'unbounded'):
-            return TimeDecision('uncertain', reason='stable_time_unavailable'), observation
+            return TimeDecision('uncertain', reason='stable_time_unavailable'), observation, fallback
         measurement = response['measurement']
         if any(not isinstance(measurement.get(key), str) or not measurement[key].isascii()
                or not measurement[key].isdigit() or len(measurement[key]) > 20
@@ -116,10 +138,10 @@ def service_time_result(config_path, *, measurement_only=False):
             raise ValueError('invalid_service_measurement')
         at_measurement = decision_from_response(response,
             counter=int(measurement['counter']), frequency=int(measurement['frequency_hz']))
-        return at_measurement, observation
+        return at_measurement, observation, fallback
     except (OSError, ValueError, KeyError, TypeError, AttributeError, OverflowError, subprocess.SubprocessError):
         # Never include transport errors containing credentials or substitute guest time.
-        return TimeDecision('uncertain', reason=failure), observation
+        return TimeDecision('uncertain', reason=failure), observation, None
 
 
 def service_time_decision(config_path):

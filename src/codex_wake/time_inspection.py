@@ -172,6 +172,8 @@ def add_time_parser(subparsers):
     parser = subparsers.add_parser('time', help='inspect external time without changing clocks')
     commands = parser.add_subparsers(dest='time_command', required=True)
     inspect = commands.add_parser('inspect')
+    inspect.add_argument('--allow-degraded', action='store_true',
+                         help='show lower-assurance StableTime evidence for inspection only')
     inspect.add_argument('--offline', action='store_true', help='show admission policy without network access')
 
 
@@ -184,9 +186,15 @@ def stable_time_config():
 
 def time_command(args):
     config = stable_time_config()
+    fallback = None
     if config:
-        from .stable_time import service_time_result
-        decision, observation = (TimeDecision('uncertain', reason='acquisition_not_requested'), None) if args.offline else service_time_result(config, measurement_only=True)
+        from .stable_time import service_time_inspection, service_time_result
+        if args.offline:
+            decision, observation = TimeDecision('uncertain', reason='acquisition_not_requested'), None
+        elif args.allow_degraded:
+            decision, observation, fallback = service_time_inspection(config)
+        else:
+            decision, observation = service_time_result(config, measurement_only=True)
         measurement_decision = decision
         report = dict(schema=1, provider='stable-time', authentication='NTS-required',
                       decision=asdict(decision), measurement_decision=asdict(measurement_decision),
@@ -198,6 +206,8 @@ def time_command(args):
         if not args.offline:
             report.update(provider='stable-time',
                 decision=asdict(TimeDecision('uncertain', reason='stable_time_configuration_required')))
+    if args.allow_degraded:
+        report['fallback'] = fallback
     print(json.dumps(report, sort_keys=True))
     return 0
 

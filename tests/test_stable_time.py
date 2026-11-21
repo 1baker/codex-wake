@@ -62,6 +62,43 @@ class StableTimeTests(unittest.TestCase):
             self.assertEqual(invalid.status, 'uncertain')
             self.assertEqual(invalid.reason, 'stable_time_response_invalid')
 
+    def test_degraded_inspection_uses_opt_in_route_without_granting_deadline_authority(self):
+        import contextlib, io, json, tempfile
+        from pathlib import Path
+        from unittest.mock import MagicMock, patch
+        from codex_wake import cli
+        from codex_wake.time_inspection import network_time_decision
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root/'token').write_text('a'*64)
+            config = root/'client.json'
+            config.write_text(json.dumps(dict(url='https://localhost:47770',
+                token_file=str(root/'token'), ca_file=str(root/'ca'))))
+            opener = MagicMock()
+            unavailable = {'status': 'unbounded', 'bound': 'unbounded'}
+            for fallback in (
+                    {'assurance': 'single_source', 'utc': '2026-10-11T00:00:00Z', 'operator': 'netnod'},
+                    {'assurance': 'windows_only', 'utc': '2026-10-11T00:00:00Z', 'uncertainty': 'unknown'}):
+                output = io.StringIO()
+                opener.reset_mock()
+                opener.open.return_value.__enter__.return_value.read.side_effect = [
+                    json.dumps({'corroborated': unavailable, 'fallback': fallback}).encode(),
+                    json.dumps(unavailable).encode(),
+                ]
+                with patch.dict('os.environ', {'CODEX_WAKE_STABLE_TIME_CONFIG': str(config)}), \
+                        patch('codex_wake.stable_time.ssl.SSLContext'), \
+                        patch('codex_wake.stable_time.urllib.request.build_opener', return_value=opener), \
+                        contextlib.redirect_stdout(output):
+                    self.assertEqual(cli.main(['time', 'inspect', '--allow-degraded']), 0)
+                    self.assertEqual(network_time_decision().status, 'uncertain')
+                self.assertEqual([call.args[0].full_url for call in opener.open.call_args_list],
+                                 ['https://localhost:47770/v1/fallback', 'https://localhost:47770/v1/time'])
+                report = json.loads(output.getvalue())
+                self.assertEqual(report['fallback'], fallback)
+                self.assertEqual(report['decision']['status'], 'uncertain')
+                self.assertFalse(report['production_ready'])
+
     def test_native_counter_handoff_widens_upper_bound_without_guest_time(self):
         response = dict(contract_version='1.0', status='qualified_live', epoch='a',
                         evidence_generation=1, authentication='NTS-verified',
