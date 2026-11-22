@@ -24,6 +24,26 @@ def fingerprint(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
 
+def resume_profile(config, name):
+    try:
+        p = config['profiles'][name]
+        required = {'cwd', 'app_server', 'codex_path', 'tmux_session', 'timeout'}
+        if (config['version'] != 1 or not required <= set(p)
+                or set(p) - required - {'tmux_socket', 'codex_home', 'resources', 'strict_execution'}):
+            raise ValueError
+        for key in required - {'timeout'} | (set(p) & {'tmux_socket', 'codex_home'}):
+            if not isinstance(p[key], str) or not p[key] or any(ord(c)<32 for c in p[key]):raise ValueError
+        if (type(p['timeout']) not in (int,float) or not math.isfinite(p['timeout'])
+                or not 0 < p['timeout'] <= 30 or not p['app_server'].startswith('unix:///')
+                or not Path(p['codex_path']).is_absolute()
+                or Path(p['cwd']).resolve() != Path(p['cwd']) or not Path(p['cwd']).is_dir()):raise ValueError
+        if 'strict_execution' in p:
+            # Restarting a contained executor is a separate recovery operation.
+            raise ResumeError('resume_strict_executor_recovery_unqualified')
+        return p
+    except (KeyError, TypeError, ValueError):
+        raise ResumeError('resume_profile_unavailable') from None
+
 class SavedRuntime:
     """Existing owned Unix protocol plus exact terminal/process observation."""
     def __init__(self, *, binding_source=None, terminal=None, now=None):
@@ -51,7 +71,7 @@ class SavedRuntime:
             raise InventoryError('identity_unavailable', 'saved recovery requires native notLoaded evidence')
         return sample
 
-    def launch(self, record, profile, guard, name):
+    def launch(self, record, profile, guard, name, *, window_target=None):
         from .app_server import resolve_codex_cmd
         from .session_lifecycle import tmux_command
         from .sessions import explicit_terminal_absent
@@ -72,7 +92,7 @@ class SavedRuntime:
             return terminal(runtime, 'new-session', '-d', '-P', '-F', '#{window_id}\t#{pane_id}',
                             '-s', profile['tmux_session'], '-n', name, '-c', record['root'], shlex.join(argv))
         return terminal(runtime, 'new-window', '-d', '-P', '-F', '#{window_id}\t#{pane_id}',
-                        '-t', profile['tmux_session'] + ':', '-n', name, '-c', record['root'], shlex.join(argv))
+                        '-t', window_target or profile['tmux_session'] + ':', '-n', name, '-c', record['root'], shlex.join(argv))
 
 
 class AgentResume:
@@ -88,24 +108,7 @@ class AgentResume:
         _private(self.directory, True)
 
     def _profile(self, name):
-        try:
-            p = self.config['profiles'][name]
-            required = {'cwd', 'app_server', 'codex_path', 'tmux_session', 'timeout'}
-            if (self.config['version'] != 1 or not required <= set(p)
-                    or set(p) - required - {'tmux_socket', 'codex_home', 'resources', 'strict_execution'}):
-                raise ValueError
-            for key in required - {'timeout'} | (set(p) & {'tmux_socket', 'codex_home'}):
-                if not isinstance(p[key], str) or not p[key] or any(ord(c)<32 for c in p[key]):raise ValueError
-            if (type(p['timeout']) not in (int,float) or not math.isfinite(p['timeout'])
-                    or not 0 < p['timeout'] <= 30 or not p['app_server'].startswith('unix:///')
-                    or not Path(p['codex_path']).is_absolute()
-                    or Path(p['cwd']).resolve() != Path(p['cwd']) or not Path(p['cwd']).is_dir()):raise ValueError
-            if 'strict_execution' in p:
-                # Restarting a contained executor is a separate recovery operation.
-                raise ResumeError('resume_strict_executor_recovery_unqualified')
-            return p
-        except (KeyError, TypeError, ValueError):
-            raise ResumeError('resume_profile_unavailable') from None
+        return resume_profile(self.config, name)
 
     def _permission(self, principal, agent, profile, intent):
         if not isinstance(principal, Principal):raise ResumeError('resume_identity_unverified')
@@ -201,7 +204,10 @@ class AgentResume:
                 receipt.update(status='starting',reason='resume_binding_not_confirmed',effects_attempted=1)
                 _save(path,receipt)
                 try:
-                    self.runtime.launch(agent,profile,guard,'resume-'+key[:12])
+                    restoration = self.runtime.launch(agent,profile,guard,'resume-'+key[:12])
+                    if isinstance(restoration, dict):
+                        receipt['restoration'] = restoration
+                        _save(path,receipt)
                 except Exception:
                     receipt.update(status='uncertain',reason='resume_launch_outcome_unknown')
                     _save(path,receipt);return self._public(receipt)
@@ -220,4 +226,4 @@ class AgentResume:
     @staticmethod
     def _public(receipt):
         return {key:receipt[key] for key in ('status','managed_agent_id','conversation_id','record_sha256',
-                                            'effects_attempted','reason') if key in receipt}
+                                            'effects_attempted','reason','restoration') if key in receipt}

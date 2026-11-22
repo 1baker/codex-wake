@@ -7,6 +7,7 @@ identity claims are unverified display evidence, not proof of provider access.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -52,7 +53,7 @@ def _cached_claims(token):
         return {}
 
 
-def _observation(home, target, store):
+def _observation(home, target, store, *, observe_freshness=True):
     result = dict(state='unknown', signed_in=None, credential_store=store,
                   identity=None, plan=None, freshness='unknown', provider_verified=False,
                   evidence='local_file_unverified', reason='credential_store_not_observable')
@@ -121,7 +122,7 @@ def _observation(home, target, store):
                 result['plan'] = plan
         result['identity'] = identity or None
         expires = claims.get('exp')
-        if type(expires) in (int, float):
+        if observe_freshness and type(expires) in (int, float):
             try:
                 if expires <= measurements.utc_time():
                     result['freshness'] = 'stale'
@@ -131,6 +132,17 @@ def _observation(home, target, store):
     finally:
         os.close(directory)
 
+
+
+def cached_account_fingerprint(home: Path, home_generation: str) -> str | None:
+    """Return only a digest of the local ChatGPT account claim."""
+    try:
+        result = _observation(home, {'home_generation': home_generation}, 'file',
+                              observe_freshness=False)
+    except (OSError, InventoryError):
+        return None
+    account_id = (result.get('identity') or {}).get('account_id')
+    return hashlib.sha256(account_id.encode()).hexdigest() if account_id else None
 
 def execute(root, arguments, *, actor=None, authorize=None, accounts=None):
     """Observe one exact account, admitting remote callers before credential I/O."""

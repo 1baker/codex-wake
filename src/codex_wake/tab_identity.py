@@ -10,8 +10,12 @@ def stable_panes(panes):
 
 
 def stable_snapshot(snapshot):
-    return dict(snapshot, windows=[dict(window, panes=stable_panes(window['panes']))
-                                   for window in snapshot['windows']])
+    windows = []
+    for window in snapshot['windows']:
+        stable = dict(window, panes=stable_panes(window['panes']))
+        stable.pop('restoration', None)
+        windows.append(stable)
+    return dict(snapshot, windows=windows)
 
 
 def stable_tab_birth(birth):

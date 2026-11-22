@@ -7,12 +7,34 @@ uncertain-launch reconciliation remain authoritative. No fresh conversation or
 background fallback is substituted. Opening a conversation with an active
 background check waits rather than launching another client.
 
-The local operator configures `WAKE_ROOT/wake-live-restore.json` as an owned private
-file (0600), selecting existing private resume profiles and enrolled identities:
+Inspect a recurring wake with `codex-wake wakes schedules show SCHEDULE_ID`,
+controller operation `wakes.schedules.show`, or MCP `wake_schedules_show`.
+The receipt gives the saved state, monitor and armed state, restoration
+configuration, and uncertain delivery occurrences independently. A blocked
+restoration leaves exact live attachment delivery available.
 
-```json
-{"version":1,"bindings":{"EXACT_THREAD_UUID":{"profiles":"/absolute/private/resume-profiles.json","managed_agent_id":"agent_EXACT_ID","profile":"last-confirmed"}}}
+An operator can bind the saved conversation to an existing private resume
+profile and managed enrollment.
+
+```sh
+codex-wake wakes schedules bind-restoration SCHEDULE_ID \
+  --profiles /absolute/private/resume-profiles.json \
+  --managed-agent-id agent_EXACT_ID --profile PROFILE \
+  --bus-root BUS_ROOT --operator-capability CAPABILITY_FILE
 ```
+
+An admin owner with control of the exact schedule target can call
+`wakes.schedules.bind_restoration` through the controller API or its MCP
+tool `wake_wakes_schedules_bind_restoration`. The operation pins the
+native conversation, Codex harness, working directory, and the profile's
+account home and filesystem identity in `WAKE_ROOT/wake-live-restore.json`.
+The account home identifies the selected Wake Codex account configuration.
+An OpenAI conversation tied to a named managed profile or explicit profile
+home also requires a matching local cached ChatGPT account claim. Binding
+stores only a digest. A changed or unavailable claim holds restoration.
+The cached claim does not verify a current provider login. The existing
+version 1 mappings without identity evidence still work and display
+`configured_legacy` with an unpinned account.
 
 For recovery when the entire Byobu/tmux server is gone, the profile must include
 its absolute `tmux_socket`, and the existing private `controller-tabs.json` must

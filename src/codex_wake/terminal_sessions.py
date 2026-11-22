@@ -157,7 +157,7 @@ class TerminalSessions:
             error.candidates=[{k:v[k] for k in ('id','name','server','backend','state')} for v in existing];raise error
         return dict(name=name,backend=backend,server=server,existing=existing)
 
-    def execute(self,operation,args):
+    def execute(self,operation,args,*,container_only=False):
         if operation=='tabs.session.delete':
             from .terminal_session_delete import TerminalSessionDelete
             return TerminalSessionDelete(self).execute(args)
@@ -202,7 +202,7 @@ class TerminalSessions:
                 elif verb!='open':raise InventoryError('unsupported_operation','Unsupported terminal session operation.')
                 self.save(state)
             if verb=='open' or args.get('start',verb=='ensure'):
-                self.open(record)
+                self.open(record,container_only=container_only)
                 state=self.state();record=state['sessions'][record['id']]
             return dict(status='created' if verb=='create' else 'ensured' if verb=='ensure' else 'updated' if verb=='update' else 'opened',session=self.resolve(record['id']),reused=reused)
 

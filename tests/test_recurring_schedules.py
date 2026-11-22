@@ -43,6 +43,38 @@ class RecurringSchedules(unittest.TestCase):
             self.assertEqual(self.cli(root, 'show', registered['id'])['occurrences'],first['occurrences'])
             poll_schedules(root, {'utc':dict(clock['utc'],lower=2000043200,upper=2000043200),'counter':None})
             self.assertEqual(len(self.cli(root,'show',registered['id'])['occurrences']),2)
+    def test_unconfirmed_submission_does_not_block_an_independent_schedule_after_restart(self):
+        from codex_wake.recurring_schedules import poll_schedules
+        from codex_wake.records import replace_record
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            spec = root / 'request.json'
+            clock = {'utc': {'lower': 2000000000, 'upper': 2000000000,
+                             'status': 'network', 'sources': ['clock-a', 'clock-b']}, 'counter': None}
+            spec.write_text(json.dumps(request()))
+            first = self.cli(root, 'register', '--request', str(spec), '--codex-path', sys.executable)
+            poll_schedules(root, clock)
+            wake, = all_records(root)
+            replace_record(root, wake, dict(wake.record, status='firing',
+                native_delivery={'state': 'uncertain'},
+                runtime_observation={'state': 'unavailable', 'reason': 'attachment_lost'}))
+
+            spec.write_text(json.dumps(request(idempotency_key='independent')))
+            second = self.cli(root, 'register', '--request', str(spec), '--codex-path', sys.executable)
+            with patch('codex_wake.recurring_schedules.scheduler_generation', return_value={'pid': 1}):
+                poll_schedules(root, clock)
+                poll_schedules(root, clock)
+
+            first_now = self.cli(root, 'show', first['id'])
+            self.assertEqual(first_now['state'], 'enabled')
+            self.assertEqual(first_now['occurrences'][0]['reconciliation_reason'], 'delivery_outcome_unknown')
+            self.assertEqual(first_now['occurrences'][0]['wake_id'], wake.record['id'])
+            self.assertEqual(first_now['delivery']['uncertain_occurrences'][0]['reconciliation'],
+                {'reason': 'delivery_outcome_unknown', 'command': ['native', 'reconcile', wake.record['id']]})
+            self.assertEqual(self.cli(root, 'show', second['id'])['occurrences'][0]['state'], 'pending')
+            self.assertEqual(len(all_records(root)), 2)
+
     def test_missing_explicit_mode_rejected_without_creating_schedule(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); spec=root/'request.json'; value=request();value.pop('session_mode');spec.write_text(json.dumps(value))

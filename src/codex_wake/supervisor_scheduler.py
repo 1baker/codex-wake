@@ -13,7 +13,7 @@ import threading
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from .records import WakeError
 from .supervisor import (
@@ -103,6 +103,66 @@ def reconcile_root(config: SupervisorConfig, root_id: str, *, expected_token: st
         hold.unlink()
 
 
+def recover_interrupted_root(config: SupervisorConfig, entry: dict[str, Any]) -> Literal['owner_busy'] | None:
+    """Transfer a supervisor hold under poll custody, reporting temporary contention."""
+    from .monitor_ownership import MonitorOwnership
+    from .records import ACTIVE_STATUS_DIRS, classify_record, WakePath
+
+    root = Path(entry['wake_root']).expanduser().resolve()
+    marker = root / 'monitor-reconciliation.json'
+    if not marker.is_file() or marker.is_symlink():
+        return
+    with MonitorOwnership(root) as owner:
+        if not owner.acquired:
+            return 'owner_busy'
+        task = json.loads(marker.read_text())
+        if not isinstance(task, dict) or task.get('recovery_schema') != 1:
+            return
+        token = task.get('token')
+        if (not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', token)
+                or task.get('root_id') != entry['root_id'] or task.get('wake_root') != str(root)
+                or task.get('reason') not in ('supervisor_stopped_with_inflight_poll',
+                    'coordinator_restarted_with_inflight_poll', 'poll_failed_with_possible_effects',
+                    'worker_admission_outcome_unknown', 'worker_exited_with_inflight_poll',
+                    'poll_timeout_outcome_unknown')):
+            return
+        pending = config.state_dir / 'inflight' / (_key(str(root)) + '.json')
+        if pending.exists():
+            admission = json.loads(pending.read_text())
+            if not isinstance(admission, dict) or admission.get('token') != token:
+                return
+        # A lifecycle entry that cannot be safely inspected is not evidence
+        # that work stayed pending. In particular, never open a FIFO here.
+        if any(path.is_symlink() or not path.is_file()
+               for status in ACTIVE_STATUS_DIRS for path in (root / status).glob('*.json')):
+            return
+        legacy = []
+        for path in (root / 'firing').glob('*.json'):
+            record = json.loads(path.read_text())
+            if not isinstance(record, dict) or record.get('status') != 'firing' or record.get('id') != path.stem:
+                return
+            classification = classify_record(record)
+            if classification == 'hold':
+                return
+            if classification not in ('native_intent_v6', 'runtime_intent_v7'):
+                if any((root / status / path.name).exists() for status in ACTIVE_STATUS_DIRS if status != 'firing'):
+                    return
+                if record.get('target', {}).get('transport') == 'native':
+                    if record.get('native_delivery', {}).get('state') not in ('uncertain', 'accepted'):
+                        return
+                    continue
+                legacy.append(WakePath(path, record))
+        # Native dispatch retains its intent before submission and reconciles
+        # that intent without replay. Older transports lack that guarantee.
+        for item in legacy:
+            if not item.record.get('ack_wait_time_held'):
+                _atomic_write_json(item.path, dict(item.record, ack_wait_time_held=True))
+        _atomic_write_json(config.state_dir / 'reconciled' / (token + '.json'),
+                           {**task, 'recovery': 'record_scoped', 'legacy_holds': [w.record['id'] for w in legacy]})
+        pending.unlink(missing_ok=True)
+        marker.unlink()
+
+
 class SupervisorScheduler:
     """One coordinator, a bounded reusable pool, and independent root schedules.
 
@@ -121,6 +181,7 @@ class SupervisorScheduler:
         self._closed = False
         self._entries: list[dict[str, Any]] = []
         self._refresh_at = 0.0
+        self._startup_recovery: set[str] = set()
 
     def __enter__(self):
         self.config.state_dir.mkdir(parents=True, exist_ok=True)
@@ -136,10 +197,23 @@ class SupervisorScheduler:
                 task = json.loads(path.read_text())
                 _hold(task, 'coordinator_restarted_with_inflight_poll')
                 path.unlink()
+            for entry in iter_registry_entries(self.config.registry_dir):
+                if entry.get('enabled') and entry.get('wake_root'):
+                    self._recover_startup_entry(entry)
         except Exception:
             self.close()
             raise
         return self
+
+    def _recover_startup_entry(self, entry: dict[str, Any]) -> None:
+        root_id = entry['root_id']
+        self._startup_recovery.discard(root_id)
+        try:
+            if recover_interrupted_root(self.config, entry) == 'owner_busy':
+                self._startup_recovery.add(root_id)
+        except (OSError, RuntimeError, TypeError, ValueError, WakeError):
+            # Unreadable evidence keeps the original marker for this root.
+            return
 
     @property
     def running_count(self) -> int:
@@ -217,6 +291,10 @@ class SupervisorScheduler:
         if now >= self._refresh_at:
             self._entries = iter_registry_entries(self.config.registry_dir)
             self._refresh_at = now + min(self.config.interval, 1.0)
+            for entry in self._entries:
+                if (entry.get('root_id') in self._startup_recovery
+                        and entry.get('enabled') and entry.get('wake_root')):
+                    self._recover_startup_entry(entry)
         busy = {w.task['key'] for w in self.workers if w.task}
         due: dict[str, dict[str, Any]] = {}
         for entry in self._entries:
@@ -254,7 +332,8 @@ class SupervisorScheduler:
                 if len(self.workers) >= self.config.max_workers:
                     break
                 worker = self._new_worker()
-            task = {**item, 'token': uuid.uuid4().hex, 'coordinator_pid': os.getpid()}
+            task = {**item, 'token': uuid.uuid4().hex, 'coordinator_pid': os.getpid(),
+                    'recovery_schema': 1}
             _atomic_write_json(self._journal(task), task)
             worker.task = task
             worker.started = now

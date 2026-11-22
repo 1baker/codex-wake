@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: WAKE-STARTUP-749
+    owner: primary / ecochran76
+    objective: Recover interrupted wake occurrences and restore exact live tabs
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/749, https://github.com/CochranResearchGroup/codex-wake/issues/750, https://github.com/CochranResearchGroup/codex-wake/issues/751, https://github.com/CochranResearchGroup/codex-wake/issues/752, https://github.com/CochranResearchGroup/codex-wake/issues/753]
+    plan: docs/dev/plans/0264-2026-11-21-wake-startup-recovery.md
+    branch: feat/issue-749-wake-recovery
+    worker_branches: [feat/issue-751-readiness, feat/issue-752-restore, feat/issue-753-restore-marker]
+    target: origin/main
+    plan_state: CLOSED
+    custody_state: REMOTE_PRESERVED
+    dependencies: []
+    overlaps: [TAB-MANAGEMENT-743]
+    updated_at: 2026-11-21
+    disposition: All four implementation tickets closed. One two-axis review and one remediation passed. Integration branch preserved.
   - id: TAB-MANAGEMENT-743
     owner: primary / ecochran76
     objective: Verify complete tab management across the controller, CLI, and MCP

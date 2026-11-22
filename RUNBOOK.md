@@ -10864,3 +10864,13 @@ Closed #738, #739 and #740. Disposable wsl-test and dedicated UID1017 verified t
 ## Turn P263 | 2026-11-21 | Full tab management parity
 
 Closed #744–#747 under spec #743. Plan 0263 records installed controller API, CLI and MCP acceptance on real isolated tmux and Windows psmux, including backend limits and the single two-axis review and remediation. The affected suite passed 63 cases per Python runtime. Branch feat/issue-743-tab-management retains the validated source.
+
+
+## 2026-11-21 | Plan 0264 wake startup recovery
+
+Closed #750–753 on `feat/issue-749-wake-recovery` after local validation.
+The private Native and tmux run restored the same conversation and slot after
+restart, preserved the shell, completed one correlated wake, and cleared the
+first-focus marker while retaining placement. Plan 0264 records the source
+commits, one Standards and Spec review, one red/green remediation pass,
+dual-Python validation and receipt hashes. No production restart or deployment.

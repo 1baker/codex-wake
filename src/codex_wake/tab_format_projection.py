@@ -181,6 +181,10 @@ def project(resource, policy=None, *, now=None):
         if cue and policy.get('_source_lease'):
             for key in ('window-status-format','window-status-current-format'):
                 options[key]=options[key].replace(']'+cue,']'+lease(cue))
+    if resource.get('target', {}).get('presentation') in ('tmux', 'byobu'):
+        from .tab_restore_marker import SUFFIX
+        for key in ('window-status-format', 'window-status-current-format'):
+            options[key] = options[key].replace('#W', '#W' + SUFFIX)
     from .bot_family_display import decorate
     return decorate(dict(label=label, state=state, colour=colour,
                 fallback_styles={'window-status-style':fallback_normal,'window-status-current-style':fallback_current},

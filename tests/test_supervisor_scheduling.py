@@ -67,6 +67,60 @@ class SchedulingTests(unittest.TestCase):
             reconcile_root(config, 'one', expected_token='old-token')
             self.assertFalse((root / 'monitor-reconciliation.json').exists())
 
+    def test_startup_recovers_a_versioned_interrupted_poll(self):
+        from codex_wake.supervisor_scheduler import SupervisorScheduler, _key
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            config = build_supervisor_config(registry_dir=base / 'registry',
+                state_dir=base / 'state/supervisor', validate_executable=False)
+            root = base / 'wake'
+            root.mkdir()
+            enroll_root(wake_root=root, registry_dir=config.registry_dir, root_id='one')
+            hold = root / 'monitor-reconciliation.json'
+            inflight = config.state_dir / 'inflight' / (_key(str(root)) + '.json')
+            inflight.parent.mkdir(parents=True)
+            inflight.write_text(json.dumps({'root_id': 'one', 'wake_root': str(root),
+                'token': 'interrupted-token', 'recovery_schema': 1}))
+            receipt = config.state_dir / 'reconciled' / 'interrupted-token.json'
+            for _ in range(2):
+                with SupervisorScheduler(config, dispatch=False) as scheduler:
+                    self.assertFalse(hold.exists())
+                    self.assertFalse(inflight.exists())
+                    self.assertEqual(json.loads(receipt.read_text())['recovery'], 'record_scoped')
+                    scheduler.tick()
+                    self.assertEqual(scheduler.running_count, 1)
+
+    def test_startup_retries_recovery_when_the_previous_poll_releases_ownership(self):
+        from codex_wake.monitor_ownership import MonitorOwnership
+        from codex_wake.supervisor_scheduler import SupervisorScheduler, _key
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            config = build_supervisor_config(registry_dir=base / 'registry',
+                state_dir=base / 'state/supervisor', interval=0.02, validate_executable=False)
+            root = base / 'wake'
+            enroll_root(wake_root=root, registry_dir=config.registry_dir, root_id='one')
+            inflight = config.state_dir / 'inflight' / (_key(str(root)) + '.json')
+            inflight.parent.mkdir(parents=True)
+            inflight.write_text(json.dumps({'root_id': 'one', 'wake_root': str(root),
+                'token': 'contention', 'recovery_schema': 1}))
+            hold = root / 'monitor-reconciliation.json'
+            scheduler = SupervisorScheduler(config, dispatch=False)
+            with MonitorOwnership(root) as previous:
+                self.assertTrue(previous.acquired)
+                scheduler.__enter__()
+                self.addCleanup(scheduler.close)
+                scheduler.tick()
+                self.assertTrue(hold.exists())
+                self.assertEqual(scheduler.running_count, 0)
+            limit = time.monotonic() + 2
+            while not scheduler.running_count and time.monotonic() < limit:
+                scheduler.tick()
+                time.sleep(0.01)
+            self.assertFalse(hold.exists())
+            self.assertEqual(scheduler.running_count, 1)
+            scheduler.close()
+
     def test_hung_root_does_not_block_another_root_and_is_held(self):
         from codex_wake.supervisor_scheduler import SupervisorScheduler
         with tempfile.TemporaryDirectory() as tmp:

@@ -66,6 +66,10 @@ class FormattingAutostartTests(unittest.TestCase):
         config.chmod(0o600)
         self.monitor.execute('tabs.monitor.start',dict(interval=.2))
         self.tmux('new-session','-d','-s','late','-n','later terminal','sleep 60')
+        from codex_wake.tab_restore_marker import mark_restored
+        mark_restored(lambda _, *args: self.tmux(*args).strip(), None,
+                      dict(session='late', session_id='$0', window_id='@0', pane_id='%0',
+                           index=0, title='later terminal', placeholder=None))
         # Discovery plus projection may span two configured whole cycles.
         # This is a readiness assertion, not a latency benchmark.
         budget=self.monitor.execute('tabs.monitor.status',{})['monitor']['settings']['cycle_timeout']
@@ -76,6 +80,7 @@ class FormattingAutostartTests(unittest.TestCase):
             self.assertLess(time.monotonic(),deadline,'startup monitor never discovered the late terminal socket')
             time.sleep(.05)
         self.assertEqual(self.tmux('display-message','-p','-t','@0','#{window_name}').strip(),'later terminal')
+        self.assertIn('later terminal ↻', self.tmux('display-message', '-p', '-t', '%0', shown.strip()))
 
     def test_socket_appearing_during_observer_construction_is_discovered(self):
         from unittest.mock import patch

@@ -270,14 +270,42 @@ class ScheduleStore:
                 replace_record(self.root, found, record)
                 item['state'] = 'cancelled'
 
-    def receipt(self, value):
+    def bind_restoration(self, identifier, *, profiles, managed_agent_id, profile, principal, authorize=None):
+        from .wake_live_restore import LiveWakeRestorer
+        if principal is None or principal.role != 'operator':
+            raise WakeError('live_restore_operator_required')
+        with WakeLifecycleLock(self.root, 'recurring-schedules'):
+            value = self.read(identifier)
+            self.authorize(value, principal, authorize)
+            LiveWakeRestorer(self.root).bind(value['target'], profiles=profiles,
+                                            managed_agent_id=managed_agent_id, profile=profile,
+                                            authorize=lambda: self.authorize(value, principal, authorize))
+        return self.receipt(value)
+
+    def receipt(self, value, *, wake_records=None):
         from .monitor import read_monitor_health
         from .signal_records import probe_managed_reader_capability
         health = read_monitor_health(self.root) or {}
         reader = probe_managed_reader_capability(self.root)
         ready = bool(reader and 8 in reader.schema_versions and health.get('mode') == 'loop'
                      and all(c in health.get('reader_capabilities', []) for c in ('recurring_schedules_v1', 'wake_session_modes_v1')))
+        from .wake_live_restore import LiveWakeRestorer
+        identifiers = {item['wake_id']: item['id'] for item in value['occurrences'] if item.get('wake_id')}
+        uncertain = []
+        if identifiers:
+            if wake_records is None:
+                wake_records = {item.record['id']: item.record for item in all_records(self.root, include_archive=True)}
+            for wake_id, occurrence_id in identifiers.items():
+                delivery = wake_records.get(wake_id, {}).get('native_delivery', {})
+                if delivery.get('state') == 'uncertain':
+                    reason = delivery.get('reconciliation', {}).get('reason') or 'delivery_outcome_unknown'
+                    uncertain.append(dict(occurrence_id=occurrence_id, wake_id=wake_id,
+                        reconciliation=dict(reason=reason, command=['native', 'reconcile', wake_id])))
         return dict(value, session_mode=value['request']['session_mode'],
+            persistence=dict(saved=True),
+            restoration=LiveWakeRestorer(self.root).inspect(
+                dict(value['target'], session_mode=value['request']['session_mode'])),
+            delivery=dict(uncertain=bool(uncertain), uncertain_occurrences=uncertain),
             armed=ready and value['state'] == 'enabled',
             scheduling_status='armed' if ready and value['state']=='enabled' else 'retained_unmonitored' if not ready and value['state']=='enabled' else value['state'],
             monitor=dict(ready=ready, wake_root=str(self.root)))
@@ -338,6 +366,10 @@ def poll_schedules(root, clock, *, runtime_adapter=None):
                 if wake and item['state'] not in ('completed', 'turn_failed', 'turn_interrupted'):
                     item['state'] = wake['status']
                     delivery = wake.get('native_delivery', {})
+                    if delivery.get('state') == 'uncertain':
+                        item['reconciliation_reason'] = 'delivery_outcome_unknown'
+                        continue
+                    item.pop('reconciliation_reason', None)
                     execution = delivery.get('execution')
                     if delivery.get('state') == 'accepted' and execution not in ('turn_completed', 'turn_failed', 'turn_interrupted'):
                         try:
@@ -370,7 +402,7 @@ def poll_schedules(root, clock, *, runtime_adapter=None):
             newly_due = []
             if value['state'] == 'attention':
                 store.save(value)
-                results.append(store.receipt(value))
+                results.append(store.receipt(value, wake_records=wakes))
                 continue
             for _ in range(MAX_POLL_OCCURRENCES):
                 due = timestamp(value['next_due_at'])
@@ -454,7 +486,7 @@ def poll_schedules(root, clock, *, runtime_adapter=None):
                     candidate['reason'] = str(exc)
                     value['attention'] = str(exc)
             store.save(value)
-            results.append(store.receipt(value))
+            results.append(store.receipt(value, wake_records=wakes))
     return results
 
 

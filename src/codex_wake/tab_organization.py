@@ -53,8 +53,10 @@ class TmuxTransport:
         return result.stdout
 
     def snapshot(self, deadline):
+        from .tab_restore_marker import PENDING, PROVENANCE, describe_restoration
+
         fields = ('session_id', 'window_id', 'window_index', 'window_name', 'window_active',
-                  'pane_id', 'pane_pid', 'pane_current_path', 'pane_title', 'pane_tty', 'pane_current_command')
+                  'pane_id', 'pane_pid', 'pane_current_path', 'pane_title', 'pane_tty', 'pane_current_command', PROVENANCE, PENDING)
         raw = self.command(deadline, 'list-panes', '-a', '-F', '\t'.join('#{' + x + '}' for x in fields))
         lines = raw.splitlines()
         if len(lines) > 4096:
@@ -82,6 +84,9 @@ class TmuxTransport:
             window = windows.setdefault(wid, dict(window_id=wid, index=int(row['window_index']),
                 name=row['window_name'], focused=False, linked=len(appearances) > 1, panes=[]))
             window['focused'] |= row['window_active'] == '1'
+            provenance = describe_restoration(row[PROVENANCE], row[PENDING], wid)
+            if provenance is not None:
+                window['restoration'] = provenance
             if window['linked']:
                 window['linked_sessions'] = sorted({session for session, _ in appearances})
                 window['linked_appearances'] = [dict(session_id=session, index=index)
