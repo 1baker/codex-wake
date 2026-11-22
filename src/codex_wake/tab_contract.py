@@ -23,8 +23,9 @@ _SPECS = {'wake_tabs_apply': ('controller-tabs',
                         'expected_target': {'type': 'object'},
                         'lines': {'maximum': 200, 'minimum': 1, 'type': 'integer'},
                         'pane': {'type': 'string'},
-                        'workspace': {'type': 'string'}},
-                       ['workspace', 'expected_target', '_request', 'pane'],
+                        'window': {'type': 'string'},
+                       'workspace': {'type': 'string'}},
+                       ['workspace', 'expected_target', '_request'],
                        False),
  'wake_tabs_close': ('controller-tabs',
                      'tabs.close',
@@ -45,6 +46,10 @@ _SPECS = {'wake_tabs_apply': ('controller-tabs',
                        'expected_target': {'type': 'object'},
                        'name': {'type': 'string'},
                        'preview': {'type': 'boolean'},
+                       'shell': {'type': 'boolean'},
+                       'saved_defaults': {'type': 'boolean'},
+                       'position': {'type': 'string', 'enum': ['first', 'last', 'before', 'after']},
+                       'anchor': {'type': 'string'},
                        'workspace': {'type': 'string'}},
                       ['workspace', 'expected_target', '_request', 'name'],
                       False),
@@ -95,10 +100,13 @@ _SPECS = {'wake_tabs_apply': ('controller-tabs',
                       'custody': {'type': 'object'},
                       'expected_target': {'type': 'object'},
                       'input': {'maxLength': 16384, 'type': 'string'},
+                      'mode': {'enum': ['paste', 'keys']},
+                      'keys': {'type': 'array', 'items': {'type': 'string'}, 'minItems': 1, 'maxItems': 32},
                       'pane': {'type': 'string'},
                       'transport': {'enum': ['structured', 'terminal']},
-                      'workspace': {'type': 'string'}},
-                     ['workspace', 'expected_target', '_request', 'pane', 'input', 'custody', 'transport'],
+                      'window': {'type': 'string'},
+                       'workspace': {'type': 'string'}},
+                     ['workspace', 'expected_target', '_request', 'custody', 'transport'],
                      False),
  'wake_tabs_list': ('controller-tabs',
                     'tabs.list',
@@ -154,7 +162,9 @@ _SPECS = {'wake_tabs_apply': ('controller-tabs',
                      'index': {'minimum': 0, 'type': 'integer'},
                      'preview': {'type': 'boolean'},
                      'window': {'type': 'string'},
-                     'workspace': {'type': 'string'}},
+                     'position': {'type': 'string', 'enum': ['first', 'last', 'before', 'after']},
+                       'anchor': {'type': 'string'},
+                       'workspace': {'type': 'string'}},
                     ['workspace', 'expected_target', '_request', 'window', 'destination', 'expected_destination'],
                     False),
  'wake_tabs_park': ('controller-tabs',
@@ -405,6 +415,36 @@ for _verb in ('status','inspect','enable','pause','resume','rollback','reenable'
         'Inspect or control reversible owned-tab decoration; rollback restores original settings; reenable retains the baseline.',
         _fields,([] if _read else ['expected_target','_request']),_read)
 
+for _verb in ('set', 'inspect', 'clear'):
+    _read = _verb == 'inspect'
+    _fields = {'workspace': {'type': 'string'}, 'window': {'type': 'string'}}
+    _required = ['window']
+    if _verb == 'set':
+        _fields['style'] = {'type': 'object', 'properties': {
+            'foreground': {'type': 'string'}, 'background': {'type': 'string'},
+            'attributes': {'type': 'array', 'items': {'type': 'string', 'enum': ['bold', 'dim', 'underscore', 'reverse']}}},
+            'required': ['foreground', 'background', 'attributes'], 'additionalProperties': False}
+        _required.append('style')
+    if not _read:
+        _fields.update(expected_target={'type': 'object'}, _request={'type': 'object'})
+        _required += ['expected_target', '_request']
+    _SPECS['wake_tabs_format_override_' + _verb] = ('controller-tabs', 'tabs.format.override-' + _verb,
+        'Set, inspect, or clear the persistent style of one exact terminal tab.', _fields, _required, _read)
+for _verb, _summary in (
+    ('destroy', 'Preview and explicitly destroy all appearances and panes of an exact tab.'),
+    ('unlink', 'Remove only the selected appearance of a tab that remains linked elsewhere.'),
+):
+    _fields = {'workspace': {'type': 'string'}, 'window': {'type': 'string'},
+               'expected_target': {'type': 'object'}, '_request': {'type': 'object'}}
+    if _verb == 'destroy':
+        _fields.update(preview={'type': 'boolean'}, confirmation={'type': 'string',
+                       'description': 'Exact confirmation returned by the current destruction preview.'})
+    else:
+        _fields['index'] = {'type': 'integer', 'minimum': 0,
+                            'description': 'Exact index when a tab appears more than once in the selected session.'}
+    _SPECS['wake_tabs_' + _verb] = ('controller-tabs', 'tabs.' + _verb, _summary,
+                                     _fields, ['workspace', 'window', 'expected_target', '_request'], False)
+
 from .terminal_session_contract import specs as _terminal_specs
 _SPECS.update(_terminal_specs())
 from .bot_family_contract import specs as _family_specs
@@ -412,6 +452,10 @@ _SPECS.update(_family_specs())
 _SPECS['wake_tabs_group_save'][3]['labels']={'type':'array','maxItems':32,'items':{'type':'string'}}
 
 _FIELD_HELP = {
+    'shell':'Launch the destination default shell explicitly.',
+    'saved_defaults':'Use a saved launch profile or command default when present.',
+    'position':'First, last, before, or after placement in the destination session.',
+    'anchor':'Exact native destination tab ID for before or after placement.',
     'destination':'Destination terminal session name or stable ID; compatible backend/server required.',
     'workspace':'Workspace ID or unique label from tabs list; same-user CLI can select its only workspace.',
     'window':'Exact native window ID from tabs list/show (for example @3); names are not identity pins.',

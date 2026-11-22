@@ -45,7 +45,7 @@ def qualify_public(state,source,holding,windows_python):
         return json.loads(p.stdout)
     listing=cli('list')
     assert all(p['platform']=='windows' for r in listing['resources'] for p in r['traits']['panes'])
-    created=cli('create','--workspace','source','--name','public-509')['result']['operation']
+    created=cli('create','--workspace','source','--name','public-509','--position','first')['result']['operation']
     assert created['execution']=='completed',created
     wid=created['result']['window']['window_id']
     target=next(r['target'] for r in cli('list')['resources'] if r['target']['workspace']=='source')
@@ -53,6 +53,19 @@ def qualify_public(state,source,holding,windows_python):
     payload['_request']=dict(operation_id='public-rename',idempotency_key='public-rename',correlation_id='public-rename',binding='fixture',target=target)
     renamed,failed=CommandRunner(wake_root=root).call('wake_tabs_rename',payload)
     assert not failed and renamed['result']['operation']['execution']=='completed',renamed
+    before = source.snapshot(time.monotonic() + 15)
+    assert sorted(before['windows'], key=lambda window: window['index'])[0]['window_id'] == wid
+    expected_focus = next(window['window_id'] for window in before['windows'] if window['focused'])
+    target = next(r['target'] for r in cli('list')['resources'] if r['target']['workspace']=='source')
+    move = dict(workspace='source', destination='source', window=wid, position='last',
+                expected_target=target, expected_destination=target,
+                _request=dict(operation_id='public-order', idempotency_key='public-order',
+                              correlation_id='public-order', binding='fixture', target=target))
+    moved, failed = CommandRunner(wake_root=root).call('wake_tabs_move', move)
+    assert not failed and moved['result']['operation']['execution'] == 'completed', moved
+    after = source.snapshot(time.monotonic() + 15)
+    assert sorted(after['windows'], key=lambda window: window['index'])[-1]['window_id'] == wid
+    assert next(window['window_id'] for window in after['windows'] if window['focused']) == expected_focus
     owner=controller_tabs_from_root(root)
     authority=OAuthAuthority(root/'auth.sqlite',issuer='http://127.0.0.1',resource='http://127.0.0.1/controller')
     client=authority.register(dict(redirect_uris=['http://127.0.0.1/callback']))
@@ -63,6 +76,7 @@ def qualify_public(state,source,holding,windows_python):
     service=ControllerOperations(ManagedInventory(root),host=owner.host,environment=owner.environment,tabs=owner)
     server=ControllerHTTPServer(('127.0.0.1',0),authority,service)
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+    destroy_submitted = False
     try:
         target=next(r['target'] for r in cli('list')['resources'] if r['target']['workspace']=='source')
         focus=dict(workspace='source',window=wid,expected_target=target,
@@ -93,9 +107,38 @@ def qualify_public(state,source,holding,windows_python):
         assert values['api']['result']['resources']
         assert values['mcp']['result']['structuredContent']['result']['resources']
 
+        target = next(r['target'] for r in cli('list')['resources'] if r['target']['workspace'] == 'source')
+        payload = dict(workspace='source', window=wid, expected_target=target)
+        def intent(request_id):
+            return dict(operation_id=request_id, idempotency_key=request_id, correlation_id=request_id,
+                        binding='fixture', target=target)
+
+        preview, failed = CommandRunner(wake_root=root).call('wake_tabs_destroy',
+            dict(payload, preview=True, _request=intent('destroy-preview')))
+        operation = preview['result']['operation']
+        assert not failed and operation['execution'] == 'completed', preview
+        impact = operation['result']
+        assert impact['affected_sessions'] and impact['pane_ids'], impact
+        cli_preview = cli('destroy', '--workspace', 'source', '--window', wid, '--dry-run')
+        assert cli_preview['result']['operation']['result']['confirmation'] == impact['confirmation']
+        unlink, _ = CommandRunner(wake_root=root).call('wake_tabs_unlink',
+            dict(payload, _request=intent('native-unlink-unsupported')))
+        declined = unlink['result']['operation']
+        assert declined['phase'] == 'terminal' and declined['result']['status'] == 'unsupported', unlink
+        assert declined['result']['reason'] == 'unsupported_target', unlink
+        body = json.dumps(dict(operation='tabs.destroy', arguments=dict(payload,
+            confirmation=impact['confirmation'], _request=intent('destroy-exact-native')))).encode()
+        request = Request('http://127.0.0.1:' + str(server.server_address[1]) + '/operations',
+                          data=body, headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + access})
+        destroy_submitted = True
+        with urlopen(request, timeout=25) as response:
+            result = json.load(response)
+        assert result['result']['operation']['execution'] == 'completed', result
+        assert not any(window['window_id'] == wid for window in source.snapshot(time.monotonic() + 15)['windows'])
     finally:
         server.shutdown();server.server_close();thread.join(timeout=5)
-        cli('close','--workspace','source','--window',wid,'--force')
+        if not destroy_submitted:
+            cli('close','--workspace','source','--window',wid,'--force')
     return True
 
 
@@ -186,6 +229,7 @@ def main():
         checks.append('unsupported-action-and-replaced-process-generation-refused')
         assert qualify_public(args.state,source,holding,python)
         checks.append('installed-wake-cli-http-native-mcp-and-actual-powershell')
+        checks.append('installed-confirmed-destroy-and-explicit-native-unlink-refusal')
         closed = invoke(source, 'close', dict(window=wid))
         assert not any(w['window_id'] == wid for w in closed['snapshot']['windows'])
         native('stop', namespace)

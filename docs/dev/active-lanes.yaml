@@ -1,6 +1,20 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: TAB-MANAGEMENT-743
+    owner: primary / ecochran76
+    objective: Verify complete tab management across the controller, CLI, and MCP
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/743, https://github.com/CochranResearchGroup/codex-wake/issues/744, https://github.com/CochranResearchGroup/codex-wake/issues/745, https://github.com/CochranResearchGroup/codex-wake/issues/746, https://github.com/CochranResearchGroup/codex-wake/issues/747]
+    plan: docs/dev/plans/0263-2026-11-21-tab-management-parity.md
+    branch: feat/issue-743-tab-management
+    worker_branches: [feat/issue-745-pane-io, feat/issue-746-tab-format, feat/issue-747-tab-destroy]
+    target: origin/main
+    plan_state: CLOSED
+    custody_state: REMOTE_PRESERVED
+    dependencies: []
+    overlaps: [ADJACENT-TABS-716]
+    updated_at: 2026-11-21
+    disposition: Four implementation tickets closed after installed tmux and psmux checks. One review and one remediation completed. Validated branch preserved.
   - id: UPGRADE-OWNER-737
     owner: primary / ecochran76
     objective: Port the durable autonomous upgrade owner to current main

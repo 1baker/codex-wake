@@ -143,8 +143,27 @@ def main():
                 assert status==200 and value['result']['operation']['reason']=='invalid_argument',value
                 assert command('tabs','format','status','--workspace','work')['policy']==policy_before
             checks.append('authenticated-http-api-and-oauth-mcp-exact-format-controls-and-error-reasons')
+            window=before_identity[0][0]
+            style=dict(foreground='yellow',background='blue',attributes=['bold','underscore'])
+            applied=command('tabs','format','override-set','--workspace','work',
+                            '--window',window,'--style',json.dumps(style))
+            assert result(applied)['override']==style,applied
+            reenabled=command('tabs','format','reenable','--workspace','work')
+            assert result(reenabled)['status']=='applied',reenabled
+            status,value=http('/operations',dict(operation='tabs.format.override-inspect',
+                arguments=dict(workspace='work',window=window)),token)
+            assert status==200 and result(value)['override']==style,value
+            assert result(value)['options']['window-status-style']['effective']=='fg=yellow,bg=blue,bold,underscore',value
+            payload=request('override-clear',dict(window=window))
+            status,value=http('/mcp',dict(jsonrpc='2.0',id=3,method='tools/call',
+                params=dict(name='wake_tabs_format_override_clear',arguments=payload)),token)
+            cleared=value['result']['structuredContent']
+            assert status==200 and result(cleared)['override'] is None,value
+            assert result(command('tabs','format','rollback','--workspace','work'))['status']=='rolled_back'
+            restored()
+            checks.append('installed-cli-api-mcp-tab-override-survives-automatic-style')
             if args.windows_python:
-                windows=qualify_windows(args.windows_python,args.wheel,endpoint,token,request,target)
+                windows=qualify_windows(args.windows_python,args.wheel,endpoint,token,request,window)
                 restored();checks.append('actual-native-powershell-installed-cli-api-and-mcp-controls')
             assert continuity()==before_identity,'Native pane/process birth identity changed.'
             # All loaded Wake modules must come from the isolated immutable prefix.
@@ -208,7 +227,7 @@ class NativePsmuxFixture:
         shutil.rmtree(self.directory)
 
 
-def qualify_windows(python,wheel,endpoint,token,request,target):
+def qualify_windows(python,wheel,endpoint,token,request,window):
     """Install into a private Windows fixture prefix; PowerShell calls real CLI."""
     helper=r'''
 import json,os,subprocess,sys,uuid,zipfile,hashlib
@@ -240,6 +259,19 @@ print(json.dumps(dict(prefix=str(prefix),cli=str(prefix/'Scripts/codex-wake.exe'
                 assert process.returncode==0,(process.returncode,process.stdout,process.stderr)
                 value=json.loads(process.stdout.lstrip('\ufeff'));assert result(value)['status']==('rolled_back' if verb=='rollback' else 'applied'),value
                 calls.append(dict(transport=transport,verb=verb,status=result(value)['status']))
+        style=dict(foreground='yellow',background='blue',attributes=['bold'])
+        for transport,verb,arguments,expected in (
+                ('api','override-set',request('override-set',dict(window=window,style=style)),style),
+                ('mcp','override-inspect',dict(workspace='work',window=window),style),
+                ('mcp','override-clear',request('override-clear',dict(window=window)),None)):
+            payload=dict(installed,endpoint=endpoint,transport=transport,operation='tabs.format.'+verb,
+                         arguments=json.dumps(arguments))
+            process=subprocess.run([powershell,'-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',encoded],
+                                   input=json.dumps(payload),text=True,capture_output=True,timeout=30)
+            assert process.returncode==0,(process.returncode,process.stdout,process.stderr)
+            observed=result(json.loads(process.stdout.lstrip('\ufeff')))
+            assert observed['override']==expected,observed
+            calls.append(dict(transport=transport,verb=verb,status=observed['status']))
         for transport in ('api','mcp'):
             payload=dict(installed,endpoint=endpoint,transport=transport,operation='tabs.format.configure',arguments=json.dumps(request('configure',dict(policy={'render_mode':'invalid'}))))
             process=subprocess.run([powershell,'-NoLogo','-NoProfile','-NonInteractive','-EncodedCommand',encoded],input=json.dumps(payload),text=True,capture_output=True,timeout=30)

@@ -26,6 +26,31 @@ class FormattingTests(unittest.TestCase):
     def call(self,verb,**arguments):
         return self.tabs.execute('tabs.format.'+verb,dict(workspace='work',**arguments))
 
+    def test_background_tab_override_survives_automatic_formatting_and_can_be_cleared(self):
+        from codex_wake.tab_format_monitor import refresh_formatting
+
+        self.tmux('new-window', '-d', '-n', 'background', 'sleep 120')
+        self.call('enable')
+        original = self.tmux('show-options', '-w', '-v', '-t', '@1', 'window-status-style')
+        style = {'foreground': 'yellow', 'background': 'blue', 'attributes': ['bold', 'underscore']}
+        target = self.tabs.format_target(workspace='work')
+        self.assertEqual(self.call('override-set', window='@1', style=style,
+                                   expected_target=target)['override'], style)
+        self.tmux('rename-window', '-t', '@1', 'chosen name')
+        refresh_formatting(self.root, self.tabs.execute('tabs.list', {}), tabs=self.tabs)
+        observed = self.call('override-inspect', window='@1')
+        self.assertEqual(observed['override'], style)
+        self.assertEqual(observed['options']['window-status-style']['effective'],
+                         'fg=yellow,bg=blue,bold,underscore')
+        self.assertEqual(self.tmux('display-message', '-p', '-t', '@1', '#{window_name}').strip(),
+                         'chosen name')
+        self.assertEqual(self.tmux('display-message', '-p', '-t', 'fixture', '#{window_id}').strip(), '@0')
+        target = self.tabs.format_target(workspace='work')
+        self.assertIsNone(self.call('override-clear', window='@1', expected_target=target)['override'])
+        refresh_formatting(self.root, self.tabs.execute('tabs.list', {}), tabs=self.tabs)
+        self.assertEqual(self.tmux('show-options', '-w', '-v', '-t', '@1', 'window-status-style'), original)
+        self.assertIsNone(self.call('override-inspect', window='@1')['override'])
+
     def test_rollback_restores_explicit_and_inherited_originals_and_reenable_keeps_baseline(self):
         self.tmux('set-option','-w','-t','@0','window-status-format','original #W')
         self.tmux('set-option','-g','window-status-current-style','fg=yellow,bg=black')
@@ -157,6 +182,22 @@ class FormattingTests(unittest.TestCase):
             result=subprocess.run([sys.executable,'-m','codex_wake.entrypoint','--wake-root',str(self.root),'tabs','format',verb,'--workspace','work','--json'],capture_output=True,text=True,timeout=15)
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
             self.assertEqual(json.loads(result.stdout)['result']['operation']['result']['status'],'rolled_back' if verb=='rollback' else 'applied')
+        from codex_wake.mcp_server import CommandRunner
+        command = [sys.executable, '-m', 'codex_wake.entrypoint', '--wake-root', str(self.root),
+                   'tabs', 'format']
+        style = {'foreground': 'yellow', 'background': 'blue', 'attributes': ['bold']}
+        flags = ['--workspace', 'work', '--window', '@0', '--json']
+        applied = subprocess.run([*command, 'override-set', *flags, '--style', json.dumps(style)],
+                                 capture_output=True, text=True, timeout=15)
+        self.assertEqual(applied.returncode, 0, applied.stdout + applied.stderr)
+        runner = CommandRunner(wake_root=self.root)
+        observed, failed = runner.call('wake_tabs_format_override_inspect',
+                                       {'workspace': 'work', 'window': '@0'})
+        self.assertFalse(failed, observed)
+        self.assertEqual(observed['result']['override'], style)
+        cleared = subprocess.run([*command, 'override-clear', *flags], capture_output=True,
+                                 text=True, timeout=15)
+        self.assertEqual(cleared.returncode, 0, cleared.stdout + cleared.stderr)
 
     def test_changing_pane_titles_do_not_block_journaled_formatting_but_birth_changes_do(self):
         from codex_wake.tab_commands import operator_execute

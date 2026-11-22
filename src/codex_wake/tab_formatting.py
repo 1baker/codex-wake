@@ -10,7 +10,7 @@ from .managed_inventory import InventoryError
 from .json_decode import decode_json
 from .tab_organization import digest, TmuxTransport
 
-READS=frozenset(('tabs.format.status','tabs.format.inspect'))
+READS=frozenset(('tabs.format.status','tabs.format.inspect','tabs.format.override-inspect'))
 VERBS=('status','inspect','enable','pause','resume','rollback','reenable','reset','configure')
 from .tab_format_policy import DEFAULT_POLICY, effective_policy, validate_policy
 
@@ -143,8 +143,115 @@ class TabFormatting:
             result.setdefault('monitor',dict(status='unavailable',interval=None,formatting_capability=False))
         return result
 
+    @staticmethod
+    def override_key(snapshot, window):
+        namespace = (snapshot.get('server'), snapshot.get('socket_identity') or snapshot.get('bridge_generation'))
+        return digest(dict(namespace=namespace, window=window))
+
+    def linked_targets(self, lifecycle, selected, snapshot, target, deadline):
+        sessions = set(selected.get('linked_sessions', ()))
+        if snapshot['session_id'] not in sessions:
+            raise InventoryError('unsupported_target', 'Linked tab memberships are unavailable.')
+        missing = sessions - {snapshot['session_id']}
+        if not missing:
+            return []
+        targets = []
+        for workspace in self.tabs.workspaces:
+            if workspace == target['workspace']:
+                continue
+            try:
+                candidate = lifecycle.inspect(workspace, window_ids=[selected['window_id']], deadline=deadline)
+            except (OSError, ValueError):
+                continue
+            other = candidate['snapshot']
+            if self.override_key(other, selected['window_id']) != self.override_key(snapshot, selected['window_id']):
+                continue
+            session_id = other['session_id']
+            if session_id not in missing or not any(row['window_id'] == selected['window_id']
+                                                    for row in other['windows']):
+                continue
+            targets.append(self.presentation_target(candidate))
+            missing.remove(session_id)
+            if not missing:
+                return targets
+        raise InventoryError('unsupported_target', 'Every linked appearance must belong to an enrolled session.')
+
+    def override(self, verb, arguments, *, authorize_linked=None):
+        from .tab_format_policy import validate_style_override
+        from .tab_format_transport import WINDOW_OPTIONS
+        from .tab_lifecycle import TabLifecycle
+
+        allowed = {'workspace', 'window', 'expected_target'}
+        if verb == 'override-set':
+            allowed.add('style')
+        if not isinstance(arguments, dict) or set(arguments) - allowed:
+            raise InventoryError('invalid_argument', 'Unsupported formatting override arguments.')
+        style = validate_style_override(arguments.get('style')) if verb == 'override-set' else None
+        workspace = arguments.get('workspace')
+        if workspace is None and len(self.tabs.workspaces) == 1:
+            workspace = next(iter(self.tabs.workspaces))
+        if workspace not in self.tabs.workspaces:
+            raise InventoryError('ambiguous_target', 'Select one owned workspace.')
+        transport = self.tabs.workspaces[workspace]['transport']
+        if not hasattr(transport, 'formatting'):
+            raise InventoryError('unsupported_target', 'Backend formatting is unavailable.')
+        deadline = time.monotonic() + 10
+        lifecycle = TabLifecycle(self.tabs.root, workspaces=self.tabs.workspaces,
+                                host=self.tabs.host, environment=self.tabs.environment)
+        with self.locked(deadline):
+            inspected = lifecycle.inspect(workspace, deadline=deadline)
+            target = self.presentation_target(inspected)
+            snapshot = inspected['snapshot']
+            window = arguments.get('window')
+            selected = next((row for row in snapshot['windows'] if row['window_id'] == window), None)
+            if selected is None:
+                raise InventoryError('stale_target', 'Exact tab was not found.')
+            if verb != 'override-inspect' and arguments.get('expected_target') != target:
+                raise InventoryError('stale_target', 'Presentation changed before formatting.')
+            state = self.read()
+            overrides = state.setdefault('tab_overrides', {})
+            key = self.override_key(snapshot, window)
+            saved = overrides.get(key)
+            options = transport.formatting('read', dict(window=window), deadline)
+            if verb != 'override-inspect':
+                fresh = lifecycle.inspect(workspace, deadline=deadline)
+                current = next((row for row in fresh['snapshot']['windows'] if row['window_id'] == window), None)
+                if (current is None or self.presentation_target(fresh) != target
+                        or current.get('linked_appearances') != selected.get('linked_appearances')):
+                    raise InventoryError('stale_target', 'Tab identity or linked appearances changed before formatting.')
+                if current.get('linked'):
+                    appearances = self.linked_targets(lifecycle, current, fresh['snapshot'], target, deadline)
+                    if appearances:
+                        if authorize_linked is None:
+                            raise InventoryError('insufficient_scope', 'Linked tab style requires control of every appearance.')
+                        authorize_linked(appearances)
+            if verb == 'override-set':
+                native_style = ','.join([f"fg={style['foreground']}", f"bg={style['background']}", *style['attributes']])
+                values = dict(zip(WINDOW_OPTIONS, (' #W ', ' #W ', native_style, native_style)))
+                original = saved['original'] if saved else options
+                overrides[key] = dict(style=style, original=original)
+                self.save(state)
+                options = transport.formatting('write', dict(window=window, values=values), deadline)
+                if any(options[name]['value'] != value for name, value in values.items()):
+                    raise InventoryError('formatting_mismatch', 'Tab formatting override did not match readback.')
+                saved = overrides[key]
+            elif verb == 'override-clear' and saved:
+                values = {name: row['value'] if row['explicit'] else None
+                          for name, row in saved['original'].items()}
+                options = transport.formatting('write', dict(window=window, values=values), deadline)
+                if any(options[name]['value'] != value for name, value in values.items()):
+                    raise InventoryError('restoration_mismatch', 'Tab style restoration did not match readback.')
+                del overrides[key]
+                self.save(state)
+                saved = None
+            return dict(status='inspection' if verb == 'override-inspect' else 'applied',
+                        target=target, window=window, override=saved['style'] if saved else None,
+                        options=options)
+
     def _execute(self,operation,arguments):
         verb=operation.removeprefix('tabs.format.')
+        if verb in ('override-set', 'override-inspect', 'override-clear'):
+            return self.override(verb, arguments)
         if verb not in VERBS or not isinstance(arguments,dict) or set(arguments)-{'scope','workspace','policy','expected_target','preset'}:
             raise InventoryError('invalid_argument','Unsupported formatting arguments.')
         if 'preset' in arguments:
@@ -207,6 +314,13 @@ class TabFormatting:
                 failures=[]
                 live={w['window_id']:w for w in snapshot['windows']}
                 for window,saved in record['windows'].items():
+                    override = state.get('tab_overrides', {}).get(self.override_key(snapshot, window))
+                    if override is not None:
+                        # Clearing the override later must resume the restored
+                        # baseline, even though this tab remains manually styled.
+                        override['original'] = saved['original']
+                        saved['restored'] = True
+                        continue
                     if window not in live:
                         failures.append(dict(window=window,code='window_missing'));continue
                     if live[window].get('linked'):
@@ -260,10 +374,10 @@ class TabFormatting:
 
     def session_plan(self,state,record,transport,deadline,*,resume_manual=False,current=None):
         """Read custody before window effects; prepare a deferred clock renewal."""
-        if 'session_original' not in record:
-            record['session_original']=transport.formatting('read-session',{},deadline)
-            self.save(state)
         if current is None:current=transport.formatting('read-session',{},deadline)
+        if 'session_original' not in record:
+            record['session_original']=current
+            self.save(state)
         if not resume_manual and not record.get('session_restored') and record.get('session_last_applied'):
             if any(current[k]['value']!=v for k,v in record['session_last_applied'].items()):
                 record['paused']=True;record['pause_reason']='manual_session_style';self.save(state)
@@ -311,6 +425,8 @@ class TabFormatting:
         eligible=[]
         for window in windows:
             wid=window['window_id']
+            if self.override_key(snapshot, wid) in state.get('tab_overrides', {}):
+                continue
             if window.get('linked'):
                 failures.append(dict(window=wid,code='linked_window'));continue
             if not resume_manual and record['windows'].get(wid,{}).get('paused'):

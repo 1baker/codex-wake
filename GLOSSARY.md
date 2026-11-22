@@ -391,6 +391,26 @@ An explicit instruction to retain a tab's placement against automatic routing.
 A terminal window within a terminal session, containing one or more panes.
 Moving a tab between terminal sessions does not itself replace its conversations.
 
+**Terminal pane**:
+An independently addressable input and output surface within a terminal tab.
+A pane can present a shell, agent, or other terminal process.
+
+**Tab destruction**:
+Closing a terminal tab and all its linked appearances and panes, which can end
+the live processes they host.
+
+**Unlinking a tab**:
+Removing one linked appearance of a terminal tab from a terminal session
+while retaining the underlying tab and its live panes.
+
+**Tab placement anchor**:
+A specific terminal tab used as the reference point for placing another tab
+before or after it.
+
+**Tab formatting override**:
+An explicit style choice for a terminal tab that takes precedence over
+automatic styling until cleared.
+
 **Tab trait**:
 An observed property of a terminal attachment or its associated session, such as
 harness, build, account, reported model, inference provider, remote host, turn

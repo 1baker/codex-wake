@@ -64,6 +64,85 @@ assert 'wake_tabs_recovery_apply' in tool_specs()
             finally:
                 subprocess.run(['tmux','-S',socket,'kill-server'],capture_output=True)
 
+    def test_shared_unlink_and_confirmed_destroy_use_public_journal(self):
+        import shutil
+        import tempfile
+        from pathlib import Path
+
+        from codex_wake.controller_tab_adapters import TmuxAttachmentTransport
+        from codex_wake.controller_tabs import ControllerTabs
+        from codex_wake.tab_commands import operator_execute
+        from codex_wake.controller_runtime import ControllerRuntime
+
+        if not shutil.which('tmux'):
+            self.skipTest('tmux unavailable')
+        with tempfile.TemporaryDirectory() as directory:
+            socket = str(Path(directory) / 'tmux.sock')
+
+            def tmux(*arguments):
+                return subprocess.check_output(['tmux', '-S', socket, *arguments], text=True).strip()
+
+            tmux('new-session', '-d', '-s', 'one', '-n', 'keep', 'sleep 60')
+            self.addCleanup(subprocess.run, ['tmux', '-S', socket, 'kill-server'], capture_output=True)
+            tmux('new-session', '-d', '-s', 'two', '-n', 'keep', 'sleep 60')
+            window = tmux('new-window', '-d', '-P', '-F', '#{window_id}', '-t', 'one:', 'sleep 60')
+            tmux('link-window', '-s', 'one:' + window, '-t', 'two:3')
+            calls = []
+            change_membership = []
+
+            class LostResponseTransport(TmuxAttachmentTransport):
+                def command(self, deadline, *arguments):
+                    destroy = arguments[0] == 'if-shell' and arguments[-2].startswith('kill-window')
+                    if destroy and change_membership:
+                        change_membership.pop()
+                        super().command(deadline, 'link-window', '-d', '-s', 'one:' + window, '-t', 'two:4')
+                    result = super().command(deadline, *arguments)
+                    if destroy and result.strip() != 'stale_target':
+                        calls.append(arguments[-2])
+                        raise OSError('test response lost after real effect')
+                    return result
+
+            owner = ControllerTabs(directory, host='host', environment='test', workspaces={
+                'one': dict(kind='tmux', transport=LostResponseTransport(socket, '$0')),
+                'two': dict(kind='tmux', transport=TmuxAttachmentTransport(socket, '$1')),
+            })
+
+            def execute(verb, request, **arguments):
+                result = operator_execute('tabs.' + verb, dict(workspace='one', window=window, **arguments),
+                                          directory, owner=owner, request_id=request)
+                return result['result']['operation']
+
+            pane = tmux('display-message', '-p', '-t', 'one:' + window, '#{pane_id}')
+            tmux('link-window', '-s', 'one:' + window, '-t', 'one:4')
+            ambiguous = execute('unlink', 'unlink-ambiguous')
+            self.assertEqual(ambiguous['reason'], 'ambiguous_target', ambiguous)
+            duplicate = execute('unlink', 'unlink-at-index', index=4)
+            self.assertEqual(duplicate['execution'], 'completed', duplicate)
+            self.assertEqual(tmux('display-message', '-p', '-t', 'one:' + window, '#{pane_id}'), pane)
+            unlink = execute('unlink', 'unlink-one')
+            self.assertEqual(unlink['execution'], 'completed', unlink)
+            self.assertEqual(unlink['result']['remaining_sessions'], [{'session_id': '$1', 'index': 3}])
+            self.assertEqual(tmux('display-message', '-p', '-t', 'two:' + window, '#{pane_id}'), pane)
+            tmux('link-window', '-s', 'two:' + window, '-t', 'one:2')
+            preview = execute('destroy', 'preview-shared', preview=True)
+            self.assertEqual(preview['execution'], 'completed', preview)
+            impact = preview['result']
+            self.assertEqual([item['session_id'] for item in impact['affected_sessions']], ['$0', '$1'])
+            self.assertEqual(impact['pane_ids'], [pane])
+            change_membership.append(True)
+            changed = execute('destroy', 'destroy-membership-race', confirmation=impact['confirmation'])
+            self.assertEqual(changed['reason'], 'stale_target', changed)
+            self.assertFalse(calls)
+            tmux('unlink-window', '-t', 'two:4')
+            unknown = execute('destroy', 'destroy-shared', confirmation=impact['confirmation'])
+            self.assertEqual(unknown['phase'], 'uncertain', unknown)
+            retry = execute('destroy', 'destroy-shared', confirmation=impact['confirmation'])
+            self.assertEqual(retry['operation_id'], unknown['operation_id'])
+            retained = ControllerRuntime(directory).local_tab_result(unknown['operation_id'])
+            self.assertEqual(retained['result']['operation']['phase'], 'uncertain')
+            self.assertEqual(calls, ["kill-window -t '$0:2'"])
+            self.assertNotIn(window, tmux('list-windows', '-a', '-F', '#{window_id}').splitlines())
+
     def test_generated_contract_mcp_api_help_and_completion_agree(self):
         from codex_wake.tab_contract import tool_specs,cli_verb
         from codex_wake.controller_http import TOOLS

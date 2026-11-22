@@ -129,10 +129,13 @@ class TerminalSessionTests(unittest.TestCase):
             session=tabs.execute('tabs.session.create',{'name':'bots','start':True})['session'];sock=str(root/'terminal-sessions/tmux.sock')
             try:
                 tabs.execute('tabs.session.update',{'session':session['id'],'changes':{'defaults':{'cwd':str(cwd),'argv':['/bin/sleep','60']}}})
-                result=operator_execute('tabs.create',{'workspace':session['workspace'],'name':'new-worker'},root,owner=tabs,request_id='new-worker')['result']['operation']['result']
+                result=operator_execute('tabs.create',{'workspace':session['workspace'],'name':'new-worker','saved_defaults':True},root,owner=tabs,request_id='new-worker')['result']['operation']['result']
                 pane=result['window']['panes'][0]['pane_id']
                 actual_cwd=subprocess.check_output(['tmux','-S',sock,'display-message','-p','-t',pane,'#{pane_current_path}'],text=True).strip()
                 self.assertEqual(actual_cwd,str(cwd))
                 pid=result['window']['panes'][0]['pid']
                 self.assertIn(b'/bin/sleep',(Path('/proc')/str(pid)/'cmdline').read_bytes())
+                shell = operator_execute('tabs.create', {'workspace': session['workspace'], 'name': 'shell'}, root, owner=tabs, request_id='default-shell')['result']['operation']['result']
+                shell_pane = shell['window']['panes'][0]
+                self.assertNotIn(b'/bin/sleep', (Path('/proc') / str(shell_pane['pid']) / 'cmdline').read_bytes())
             finally:subprocess.run(['tmux','-S',sock,'kill-server'],capture_output=True)

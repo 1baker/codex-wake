@@ -97,7 +97,7 @@ class TabProfileCreate:
         except (OSError,ValueError,KeyError,TypeError) as error:
             raise InventoryError('profile_launch_held','selected profile/build is unavailable or incompatible') from error
 
-    def create(self,profile,*,transport,name,cwd,deadline,guard,preview=False):
+    def create(self,profile,*,transport,name,cwd,deadline,guard,preview=False,placement=None):
         if not hasattr(transport,'socket') or not hasattr(transport,'command'):
             return dict(status='unsupported',reason='selected_profile_creation_unqualified_for_backend')
         selected=self.selection(profile)
@@ -118,8 +118,9 @@ class TabProfileCreate:
         if self.selection(profile)!=selected:
             raise InventoryError('stale_target','profile/account/build changed before launch')
         try:
+            flags = [placement[0], '-t', transport.session + ':' + placement[1]] if placement else ['-t', transport.session + ':']
             rendered=transport.command(deadline,'new-window','-d','-P','-F','#{window_id}\t#{pane_id}',
-                                       '-t',transport.session+':','-n',name,'-c',cwd,command)
+                                       *flags,'-n',name,'-c',cwd,command)
             wid,pane=rendered.strip().split('\t')
         except (OSError,ValueError,subprocess.SubprocessError) as error:
             return dict(status='uncertain',reason='profile_window_submission_outcome_unknown',

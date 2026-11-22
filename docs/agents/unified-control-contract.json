@@ -4897,7 +4897,7 @@
               "type": "string"
             },
             "expected_destination": {
-              "description": "Exact destination target; ordinary local CLI resolves it.",
+              "description": "Destination lifecycle_target from tabs list/show for move/park/restore; ordinary local CLI resolves it.",
               "type": "object"
             },
             "expected_target": {
@@ -4959,7 +4959,7 @@
               "type": "string"
             },
             "expected_destination": {
-              "description": "Exact destination target; ordinary local CLI resolves it.",
+              "description": "Destination lifecycle_target from tabs list/show for move/park/restore; ordinary local CLI resolves it.",
               "type": "object"
             },
             "expected_target": {
@@ -5319,7 +5319,7 @@
               "type": "string"
             },
             "expected_destination": {
-              "description": "Exact destination target; ordinary local CLI resolves it.",
+              "description": "Destination lifecycle_target from tabs list/show for move/park/restore; ordinary local CLI resolves it.",
               "type": "object"
             },
             "expected_target": {
@@ -5783,7 +5783,7 @@
               "type": "string"
             },
             "expected_destination": {
-              "description": "Exact destination target; ordinary local CLI resolves it.",
+              "description": "Destination lifecycle_target from tabs list/show for move/park/restore; ordinary local CLI resolves it.",
               "type": "object"
             },
             "expected_target": {
@@ -6440,6 +6440,124 @@
           },
           "required": [
             "name"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "grok_auth.revoke": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "account.revoke"
+        ],
+        "mcp": "wake_grok_auth_revoke",
+        "required_scope": "account.revoke",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            "expected_target": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "account",
+            "expected_target"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "grok_auth.status": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "account.observe"
+        ],
+        "mcp": "wake_grok_auth_status",
+        "required_scope": "account.observe",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            "expected_target": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "account",
+            "expected_target"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "grok_models.list": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "account.observe"
+        ],
+        "mcp": "wake_grok_models_list",
+        "required_scope": "account.observe",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            "expected_target": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "account",
+            "expected_target"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "grok_models.resolve": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "account.observe"
+        ],
+        "mcp": "wake_grok_models_resolve",
+        "required_scope": "account.observe",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "account": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+              "type": "string"
+            },
+            "expected_target": {
+              "type": "object"
+            },
+            "model": {
+              "type": "string"
+            },
+            "selection_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "account",
+            "expected_target"
           ],
           "type": "object"
         },
@@ -11831,6 +11949,380 @@
           },
           "required": [
             "operation_id"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.advance": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "admin"
+        ],
+        "mcp": "wake_upgrades_advance",
+        "required_scope": "admin",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            },
+            "job_id": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "expected_target",
+            "job_id"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.cache_cleanup": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "admin"
+        ],
+        "mcp": "wake_upgrades_cache_cleanup",
+        "required_scope": "admin",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            }
+          },
+          "required": [
+            "expected_target"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.cancel": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "admin"
+        ],
+        "mcp": "wake_upgrades_cancel",
+        "required_scope": "admin",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            },
+            "job_id": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "expected_target",
+            "job_id"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.disable": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "admin"
+        ],
+        "mcp": "wake_upgrades_disable",
+        "required_scope": "admin",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            }
+          },
+          "required": [
+            "expected_target"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.discovery": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "observe"
+        ],
+        "mcp": "wake_upgrades_discovery",
+        "required_scope": "observe",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            }
+          },
+          "required": [
+            "expected_target"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.enable": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "admin"
+        ],
+        "mcp": "wake_upgrades_enable",
+        "required_scope": "admin",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            }
+          },
+          "required": [
+            "expected_target"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.list": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "observe"
+        ],
+        "mcp": "wake_upgrades_list",
+        "required_scope": "observe",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            }
+          },
+          "required": [
+            "expected_target"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.poll": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "admin"
+        ],
+        "mcp": "wake_upgrades_poll",
+        "required_scope": "admin",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            }
+          },
+          "required": [
+            "expected_target"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.reconcile": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "admin"
+        ],
+        "mcp": "wake_upgrades_reconcile",
+        "required_scope": "admin",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            },
+            "job_id": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "mode": {
+              "enum": [
+                "verify_only",
+                "verify_review_only",
+                "qualification_only",
+                "promotion_observe"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "expected_target",
+            "job_id",
+            "mode"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.rollback": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "admin"
+        ],
+        "mcp": "wake_upgrades_rollback",
+        "required_scope": "admin",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            },
+            "job_id": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "operation_id": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "expected_target",
+            "job_id",
+            "operation_id"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.show": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "observe"
+        ],
+        "mcp": "wake_upgrades_show",
+        "required_scope": "observe",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            },
+            "job_id": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "expected_target",
+            "job_id"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.start": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "admin"
+        ],
+        "mcp": "wake_upgrades_start",
+        "required_scope": "admin",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_recipe_sha256": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            },
+            "recipe": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "upstream_version": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "expected_target",
+            "recipe"
+          ],
+          "type": "object"
+        },
+        "supported_registration": true
+      }
+    },
+    "upgrades.status": {
+      "protected": {
+        "admission": "fresh_authenticated_actor_and_exact_target",
+        "delegated_required_scopes": [
+          "observe"
+        ],
+        "mcp": "wake_upgrades_status",
+        "required_scope": "observe",
+        "schema": {
+          "additionalProperties": false,
+          "properties": {
+            "expected_target": {
+              "minProperties": 1,
+              "type": "object"
+            }
+          },
+          "required": [
+            "expected_target"
           ],
           "type": "object"
         },

@@ -1,4 +1,5 @@
 """Finite native formatting boundary; installed acceptance is separate."""
+from itertools import groupby
 import time
 import unittest
 
@@ -27,15 +28,27 @@ class PsmuxFormattingTests(unittest.TestCase):
             def _current(self):pass
             def _rows(self):return []
             def _snapshot(self,rows):return dict(windows=[dict(window_id='@1',index=0,panes=[])],session_id='$1')
-            def command(self,*args,timeout=4):
-                if args[0]=='show-options':
-                    if args[-1]=='fixture:0':return '\n'.join(k+' '+v for k,v in self.local.items())+'\n'
-                    name=args[-1];return self.local.get(name,self.effective[name])+'\n'
-                raise AssertionError(args)
+            def command(self, *args, timeout=4):
+                output = []
+                for separator, entries in groupby(args, lambda arg: arg == ';'):
+                    if separator:
+                        continue
+                    command = tuple(entries)
+                    assert 'fixture:@1' in command, command
+                    if command[0] == 'display-message':
+                        output.append(command[-1])
+                    elif command == ('show-options', '-w', '-t', 'fixture:@1'):
+                        output.extend(k + ' ' + v for k, v in self.local.items())
+                    else:
+                        name = command[-1]
+                        values = self.effective if '-g' in command else dict(self.effective, **self.local)
+                        output.append(values[name])
+                return '\n'.join(output) + '\n'
         host=Native()
         result=host.execute(dict(action='formatting',arguments=dict(action='read',window='@1')))['result']
         self.assertTrue(result['window-status-format']['explicit'])
         self.assertEqual(result['window-status-format']['value'],'local #W')
+        self.assertEqual(result['window-status-format']['parent'],'global #W')
         self.assertFalse(result['window-status-style']['explicit'])
         self.assertIsNone(result['window-status-style']['value'])
         self.assertEqual(result['window-status-style']['effective'],'fg=white')

@@ -2145,7 +2145,7 @@ codex-wake --wake-root ROOT tabs capture --workspace WORKSPACE
 usage: codex-wake tabs capture [-h] [--arguments ARGUMENTS] [--json]
                                [--request-id REQUEST_ID]
                                [--expected-target EXPECTED_TARGET]
-                               [--lines LINES] [--pane PANE]
+                               [--lines LINES] [--pane PANE] [--window WINDOW]
                                [--workspace WORKSPACE]
                                [--session SESSION_SELECTOR]
                                [--server SESSION_SERVER]
@@ -2168,6 +2168,8 @@ options:
                         resolves it, remote callers must supply it.
   --lines LINES         Lines.
   --pane PANE           Exact native pane ID from tabs show (for example %4).
+  --window WINDOW       Exact native window ID from tabs list/show (for
+                        example @3); names are not identity pins.
   --workspace WORKSPACE
                         Workspace ID or unique label from tabs list; same-user
                         CLI can select its only workspace.
@@ -2186,7 +2188,8 @@ Examples:
 | `_request` | yes | Durable request metadata: operation_id, idempotency_key, correlation_id, binding and exact target. |
 | `expected_target` | yes | Exact target JSON from the corresponding resolve, list or status command; replacement is refused. |
 | `lines` | no | lines. |
-| `pane` | yes | pane. |
+| `pane` | no | pane. |
+| `window` | no | window. |
 | `workspace` | yes | workspace. |
 
 ## tabs close
@@ -2271,9 +2274,13 @@ codex-wake --wake-root ROOT tabs create --workspace WORKSPACE
 
 ```text
 usage: codex-wake tabs create [-h] [--arguments ARGUMENTS] [--json]
-                              [--request-id REQUEST_ID] [--argv ARGV]
-                              [--cwd CWD] [--expected-target EXPECTED_TARGET]
-                              [--name NAME] [--dry-run] [--profile PROFILE]
+                              [--request-id REQUEST_ID] [--anchor ANCHOR]
+                              [--argv ARGV] [--cwd CWD]
+                              [--expected-target EXPECTED_TARGET]
+                              [--name NAME]
+                              [--position {first,last,before,after}]
+                              [--dry-run] [--profile PROFILE]
+                              [--saved-defaults] [--shell]
                               [--workspace WORKSPACE]
                               [--session SESSION_SELECTOR]
                               [--server SESSION_SERVER]
@@ -2291,6 +2298,8 @@ options:
   --request-id REQUEST_ID
                         Stable intent ID; reuse only for identical inputs.
                         Retrieve with tabs result.
+  --anchor ANCHOR       Exact native destination tab ID for before or after
+                        placement.
   --argv ARGV           Explicit new-tab command argv; overrides saved command
                         defaults.
   --cwd CWD             Cwd.
@@ -2298,10 +2307,16 @@ options:
                         Exact current target object; ordinary local CLI
                         resolves it, remote callers must supply it.
   --name NAME           Name.
+  --position {first,last,before,after}
+                        First, last, before, or after placement in the
+                        destination session.
   --dry-run             Preview only; no terminal layout mutation.
   --profile PROFILE     Existing account/profile selector or alias; host
                         registry selects build and home. Unsupported backends
                         remain held; no shell fallback.
+  --saved-defaults      Use a saved launch profile or command default when
+                        present.
+  --shell               Launch the destination default shell explicitly.
   --workspace WORKSPACE
                         Workspace ID or unique label from tabs list; same-user
                         CLI can select its only workspace.
@@ -2322,6 +2337,10 @@ Examples:
 | `expected_target` | yes | Exact target JSON from the corresponding resolve, list or status command; replacement is refused. |
 | `name` | yes | name. |
 | `preview` | no | Show/save the frozen selection without native copying or daemon starts. |
+| `shell` | no | shell. |
+| `saved_defaults` | no | saved defaults. |
+| `position` | no | position. |
+| `anchor` | no | anchor. |
 | `workspace` | yes | workspace. |
 | `argv` | no | argv. |
 | `profile` | no | profile. |
@@ -2590,9 +2609,10 @@ codex-wake --wake-root ROOT tabs input --workspace WORKSPACE
 usage: codex-wake tabs input [-h] [--arguments ARGUMENTS] [--json]
                              [--request-id REQUEST_ID] [--custody CUSTODY]
                              [--expected-target EXPECTED_TARGET]
-                             [--input INPUT] [--pane PANE]
+                             [--input INPUT] [--keys KEYS]
+                             [--mode {paste,keys}] [--pane PANE]
                              [--transport {structured,terminal}]
-                             [--workspace WORKSPACE]
+                             [--window WINDOW] [--workspace WORKSPACE]
                              [--session SESSION_SELECTOR]
                              [--server SESSION_SERVER]
 
@@ -2616,10 +2636,14 @@ options:
                         resolves it, remote callers must supply it.
   --input INPUT         Literal prompt text; only sent through separately
                         qualified host input custody.
+  --keys KEYS           Keys.
+  --mode {paste,keys}   Mode.
   --pane PANE           Exact native pane ID from tabs show (for example %4).
   --transport {structured,terminal}
                         Explicit qualified input transport; terminal is never
                         fallback after uncertain structured input.
+  --window WINDOW       Exact native window ID from tabs list/show (for
+                        example @3); names are not identity pins.
   --workspace WORKSPACE
                         Workspace ID or unique label from tabs list; same-user
                         CLI can select its only workspace.
@@ -2638,9 +2662,12 @@ Examples:
 | `_request` | yes | Durable request metadata: operation_id, idempotency_key, correlation_id, binding and exact target. |
 | `custody` | yes | custody. |
 | `expected_target` | yes | Exact target JSON from the corresponding resolve, list or status command; replacement is refused. |
-| `input` | yes | input. |
-| `pane` | yes | pane. |
+| `input` | no | input. |
+| `mode` | no | Create an independent private configuration snapshot; legacy creation remains the default. |
+| `keys` | no | keys. |
+| `pane` | no | pane. |
 | `transport` | yes | transport. |
+| `window` | no | window. |
 | `workspace` | yes | workspace. |
 
 ## tabs list
@@ -2887,12 +2914,13 @@ codex-wake --wake-root ROOT tabs move --workspace WORKSPACE
 
 ```text
 usage: codex-wake tabs move [-h] [--arguments ARGUMENTS] [--json]
-                            [--request-id REQUEST_ID]
+                            [--request-id REQUEST_ID] [--anchor ANCHOR]
                             [--destination DESTINATION]
                             [--expected-destination EXPECTED_DESTINATION]
                             [--expected-target EXPECTED_TARGET] [--force]
-                            [--index INDEX] [--dry-run] [--window WINDOW]
-                            [--workspace WORKSPACE]
+                            [--index INDEX]
+                            [--position {first,last,before,after}] [--dry-run]
+                            [--window WINDOW] [--workspace WORKSPACE]
                             [--session SESSION_SELECTOR]
                             [--server SESSION_SERVER]
 
@@ -2909,6 +2937,8 @@ options:
   --request-id REQUEST_ID
                         Stable intent ID; reuse only for identical inputs.
                         Retrieve with tabs result.
+  --anchor ANCHOR       Exact native destination tab ID for before or after
+                        placement.
   --destination DESTINATION
                         Destination terminal session name or stable ID;
                         compatible backend/server required.
@@ -2921,6 +2951,9 @@ options:
   --force               Explicitly override supported active/focused guards;
                         never overrides stale identity.
   --index INDEX         Index.
+  --position {first,last,before,after}
+                        First, last, before, or after placement in the
+                        destination session.
   --dry-run             Preview only; no terminal layout mutation.
   --window WINDOW       Exact native window ID from tabs list/show (for
                         example @3); names are not identity pins.
@@ -2947,6 +2980,8 @@ Examples:
 | `index` | no | index. |
 | `preview` | no | Show/save the frozen selection without native copying or daemon starts. |
 | `window` | yes | window. |
+| `position` | no | position. |
+| `anchor` | no | anchor. |
 | `workspace` | yes | workspace. |
 
 ## tabs park
@@ -4886,6 +4921,313 @@ Examples:
 | `preset` | no | preset. |
 | `expected_target` | yes | Exact target JSON from the corresponding resolve, list or status command; replacement is refused. |
 | `_request` | yes | Durable request metadata: operation_id, idempotency_key, correlation_id, binding and exact target. |
+
+## tabs format override-set
+
+Set, inspect, or clear the persistent style of one exact terminal tab.
+
+Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
+
+Transport: CLI / API / OAuth MCP / native MCP (`wake_tabs_format_override_set`).
+
+```sh
+codex-wake --wake-root ROOT tabs format-override-set --workspace WORKSPACE
+```
+
+### CLI help
+
+```text
+usage: codex-wake tabs format-override-set [-h] [--arguments ARGUMENTS]
+                                           [--json] [--request-id REQUEST_ID]
+                                           [--expected-target EXPECTED_TARGET]
+                                           [--style STYLE] [--window WINDOW]
+                                           [--workspace WORKSPACE]
+                                           [--session SESSION_SELECTOR]
+                                           [--server SESSION_SERVER]
+
+Set, inspect, or clear the persistent style of one exact terminal tab.
+
+Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
+
+options:
+  -h, --help            show this help message and exit
+  --arguments ARGUMENTS
+                        Advanced operation JSON; typed flags fill only omitted
+                        fields.
+  --json                Emit structured results.
+  --request-id REQUEST_ID
+                        Stable intent ID; reuse only for identical inputs.
+                        Retrieve with tabs result.
+  --expected-target EXPECTED_TARGET
+                        Exact current target object; ordinary local CLI
+                        resolves it, remote callers must supply it.
+  --style STYLE         Style.
+  --window WINDOW       Exact native window ID from tabs list/show (for
+                        example @3); names are not identity pins.
+  --workspace WORKSPACE
+                        Workspace ID or unique label from tabs list; same-user
+                        CLI can select its only workspace.
+  --session SESSION_SELECTOR
+                        Terminal session name or stable ID (alias for
+                        --workspace).
+  --server SESSION_SERVER
+                        Terminal server qualifier.
+
+Examples:
+  codex-wake --wake-root ROOT tabs format-override-set --workspace WORKSPACE
+```
+
+| Argument | Required remotely | Meaning |
+|---|---|---|
+| `workspace` | no | workspace. |
+| `window` | yes | window. |
+| `style` | yes | style. |
+| `expected_target` | yes | Exact target JSON from the corresponding resolve, list or status command; replacement is refused. |
+| `_request` | yes | Durable request metadata: operation_id, idempotency_key, correlation_id, binding and exact target. |
+
+## tabs format override-inspect
+
+Set, inspect, or clear the persistent style of one exact terminal tab.
+
+Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
+
+Transport: CLI / API / OAuth MCP / native MCP (`wake_tabs_format_override_inspect`).
+
+```sh
+codex-wake --wake-root ROOT tabs format-override-inspect --workspace WORKSPACE
+```
+
+### CLI help
+
+```text
+usage: codex-wake tabs format-override-inspect [-h] [--arguments ARGUMENTS]
+                                               [--json] [--window WINDOW]
+                                               [--workspace WORKSPACE]
+                                               [--session SESSION_SELECTOR]
+                                               [--server SESSION_SERVER]
+
+Set, inspect, or clear the persistent style of one exact terminal tab.
+
+Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
+
+options:
+  -h, --help            show this help message and exit
+  --arguments ARGUMENTS
+                        Advanced operation JSON; typed flags fill only omitted
+                        fields.
+  --json                Emit structured results.
+  --window WINDOW       Exact native window ID from tabs list/show (for
+                        example @3); names are not identity pins.
+  --workspace WORKSPACE
+                        Workspace ID or unique label from tabs list; same-user
+                        CLI can select its only workspace.
+  --session SESSION_SELECTOR
+                        Terminal session name or stable ID (alias for
+                        --workspace).
+  --server SESSION_SERVER
+                        Terminal server qualifier.
+
+Examples:
+  codex-wake --wake-root ROOT tabs format-override-inspect --workspace WORKSPACE
+```
+
+| Argument | Required remotely | Meaning |
+|---|---|---|
+| `workspace` | no | workspace. |
+| `window` | yes | window. |
+
+## tabs format override-clear
+
+Set, inspect, or clear the persistent style of one exact terminal tab.
+
+Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
+
+Transport: CLI / API / OAuth MCP / native MCP (`wake_tabs_format_override_clear`).
+
+```sh
+codex-wake --wake-root ROOT tabs format-override-clear --workspace WORKSPACE
+```
+
+### CLI help
+
+```text
+usage: codex-wake tabs format-override-clear [-h] [--arguments ARGUMENTS]
+                                             [--json]
+                                             [--request-id REQUEST_ID]
+                                             [--expected-target EXPECTED_TARGET]
+                                             [--window WINDOW]
+                                             [--workspace WORKSPACE]
+                                             [--session SESSION_SELECTOR]
+                                             [--server SESSION_SERVER]
+
+Set, inspect, or clear the persistent style of one exact terminal tab.
+
+Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
+
+options:
+  -h, --help            show this help message and exit
+  --arguments ARGUMENTS
+                        Advanced operation JSON; typed flags fill only omitted
+                        fields.
+  --json                Emit structured results.
+  --request-id REQUEST_ID
+                        Stable intent ID; reuse only for identical inputs.
+                        Retrieve with tabs result.
+  --expected-target EXPECTED_TARGET
+                        Exact current target object; ordinary local CLI
+                        resolves it, remote callers must supply it.
+  --window WINDOW       Exact native window ID from tabs list/show (for
+                        example @3); names are not identity pins.
+  --workspace WORKSPACE
+                        Workspace ID or unique label from tabs list; same-user
+                        CLI can select its only workspace.
+  --session SESSION_SELECTOR
+                        Terminal session name or stable ID (alias for
+                        --workspace).
+  --server SESSION_SERVER
+                        Terminal server qualifier.
+
+Examples:
+  codex-wake --wake-root ROOT tabs format-override-clear --workspace WORKSPACE
+```
+
+| Argument | Required remotely | Meaning |
+|---|---|---|
+| `workspace` | no | workspace. |
+| `window` | yes | window. |
+| `expected_target` | yes | Exact target JSON from the corresponding resolve, list or status command; replacement is refused. |
+| `_request` | yes | Durable request metadata: operation_id, idempotency_key, correlation_id, binding and exact target. |
+
+## tabs destroy
+
+Preview and explicitly destroy all appearances and panes of an exact tab.
+
+Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
+
+Transport: CLI / API / OAuth MCP / native MCP (`wake_tabs_destroy`).
+
+```sh
+codex-wake --wake-root ROOT tabs destroy --workspace WORKSPACE
+```
+
+### CLI help
+
+```text
+usage: codex-wake tabs destroy [-h] [--arguments ARGUMENTS] [--json]
+                               [--request-id REQUEST_ID]
+                               [--confirmation CONFIRMATION]
+                               [--expected-target EXPECTED_TARGET] [--dry-run]
+                               [--window WINDOW] [--workspace WORKSPACE]
+                               [--session SESSION_SELECTOR]
+                               [--server SESSION_SERVER]
+
+Preview and explicitly destroy all appearances and panes of an exact tab.
+
+Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
+
+options:
+  -h, --help            show this help message and exit
+  --arguments ARGUMENTS
+                        Advanced operation JSON; typed flags fill only omitted
+                        fields.
+  --json                Emit structured results.
+  --request-id REQUEST_ID
+                        Stable intent ID; reuse only for identical inputs.
+                        Retrieve with tabs result.
+  --confirmation CONFIRMATION
+                        Exact confirmation returned by the current destruction
+                        preview.
+  --expected-target EXPECTED_TARGET
+                        Exact current target object; ordinary local CLI
+                        resolves it, remote callers must supply it.
+  --dry-run             Preview only; no terminal layout mutation.
+  --window WINDOW       Exact native window ID from tabs list/show (for
+                        example @3); names are not identity pins.
+  --workspace WORKSPACE
+                        Workspace ID or unique label from tabs list; same-user
+                        CLI can select its only workspace.
+  --session SESSION_SELECTOR
+                        Terminal session name or stable ID (alias for
+                        --workspace).
+  --server SESSION_SERVER
+                        Terminal server qualifier.
+
+Examples:
+  codex-wake --wake-root ROOT tabs destroy --workspace WORKSPACE
+```
+
+| Argument | Required remotely | Meaning |
+|---|---|---|
+| `workspace` | yes | workspace. |
+| `window` | yes | window. |
+| `expected_target` | yes | Exact target JSON from the corresponding resolve, list or status command; replacement is refused. |
+| `_request` | yes | Durable request metadata: operation_id, idempotency_key, correlation_id, binding and exact target. |
+| `preview` | no | Show/save the frozen selection without native copying or daemon starts. |
+| `confirmation` | no | confirmation. |
+
+## tabs unlink
+
+Remove only the selected appearance of a tab that remains linked elsewhere.
+
+Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
+
+Transport: CLI / API / OAuth MCP / native MCP (`wake_tabs_unlink`).
+
+```sh
+codex-wake --wake-root ROOT tabs unlink --workspace WORKSPACE
+```
+
+### CLI help
+
+```text
+usage: codex-wake tabs unlink [-h] [--arguments ARGUMENTS] [--json]
+                              [--request-id REQUEST_ID]
+                              [--expected-target EXPECTED_TARGET]
+                              [--index INDEX] [--window WINDOW]
+                              [--workspace WORKSPACE]
+                              [--session SESSION_SELECTOR]
+                              [--server SESSION_SERVER]
+
+Remove only the selected appearance of a tab that remains linked elsewhere.
+
+Same-user local CLI resolves exact generations and retains durable request identity; API/MCP use explicit pins and authenticated scopes. Uncertain effects are never replayed. Grok/SSH exact health and unsupported backend continuity remain explicit unknown/held. Raw capture and input retain separate privacy/custody checks; observation grants no input access.
+
+options:
+  -h, --help            show this help message and exit
+  --arguments ARGUMENTS
+                        Advanced operation JSON; typed flags fill only omitted
+                        fields.
+  --json                Emit structured results.
+  --request-id REQUEST_ID
+                        Stable intent ID; reuse only for identical inputs.
+                        Retrieve with tabs result.
+  --expected-target EXPECTED_TARGET
+                        Exact current target object; ordinary local CLI
+                        resolves it, remote callers must supply it.
+  --index INDEX         Exact index when a tab appears more than once in the
+                        selected session.
+  --window WINDOW       Exact native window ID from tabs list/show (for
+                        example @3); names are not identity pins.
+  --workspace WORKSPACE
+                        Workspace ID or unique label from tabs list; same-user
+                        CLI can select its only workspace.
+  --session SESSION_SELECTOR
+                        Terminal session name or stable ID (alias for
+                        --workspace).
+  --server SESSION_SERVER
+                        Terminal server qualifier.
+
+Examples:
+  codex-wake --wake-root ROOT tabs unlink --workspace WORKSPACE
+```
+
+| Argument | Required remotely | Meaning |
+|---|---|---|
+| `workspace` | yes | workspace. |
+| `window` | yes | window. |
+| `expected_target` | yes | Exact target JSON from the corresponding resolve, list or status command; replacement is refused. |
+| `_request` | yes | Durable request metadata: operation_id, idempotency_key, correlation_id, binding and exact target. |
+| `index` | no | index. |
 
 ## tabs session list
 

@@ -145,16 +145,19 @@ class ControllerTabsTests(unittest.TestCase):
             owner = ControllerTabs(directory,workspaces={'fixture':dict(transport=Transport(),kind='stdio',broker=broker,privacy=lambda pane:'safe')},host='h',environment='fixture')
             row = owner.execute('tabs.show',{'workspace':'fixture'})['resources'][0]
             target = row['target']
-            actor = Actor('owner','human','client','grant','https://issuer','https://resource',frozenset({'control'}),[target],time.time()+600)
+            actor = Actor('owner','human','client','grant','https://issuer','https://resource',frozenset({'control','observe'}),[target],time.time()+600)
             authority = SimpleNamespace(authenticate=lambda token:actor)
             facade = AuthorizedTabs(authority,owner,ControllerRuntime(directory))
             args = dict(workspace='fixture',expected_target=target,pane='%1',input='fixture',custody=row['input_custody'],transport='structured',
                 _request=dict(operation_id='one',idempotency_key='one',correlation_id='one',binding='first',target=target))
             result = facade.execute('token','tabs.input',args)
             self.assertEqual(result['result']['operation']['phase'],'uncertain')
-            reconnect = AuthorizedTabs(authority,owner,ControllerRuntime(directory))
-            reconnect.execute('token','tabs.input',args)
-            self.assertEqual(len(calls),1)
+            runtime = ControllerRuntime(directory)
+            readback = runtime.operation(actor, 'operations.result', {'operation_id': 'one'}, authorize=lambda: actor)
+            self.assertEqual(readback['result']['operation']['phase'], 'uncertain')
+            self.assertEqual(readback['result']['operation']['operation_id'], 'one')
+            AuthorizedTabs(authority, owner, runtime).execute('token', 'tabs.input', args)
+            self.assertEqual(len(calls), 1)
             denied = Actor('owner','human','client','grant','https://issuer','https://resource',frozenset({'observe'}),[target],time.time()+600)
             with self.assertRaises(AuthError):
                 AuthorizedTabs(SimpleNamespace(authenticate=lambda token:denied),owner,ControllerRuntime(directory)).execute('token','tabs.input',args)
@@ -191,14 +194,29 @@ class ControllerTabsTests(unittest.TestCase):
                 broker = OwnedTerminalBroker(transport,panes=['%0'],owner_id='fixture')
                 owner = ControllerTabs(directory,workspaces={'fixture':dict(transport=transport,kind='byobu',broker=broker,privacy=lambda pane:'safe')},host='h',environment='fixture')
                 row = owner.execute('tabs.list',{})['resources'][0]
-                args = dict(workspace='fixture',expected_target=row['target'],pane='%0',input='fixture line',custody=row['input_custody'],transport='terminal')
-                result = owner.execute('tabs.input',args)
-                self.assertTrue(result['fallback'])
-                self.assertEqual(result['result']['acceptance'],'unverified')
-                deadline = time.monotonic()+2
-                while 'fixture line' not in transport.capture('%0',5,deadline):
+                args = dict(workspace='fixture', expected_target=row['target'], window=row['window']['window_id'],
+                            custody=row['input_custody'], transport='terminal')
+                result = owner.execute('tabs.input', dict(args, input='fixture line'))
+                self.assertEqual(result['pane'], '%0')
+                self.assertEqual(result['result']['acceptance'], 'terminal_adapter')
+                captured = owner.execute('tabs.capture', {k: args[k] for k in ('workspace', 'expected_target', 'window')})
+                self.assertEqual(captured['pane'], '%0')
+                self.assertEqual(captured['text'].count('fixture line'), 1)
+                owner.execute('tabs.input', dict(args, mode='keys', keys=['Enter']))
+                deadline = time.monotonic() + 2
+                while transport.capture('%0', 5, deadline).count('fixture line') < 2:
+                    self.assertLess(time.monotonic(), deadline, 'Enter did not submit the literal text')
                     time.sleep(.01)
-                with self.assertRaises(InventoryError): owner.execute('tabs.input',dict(args,input='unsafe\nsecond'))
+                with self.assertRaises(InventoryError):
+                    owner.execute('tabs.input', dict(args, input='unsafe\nsecond'))
+                subprocess.run(['tmux', '-S', socket, 'split-window', '-d', '-t', '%0', 'cat'], check=True)
+                with self.assertRaises(InventoryError) as stale:
+                    owner.execute('tabs.input', dict(args, input='stale'))
+                self.assertEqual(stale.exception.code, 'stale_target')
+                fresh = owner.execute('tabs.list', {})['resources'][0]['target']
+                with self.assertRaises(InventoryError) as ambiguous:
+                    owner.execute('tabs.capture', dict(workspace='fixture', expected_target=fresh, window=row['window']['window_id']))
+                self.assertEqual(ambiguous.exception.code, 'ambiguous_target')
             finally:
                 subprocess.run(['tmux','-S',socket,'kill-server'],check=False)
 

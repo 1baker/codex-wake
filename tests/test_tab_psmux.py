@@ -44,3 +44,23 @@ class PsmuxTransportTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, 'unsupported_operation')
         with self.assertRaises(BridgeError):
             owner.execute(dict(action='snapshot', arguments={}, argv=['never']))
+
+    def test_native_relative_move_dispatches_exact_ids_and_checks_readback(self):
+        from codex_wake.tab_psmux_bridge import BridgeError, PsmuxHost
+        owner = object.__new__(PsmuxHost)
+        owner.session = 'test'
+        windows = [dict(window_id='@4', index=0, focused=True, panes=[]),
+                   dict(window_id='@5', index=1, focused=False, panes=[])]
+        snapshot = dict(session_id='$0', windows=windows)
+        observed = dict(session_id='$0', windows=[dict(windows[1], index=0), dict(windows[0], index=1)])
+        commands = []
+        owner.command = lambda *args: commands.append(args)
+        owner._rows = lambda: [{'session_id': '$0'}]
+        owner._snapshot = lambda rows, destination: observed
+        args = dict(action='move', window='@5', position='before', anchor='@4')
+        owner._lifecycle(args, snapshot, [])
+        self.assertEqual(commands, [('move-window', '-d', '-b', '-s', 'test:@5', '-t', 'test:@4')])
+        owner._snapshot = lambda rows, destination: snapshot
+        with self.assertRaises(BridgeError) as error:
+            owner._lifecycle(args, snapshot, [])
+        self.assertEqual(error.exception.code, 'effect_uncertain')

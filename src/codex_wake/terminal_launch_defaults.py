@@ -5,6 +5,11 @@ from .managed_inventory import InventoryError
 
 def prepare(tabs,arguments):
     payload=dict(arguments)
+    shell = payload.pop('shell', False)
+    saved_defaults = payload.pop('saved_defaults', False)
+    if (type(shell) is not bool or type(saved_defaults) is not bool
+            or (shell and (saved_defaults or payload.get('profile') or 'argv' in payload))):
+        raise InventoryError('invalid_argument', 'Choose the default shell, saved defaults, a profile, or explicit argv.')
     root=getattr(tabs,'root',None)
     if root is not None and (Path(root)/'terminal-sessions/registry.json').is_file():
         from .terminal_sessions import TerminalSessions
@@ -12,7 +17,7 @@ def prepare(tabs,arguments):
         session=next((v for v in records if v.get('workspace')==payload.get('workspace')),None)
         defaults=session.get('defaults',{}) if session else {}
         if 'cwd' not in payload and defaults.get('cwd'):payload['cwd']=defaults['cwd']
-        if not payload.get('profile') and 'argv' not in payload:
+        if saved_defaults and not payload.get('profile') and 'argv' not in payload:
             if defaults.get('profile'):payload['profile']=defaults['profile']
             elif defaults.get('argv'):payload['argv']=list(defaults['argv'])
     if payload.get('profile') and 'argv' in payload:raise InventoryError('invalid_argument','Choose a profile or an explicit command argv, not both.')

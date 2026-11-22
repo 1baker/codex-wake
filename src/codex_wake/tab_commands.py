@@ -139,7 +139,10 @@ def protected_execute(operation,arguments,root):
     operations=ControllerOperations(ManagedInventory(root),host=tabs.host,environment=tabs.environment,tabs=tabs)
     configured=(Path(root)/'controller-messaging.json').is_file()
     from .daemon_commands import local_operator
-    uid_actor=None if configured else local_operator(arguments.get('expected_target',{}),('control','observe'))
+    target=arguments.get('expected_target',{})
+    if not configured and not target and operation=='tabs.format.override-inspect':
+        target=tabs.format_target(workspace=arguments.get('workspace'))
+    uid_actor=None if configured else local_operator(target,('control','observe'))
     if uid_actor is not None and operation in ('tabs.reattach-apply','tabs.reattach-status'):
         from dataclasses import replace
         uid_actor=replace(uid_actor,targets=[*uid_actor.targets,*tabs.reattach_owner().authorization_targets(arguments.get('plan_id'))])

@@ -18,6 +18,7 @@ import re
 import subprocess
 import sys
 import time
+from uuid import uuid4
 
 
 # Immutable standalone vocabulary: the validator and reader/writer must expose
@@ -221,7 +222,7 @@ def check_private_manifest(path):
 
 
 class PsmuxHost:
-    ACTIONS = {'snapshot', 'discover', 'capture', 'visible_screen', 'swap', 'lifecycle', 'attach_saved', 'formatting', 'formatting_batch', 'session_rename'}
+    ACTIONS = {'snapshot', 'discover', 'capture', 'visible_screen', 'paste', 'keys', 'swap', 'lifecycle', 'attach_saved', 'formatting', 'formatting_batch', 'session_rename'}
 
     def __init__(self, *, namespace, session, server_pid=None, server_birth=None, attach_directory=None):
         if os.name != 'nt':
@@ -246,10 +247,10 @@ class PsmuxHost:
             raise BridgeError('invalid_argument', field + ' must be bounded single-line text')
         return value
 
-    def command(self, *argv, timeout=4):
+    def command(self, *argv, timeout=4, input_text=None):
         try:
             reply = subprocess.run([str(self.binary), '-L', self.namespace, *argv],
-                text=True, encoding='utf-8',capture_output=True, timeout=timeout, check=True)
+                text=True, encoding='utf-8', input=input_text, capture_output=True, timeout=timeout, check=True)
         except (OSError, subprocess.SubprocessError):
             raise BridgeError('attachment_unavailable', 'native psmux command failed; reconcile effects before retry') from None
         if len(reply.stdout.encode()) > 1048576:
@@ -294,11 +295,26 @@ class PsmuxHost:
         if len(identities) != 1:
             raise BridgeError('attachment_unavailable', 'exact psmux session is unavailable or ambiguous')
         native_processes, complete = pane_processes({int(row['pane_pid']) for row in selected})
-        windows = {}
+        indices_by_window = {}
         for row in selected:
-            window = windows.setdefault(row['window_id'], dict(window_id=row['window_id'], index=int(row['window_index']),
-                name=row['window_name'], focused=row['window_active'] == '1',
-                linked=False, panes=[]))
+            indices_by_window.setdefault(row['window_id'], set()).add(int(row['window_index']))
+        windows = {}
+        panes_by_window = {}
+        for row in selected:
+            native_window = row['window_id']
+            indices = indices_by_window[native_window]
+            window = windows.setdefault(native_window, dict(window_id=native_window, index=int(row['window_index']),
+                name=row['window_name'], focused=False, linked=len(indices) > 1, panes=[]))
+            window['focused'] |= row['window_active'] == '1'
+            if window['linked']:
+                window['linked_sessions'] = [row['session_id']]
+                window['linked_appearances'] = [dict(session_id=row['session_id'], index=index)
+                                                for index in sorted(indices)]
+            pane = row['pane_id']
+            seen = panes_by_window.setdefault(native_window, set())
+            if pane in seen:
+                continue
+            seen.add(pane)
             pid = int(row['pane_pid'])
             window['panes'].append(dict(pane_id=row['pane_id'], pane_index=int(row['pane_index']), pid=pid, platform='windows',
                 windows_creation_filetime=process_birth(pid), windows_executable=process_image(pid), cwd=row['pane_current_path'],
@@ -357,15 +373,40 @@ class PsmuxHost:
                 allowed = {'pane', 'lines'} if action == 'capture' else {'pane'}
                 if set(args) != allowed or args.get('pane') not in panes:
                     raise BridgeError('stale_target', 'exact current pane is required')
-                row = next(r for r in rows if r['session_id'] == snapshot['session_id'] and r['pane_id'] == args['pane'])
-                exact_pane = self.session + ':' + row['window_index'] + '.' + row['pane_index']
-                command = ['capture-pane', '-p', '-t', exact_pane]
+                command = ['capture-pane', '-p', '-t', args['pane']]
                 if action == 'capture':
                     lines = args['lines']
                     if type(lines) is not int or not 1 <= lines <= 200:
                         raise BridgeError('invalid_argument', 'capture supports 1 through 200 lines')
                     command += ['-S', '-' + str(lines)]
                 result = self.command(*command)[-32768:]
+            elif action in ('paste', 'keys'):
+                field = 'text' if action == 'paste' else 'keys'
+                pane = args.get('pane')
+                if set(args) != {'pane', field} or not isinstance(pane, str) or pane not in panes:
+                    raise BridgeError('stale_target', 'exact current pane is required')
+                value = args[field]
+                if action == 'paste':
+                    if (not isinstance(value, str) or not value or len(value.encode()) > 16384
+                            or any(ord(char) < 32 or 127 <= ord(char) <= 159 for char in value)):
+                        raise BridgeError('invalid_argument', 'bounded literal text without control characters required')
+                    buffer = 'wake-paste-' + uuid4().hex
+                    try:
+                        self.command('load-buffer', '-b', buffer, '-', input_text=value)
+                        self._current()
+                        self.command('paste-buffer', '-r', '-d', '-b', buffer, '-t', pane)
+                    finally:
+                        try:
+                            self.command('delete-buffer', '-b', buffer)
+                        except BridgeError:
+                            pass
+                else:
+                    if (not isinstance(value, list) or not 1 <= len(value) <= 32 or any(
+                            not isinstance(key, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9-]{0,31}', key)
+                            for key in value)):
+                        raise BridgeError('invalid_argument', 'bounded named terminal keys required')
+                    self.command('send-keys', '-t', pane, '--', *value)
+                result = {'delivery': 'sent', 'semantic_execution': 'unknown'}
             elif action == 'swap':
                 if set(args) != {'first', 'second'} or args.get('first') not in windows or args.get('second') not in windows:
                     raise BridgeError('stale_target', 'exact current windows required')
@@ -443,12 +484,14 @@ class PsmuxHost:
             window=args.get('window')
             if not isinstance(window,str) or window not in windows:
                 raise BridgeError('stale_target','Exact current window required')
-            flags=['-w'];target=self.session+':'+str(windows[window]['index'])
+            flags=['-w'];target=self.session+':'+window
         if action.startswith('write'):
             values=args['values']
             for name,value in values.items():
                 if value is None:self.command('set-option',*flags,'-u','-t',target,name)
                 else:self.command('set-option',*flags,'-t',target,name,value)
+        if not session:
+            return self._window_format_options(target)
         raw=self.command('show-options',*flags,'-t',target)
         explicit={line.split(' ',1)[0] for line in raw.splitlines() if line and not line[0].isspace()}
         result={}
@@ -456,8 +499,27 @@ class PsmuxHost:
             # Absent user options must not be queried: psmux may reject them.
             effective=self.command('show-options',*flags,'-v','-t',target,name).removesuffix('\n') if name in explicit or not name.startswith('@') else ''
             result[name]=dict(explicit=name in explicit,value=effective if name in explicit else None,effective=effective)
-            if not session:
-                result[name]['parent']=self.command('show-options','-g','-w','-v','-t',target,name).removesuffix('\n')
+        return result
+
+    def _window_format_options(self, target):
+        # Queue only fixed read requests. Framing preserves native whitespace
+        # and multiline option values without parsing them as option records.
+        separator = 'wake-format-' + uuid4().hex
+        argv = ['show-options', '-w', '-t', target]
+        for name in FORMATTING_WINDOW_OPTIONS:
+            for scope in ((), ('-g',)):
+                argv.extend((';', 'display-message', '-p', '-t', target, separator,
+                             ';', 'show-options', *scope, '-w', '-v', '-t', target, name))
+        parts = self.command(*argv).split(separator + '\n')
+        if len(parts) != 1 + len(FORMATTING_WINDOW_OPTIONS) * 2:
+            raise BridgeError('formatting_mismatch', 'Native window option readback was incomplete')
+        explicit = {line.split(' ', 1)[0] for line in parts[0].splitlines()
+                    if line and not line[0].isspace()}
+        result = {}
+        for index, name in enumerate(FORMATTING_WINDOW_OPTIONS):
+            effective, parent = (part.removesuffix('\n') for part in parts[1+2*index:3+2*index])
+            result[name] = dict(explicit=name in explicit, value=effective if name in explicit else None,
+                                effective=effective, parent=parent)
         return result
 
     def _attach_saved(self, args, snapshot):
@@ -506,10 +568,40 @@ class PsmuxHost:
         self._window_receipt(window).write_text(json.dumps(dict(intent=args['intent'], **result)))
         return result
 
+    @staticmethod
+    def _relative_placement(args, windows, moving):
+        position = args.get('position')
+        anchor = args.get('anchor')
+        if position is None and anchor is None:
+            return None
+        if position not in ('first', 'last', 'before', 'after'):
+            raise BridgeError('invalid_argument', 'valid relative placement is required')
+        remaining = sorted((window for window in windows.values() if window['window_id'] != moving),
+                           key=lambda window: window['index'])
+        if position in ('before', 'after'):
+            if anchor == moving and moving is not None:
+                raise BridgeError('invalid_argument', 'a tab cannot anchor its own move')
+            if not isinstance(anchor, str) or anchor not in windows:
+                raise BridgeError('stale_target', 'exact current anchor tab is required')
+            target = windows[anchor]
+        else:
+            if anchor is not None:
+                raise BridgeError('invalid_argument', 'first and last do not take an anchor')
+            if not remaining:
+                return None
+            target = remaining[0] if position == 'first' else remaining[-1]
+        after = position in ('last', 'after')
+        if moving is not None:
+            expected = remaining.copy()
+            expected.insert(remaining.index(target) + int(after), windows[moving])
+            if expected == sorted(windows.values(), key=lambda window: window['index']):
+                return None
+        return ('-a' if after else '-b', target['window_id'])
+
     def _lifecycle(self, args, snapshot, rows):
         allowed = {
-            'create': {'name', 'cwd'}, 'rename': {'window', 'name'}, 'focus': {'window'}, 'close': {'window'},
-            'move': {'window', 'destination_session', 'index'}, 'park': {'window', 'destination_session', 'index'},
+            'create': {'name', 'cwd', 'position', 'anchor'}, 'rename': {'window', 'name'}, 'focus': {'window'}, 'close': {'window'},
+            'move': {'window', 'destination_session', 'index', 'position', 'anchor'}, 'park': {'window', 'destination_session', 'index'},
             'restore': {'window', 'destination_session', 'index'},
         }
         action = args.get('action')
@@ -519,14 +611,22 @@ class PsmuxHost:
         wid = args.get('window')
         if action != 'create' and wid not in windows:
             raise BridgeError('stale_target', 'exact current source window is required')
+        relative = None
         destination = snapshot['session_id']
         if action in ('create', 'rename'):
             name = self._text(args.get('name'), 'name')
             if any(w['name'] == name and w['window_id'] != wid for w in windows.values()):
                 raise BridgeError('name_conflict', 'destination already has that tab name')
         if action == 'create':
-            command = ['new-window', '-d', '-P', '-F', '#{window_id}', '-t', destination + ':', '-n', name]
+            relative = self._relative_placement(args, windows, None)
+            flags = [relative[0], '-t', self.session + ':' + str(relative[1])] if relative else ['-t', destination + ':']
+            command = ['new-window', '-d', '-P', '-F', '#{window_id}', *flags, '-n', name]
             wid = self.command(*command, *_launch_arguments(args)).strip()
+        elif action == 'move' and 'position' in args and 'destination_session' not in args:
+            relative = self._relative_placement(args, windows, wid)
+            if relative:
+                self.command('move-window', '-d', relative[0], '-s', self.session + ':' + wid,
+                             '-t', self.session + ':' + str(relative[1]))
         elif action == 'rename':
             self.command('rename-window', '-t', self.session + ':' + wid, name)
         elif action == 'focus':
@@ -549,6 +649,20 @@ class PsmuxHost:
                 raise BridgeError('effect_uncertain', 'closed tab remains visible')
         elif after is None or not any(w['window_id'] == wid for w in after['windows']):
             raise BridgeError('effect_uncertain', 'destination attachment was not observed')
+        if relative:
+            previous_order = [row['window_id'] for row in sorted(windows.values(), key=lambda row: row['index'])]
+            expected = [window for window in previous_order if window != wid]
+            expected.insert(expected.index(relative[1]) + int(relative[0] == '-a'), wid)
+            actual = sorted(after['windows'], key=lambda row: row['index'])
+            def pane_births(window):
+                return [(pane['pane_id'], pane.get('pid'), pane.get('windows_creation_filetime'))
+                        for pane in window['panes']]
+            if ([row['window_id'] for row in actual] != expected
+                    or {row['window_id'] for row in actual if row['focused']}
+                       != {row['window_id'] for row in windows.values() if row['focused']}
+                    or any(pane_births(row) != pane_births(windows[row['window_id']])
+                           for row in actual if row['window_id'] in windows)):
+                raise BridgeError('effect_uncertain', 'native placement, pane identity, or focus did not match readback')
         return dict(window_id=wid, workspace_state='present' if present else 'removed', snapshot=after)
 
 

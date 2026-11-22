@@ -10860,3 +10860,7 @@ primary-only inventory; #420/#716/PR454 remain separate source/deployment work.
 ## Turn P262 | 2026-11-21 | Current-main upgrade owner port
 
 Closed #738, #739 and #740. Disposable wsl-test and dedicated UID1017 verified the exact retained native packages using current Wake, with StableTime readings from the Windows host. Plan 0262 records installed qualification, future selection, public rollback and the public lost-result regression. One Standards and Spec review and one red-to-green remediation pass fenced staging and replacement admission. Final affected suite passed 85 tests on each Python runtime. Integration custody is on feat/issue-737-upgrade-owner.
+
+## Turn P263 | 2026-11-21 | Full tab management parity
+
+Closed #744–#747 under spec #743. Plan 0263 records installed controller API, CLI and MCP acceptance on real isolated tmux and Windows psmux, including backend limits and the single two-axis review and remediation. The affected suite passed 63 cases per Python runtime. Branch feat/issue-743-tab-management retains the validated source.

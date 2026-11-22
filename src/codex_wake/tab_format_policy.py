@@ -11,6 +11,26 @@ _COLOURS = frozenset(('black', 'red', 'green', 'yellow', 'blue', 'magenta',
                       'cyan', 'white', 'default'))
 
 
+STYLE_ATTRIBUTES = ('bold', 'dim', 'underscore', 'reverse')
+
+
+def validate_style_override(style):
+    if not isinstance(style, dict) or set(style) != {'foreground', 'background', 'attributes'}:
+        raise InventoryError('invalid_argument', 'Specify foreground, background, and attributes.')
+    for field in ('foreground', 'background'):
+        colour = style[field]
+        if not isinstance(colour, str) or not (colour in _COLOURS or re.fullmatch(
+                r'#[0-9a-fA-F]{6}|colour(?:[0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])', colour)):
+            raise InventoryError('invalid_argument', 'Unsupported override colour.')
+    attributes = style['attributes']
+    if (not isinstance(attributes, list) or len(attributes) > len(STYLE_ATTRIBUTES)
+            or any(not isinstance(value, str) or value not in STYLE_ATTRIBUTES for value in attributes)
+            or len(set(attributes)) != len(attributes)):
+        raise InventoryError('invalid_argument', 'Unsupported or repeated tab style attributes.')
+    return dict(foreground=style['foreground'], background=style['background'],
+                attributes=list(attributes))
+
+
 def validate_policy(policy):
     """Return independent, finite preferences; reject terminal-format injection."""
     if not isinstance(policy, dict) or set(policy) - set(DEFAULT_POLICY):

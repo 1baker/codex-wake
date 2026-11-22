@@ -65,6 +65,14 @@ class LifecycleCLITests(unittest.TestCase):
             value, failed = preview(pins, 'lifecycle_target', 'changed-placement')
             self.assertEqual(value['result']['operation']['phase'], 'uncertain', value)
             self.assertEqual(value['result']['operation']['reason'], 'stale_target')
+            anchor = tmux('list-windows', '-t', 'destination', '-F', '#{window_id}').splitlines()[0]
+            with patch.dict(os.environ, {'CODEX_WAKE_ROOT': str(wake)}), contextlib.redirect_stdout(io.StringIO()) as output:
+                code = run(['tabs', 'move', '--workspace', 'source', '--window', window,
+                            '--destination', 'destination', '--position', 'before', '--anchor', anchor,
+                            '--force', '--json'])
+            self.assertEqual(code, 0, output.getvalue())
+            actual = tmux('list-windows', '-t', 'destination', '-F', '#{window_id}').splitlines()
+            self.assertEqual(actual[:2], [window, anchor])
 
     def test_ordinary_local_cli_creates_and_renames_without_grant_files(self):
         if not shutil.which('tmux'):self.skipTest('tmux unavailable')

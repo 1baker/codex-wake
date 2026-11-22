@@ -37,6 +37,46 @@ class TabLifecycleTests(unittest.TestCase):
         from codex_wake.tab_lifecycle import TabLifecycle
         return TabLifecycle(self.root, workspaces=self.workspaces, host='test', environment='posix')
 
+    def test_relative_create_and_move_on_real_terminal(self):
+        owner = self.owner()
+
+        def snapshot(workspace):
+            return owner.inspect(workspace)
+
+        def create(name, position, anchor=None):
+            args = dict(workspace='source', expected_target=snapshot('source')['target'],
+                        name=name, position=position)
+            if anchor is not None:
+                args['anchor'] = anchor
+            return owner.execute('tabs.create', args)['window']['window_id']
+
+        def order(workspace):
+            return [window['window_id'] for window in snapshot(workspace)['snapshot']['windows']]
+
+        initial = order('source')[0]
+        first = create('first', 'first')
+        last = create('last', 'last')
+        before = create('before', 'before', initial)
+        after = create('after', 'after', initial)
+        self.assertEqual(order('source'), [first, before, initial, after, last])
+        self.assertEqual(self.tmux('display-message', '-p', '-t', '$0:', '#{window_id}'), initial)
+        with self.assertRaises(InventoryError) as error:
+            create('stale', 'after', '@99999')
+        self.assertEqual(error.exception.code, 'stale_target')
+        self.assertEqual(order('source'), [first, before, initial, after, last])
+        source_target = snapshot('source')['target']
+        owner.execute('tabs.move', dict(workspace='source', expected_target=source_target,
+            window=last, destination='source', expected_destination=source_target,
+            position='after', anchor=first, force=True))
+        self.assertEqual(order('source'), [first, last, before, initial, after])
+        self.assertEqual(self.tmux('display-message', '-p', '-t', '$0:', '#{window_id}'), initial)
+        existing = order('holding')[0]
+        owner.execute('tabs.move', dict(workspace='source', expected_target=snapshot('source')['target'],
+            window=last, destination='holding', expected_destination=snapshot('holding')['target'],
+            position='before', anchor=existing, force=True))
+        self.assertEqual(order('holding'), [last, existing])
+        self.assertEqual(self.tmux('display-message', '-p', '-t', '$1:', '#{window_id}'), existing)
+
     def test_same_session_insertion_reports_and_preserves_protected_siblings(self):
         pinned = self.tmux('new-window', '-d', '-P', '-F', '#{window_id}', '-t', '$0:', '-n', 'pinned', 'sleep 120')
         companion = self.tmux('new-window', '-d', '-P', '-F', '#{window_id}', '-t', '$0:', '-n', 'companion', 'sleep 120')
