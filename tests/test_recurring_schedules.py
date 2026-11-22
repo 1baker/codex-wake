@@ -74,6 +74,18 @@ class RecurringSchedules(unittest.TestCase):
                 {'reason': 'delivery_outcome_unknown', 'command': ['native', 'reconcile', wake.record['id']]})
             self.assertEqual(self.cli(root, 'show', second['id'])['occurrences'][0]['state'], 'pending')
             self.assertEqual(len(all_records(root)), 2)
+            second_wake = next(item for item in all_records(root) if item.record['id'] != wake.record['id'])
+            replace_record(root, second_wake, dict(second_wake.record,
+                policy_outcome={'state': 'held', 'reason': 'bounded_native_backend_not_qualified'},
+                runtime_observation={'state': 'ready', 'reason': 'recipient_idle'},
+                next_attempt_at='2033-05-18T03:33:50Z'))
+            shown = self.cli(root, 'show', second['id'])
+            self.assertEqual(shown['delivery']['held_occurrences'][0]['reason'],
+                             'bounded_native_backend_not_qualified')
+            self.assertEqual(shown['delivery']['held_occurrences'][0]['recipient_state'], 'ready')
+            self.assertEqual(shown['delivery']['held_occurrences'][0]['next_check_at'],
+                             '2033-05-18T03:33:50Z')
+
 
     def test_missing_explicit_mode_rejected_without_creating_schedule(self):
         with tempfile.TemporaryDirectory() as d:

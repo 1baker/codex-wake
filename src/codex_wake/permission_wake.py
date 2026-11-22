@@ -155,7 +155,7 @@ def supported(route,observation,runtime='codex'):
 
 def dispatch_native(root,found,now,*,clock_provider,adapter):
     from .injector import DispatchResult
-    from .native_intents import dispatch_gate
+    from .native_intents import defer_recipient_check, dispatch_gate
     from .native_delivery import native_prompt,reconcile_native
     record=dict(found.record);routes=record['wake_policy']['routes']
     existing=record.get('native_delivery',{})
@@ -189,7 +189,7 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
             record['runtime_observation']=observation.summary(recipient)
             if not supported(route,observation):
                 reasons.append(route+':unsupported');continue
-            from .runtime_policies import native_delivery_ready
+            from .runtime_policies import bounded_native_unqualified, native_delivery_ready
             if not native_delivery_ready(record['target'], observation):
                 reasons.append(route+':'+observation.reason);break
             record['permission_check']=check_route(root,record,route)
@@ -208,6 +208,12 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
         except (ValueError, TypeError, KeyError):
             reasons.append(route + ':bounded_native_absolute_expiry_unavailable')
             break
+        if bounded_native_unqualified(observation):
+            record.update(status='pending', policy_outcome=dict(
+                state='held', reason='bounded_native_backend_not_qualified'))
+            defer_recipient_check(record, clock_provider())
+            replace_record(root, found, record)
+            return DispatchResult('requeued', 'bounded_native_backend_not_qualified')
         delivery=dict(expires_at_unix_micros=original_expiry, state='uncertain',execution='not_observed',acknowledgment='not_observed',
             submission_id=str(uuid4()),route=route)
         record.pop('policy_outcome',None)
@@ -231,12 +237,15 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
         if submitted.state=='not_sent' and submitted.pre_io is True and submitted.reason == 'bounded_native_backend_not_qualified':
             record.pop('native_delivery', None)
             record.update(status='pending', policy_outcome=dict(state='held', reason=submitted.reason))
+            defer_recipient_check(record, clock_provider())
             replace_record(root, found, record)
             return DispatchResult('requeued', submitted.reason)
         if submitted.state=='not_sent' and submitted.pre_io is True and record['target'].get('session_mode'):
             record.pop('native_delivery', None)
             record.update(status='cancelled' if submitted.reason == 'session_closed' else 'pending',
                           policy_outcome=dict(state='retired' if submitted.reason == 'session_closed' else 'held', reason=submitted.reason))
+            if record['status'] == 'pending':
+                defer_recipient_check(record, clock_provider())
             replace_record(root, found, record)
             return DispatchResult('requeued', submitted.reason or 'mode_route_changed')
         if submitted.state=='not_sent' and submitted.pre_io is True:
@@ -268,6 +277,7 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
     if record.get('policy_outcome')!=outcome:
         record=append_event(record,'wake_routes_held',','.join(reasons),now)
     record['policy_outcome']=outcome
+    defer_recipient_check(record, clock_provider())
     replace_record(root,found,record)
     return DispatchResult('requeued','wake route unavailable: '+','.join(reasons))
 

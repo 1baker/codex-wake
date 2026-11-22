@@ -184,6 +184,11 @@ class BackgroundDispatch(unittest.TestCase):
                 start.assert_not_called()
                 runner.assert_not_called()
                 self.assertNotIn('native_delivery', all_records(root)[0].record)
+                record = all_records(root)[0].record
+                self.assertEqual(record['attempts'], 0)
+                self.assertFalse(any(e['type'] == 'native_submission_started' for e in record['events']))
+                self.assertEqual(poll_once(root, dispatch=False).fired, 0)
+
 
 class HistoricalAdmissionBudget(unittest.TestCase):
     def test_legacy_terminal_backlog_is_reconciled_one_peer_per_admission(self):

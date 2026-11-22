@@ -81,7 +81,8 @@ class ModeRuntimeAdapter:
                 'supported' if candidate == route else 'unsupported', 'explicit_session_mode_route')
         capabilities['active_tab'] = RuntimeCapability(
             'supported' if route in ('existing_tab', 'new_tab') else 'unavailable', 'verified_mode_attachment')
-        return RuntimeObservation(observation.state, observation.reason, capabilities, observation.resumed)
+        return RuntimeObservation(observation.state, observation.reason, capabilities,
+                                  observation.resumed, observation.native_status)
 
     def observe(self, recipient):
         target = dict(recipient.binding)

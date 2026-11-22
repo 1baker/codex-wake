@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 import math
 import re
 
-from .records import WakeError, WakeLifecycleLock, all_records, parse_duration, write_record
+from .records import WakeError, WakeLifecycleLock, all_records, parse_duration, parse_timestamp, write_record
 
 SCHEMA_VERSION = 6
 EVENT_SCHEMA_VERSION = 9
@@ -420,6 +420,23 @@ def eligibility(record, clock):
     return dict(base, state="due", reason="not_before_and_expiry_established")
 
 
+
+def defer_recipient_check(record, clock):
+    """Persist the next observation time without changing intent or expiry."""
+    utc = clock.get('utc')
+    if valid_utc(utc):
+        after_read = datetime.fromtimestamp(utc['upper'], UTC)
+        observation = record.get('runtime_observation')
+        if observation and observation.get('native_status'):
+            observation['recorded_by'] = after_read.isoformat().replace('+00:00', 'Z')
+        record['next_attempt_at'] = datetime.fromtimestamp(utc['upper'] + 30, UTC).isoformat().replace('+00:00', 'Z')
+
+
+def recipient_check_due(record, clock):
+    retry_at = record.get('next_attempt_at')
+    utc = clock.get('utc')
+    return not retry_at or (valid_utc(utc) and utc['lower'] >= parse_timestamp(retry_at).timestamp())
+
 def evaluate(root, identifier, clock, *, record_validator=None):
     from .records import find_record, replace_record
     with WakeLifecycleLock(root, identifier):
@@ -444,7 +461,7 @@ def evaluate(root, identifier, clock, *, record_validator=None):
         record["time_recovery"] = verdict
         if any(previous.get(key) != verdict.get(key) for key in ("state", "reason", "mode")):
             record["events"] = list(record["events"]) + [{"at": None, "type": "time_recovery", "message": verdict["reason"]}]
-        if verdict["state"] == "due":
+        if verdict["state"] == "due" and recipient_check_due(record, clock):
             record["status"] = "firing"
         elif verdict["state"] == "missed_deadline":
             record["status"] = "failed"

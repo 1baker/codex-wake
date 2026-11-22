@@ -185,7 +185,7 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
         record['runtime_observation'] = observation.summary(recipient)
         from .wake_policy import startup_reason
         policy_reason = startup_reason(record, observation)
-        from .runtime_policies import native_delivery_ready
+        from .runtime_policies import bounded_native_unqualified, native_delivery_ready
         ready = native_delivery_ready(target, observation) and policy_reason is None
         if policy_reason or (target.get('session_mode') and not ready):
             record['policy_outcome'] = dict(state='held', reason=policy_reason or observation.reason)
@@ -204,7 +204,8 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
     if not ready:
         record['status'] = 'pending'
         if intent:
-            record['next_attempt_at'] = None
+            from .native_intents import defer_recipient_check
+            defer_recipient_check(record, clock_provider())
         else:
             retry = now + timedelta(seconds=5)
             record['next_attempt_at'] = retry.isoformat().replace('+00:00', 'Z') if record.get('schema_version') == 5 else format_utc(retry)
@@ -227,6 +228,14 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
         record.update(status='pending', policy_outcome=dict(state='held', reason='bounded_native_absolute_expiry_unavailable'))
         replace_record(root, found, record)
         return DispatchResult('requeued', 'bounded_native_absolute_expiry_unavailable')
+    if bounded_native_unqualified(observation):
+        record.update(status='pending', policy_outcome=dict(
+            state='held', reason='bounded_native_backend_not_qualified'))
+        if intent:
+            from .native_intents import defer_recipient_check
+            defer_recipient_check(record, clock_provider())
+        replace_record(root, found, record)
+        return DispatchResult('requeued', 'bounded_native_backend_not_qualified')
     # Persist ambiguity BEFORE making the external effect. A crashed caller must
     # never assume the queue did not accept its submission.
     record['native_delivery'] = {'expires_at_unix_micros': original_expiry, 'state': 'uncertain', 'execution': 'not_observed',
@@ -258,6 +267,9 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
         record.pop('native_delivery', None)
         record.update(status='cancelled' if submitted.reason == 'session_closed' else 'pending',
                       policy_outcome=dict(state='retired' if submitted.reason == 'session_closed' else 'held', reason=submitted.reason))
+        if intent and record['status'] == 'pending':
+            from .native_intents import defer_recipient_check
+            defer_recipient_check(record, clock_provider())
         replace_record(root, found, record)
         return DispatchResult('requeued', submitted.reason or 'native mode changed before submission')
     if submitted.state != 'accepted':

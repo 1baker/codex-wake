@@ -68,7 +68,7 @@ class NativeDeliveryTests(unittest.TestCase):
             self.native_record(root, root / 'must-not-run')
             with patch('codex_wake.native_delivery.read_native_thread',
                        return_value={'id': '01a1227e-a041-7b72-9c36-18349e7dd22c',
-                                     'status': {'type': 'active'}}):
+                                     'status': {'type': 'active', 'activeFlags': ['waitingOnApproval']}}):
                 result = poll_once(root, datetime(2026, 10, 9, tzinfo=UTC))
             record = all_records(root)[0].record
             self.assertEqual(result.requeued, 1)
@@ -78,6 +78,8 @@ class NativeDeliveryTests(unittest.TestCase):
             self.assertEqual(observation['runtime'], 'codex')
             self.assertEqual(observation['session_id'], record['target']['thread_id'])
             self.assertEqual(observation['state'], 'busy')
+            self.assertEqual(observation['native_status'],
+                {'source': 'thread/read', 'state': 'active', 'flags': ['waitingOnApproval']})
             self.assertEqual(observation['capabilities']['submit']['state'], 'supported')
             self.assertEqual(observation['capabilities']['busy_queue']['state'], 'not_qualified')
             self.assertEqual(observation['capabilities']['interrupt']['state'], 'unsupported')

@@ -38,15 +38,19 @@ class RuntimeObservation:
     reason: str
     capabilities: Mapping[str, RuntimeCapability]
     resumed: bool = False
+    native_status: dict | None = None
 
     def summary(self, recipient: RuntimeRecipient) -> dict:
         # Do not expose opaque binding data, socket paths or credentials here.
-        return dict(
+        result = dict(
             version=recipient.version, runtime=recipient.runtime,
             session_id=recipient.session_id, state=self.state, reason=self.reason,
             capabilities={name: dict(state=value.state, reason=value.reason)
                           for name, value in self.capabilities.items()},
         )
+        if self.native_status is not None:
+            result['native_status'] = self.native_status
+        return result
 
 
 @dataclass(frozen=True)

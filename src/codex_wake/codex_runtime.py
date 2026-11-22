@@ -118,11 +118,16 @@ class CodexRuntimeAdapter:
                 thread = self._read_thread(target)
             if thread.get("id") != recipient.session_id:
                 return RuntimeObservation("unavailable", "recipient_identity_changed", capabilities, resumed)
-            state = thread.get("status", {}).get("type")
-            if state == "idle":
-                return RuntimeObservation("ready", "recipient_idle", capabilities, resumed)
-            if state == "active":
-                return RuntimeObservation("busy", "recipient_busy", capabilities, resumed)
+            status = thread.get("status", {})
+            state = status.get("type")
+            if state in ("idle", "active"):
+                flags = status.get("activeFlags", [])
+                known_flags = ("waitingOnApproval", "waitingOnUserInput")
+                observed_flags = [flag for flag in known_flags if isinstance(flags, list) and flag in flags]
+                native_status = dict(source="thread/read", state=state, flags=observed_flags)
+                if state == "idle":
+                    return RuntimeObservation("ready", "recipient_idle", capabilities, resumed, native_status)
+                return RuntimeObservation("busy", "recipient_busy", capabilities, resumed, native_status)
             return RuntimeObservation("unavailable", "recipient_not_loaded_or_unknown", capabilities, resumed)
         except Exception:
             return RuntimeObservation("unavailable", "runtime_observation_unavailable", capabilities, resumed)

@@ -1,6 +1,19 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: RECURRING-DELIVERY-755
+    owner: primary / ecochran76
+    objective: Show and bound recurring wake delivery holds
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/755]
+    plan: docs/dev/plans/0266-2026-11-22-recurring-delivery-readiness.md
+    branch: fix/issue-755-wake-delivery
+    target: origin/main
+    plan_state: OPEN
+    custody_state: REMOTE_PRESERVED
+    dependencies: []
+    overlaps: [WAKE-STARTUP-749]
+    updated_at: 2026-11-22
+    disposition: Source correction for pre-submission holds and status. Working queue remains unqualified.
   - id: WAKE-STARTUP-749
     owner: primary / ecochran76
     objective: Recover interrupted wake occurrences and restore exact live tabs

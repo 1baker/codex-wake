@@ -292,11 +292,23 @@ class ScheduleStore:
         from .wake_live_restore import LiveWakeRestorer
         identifiers = {item['wake_id']: item['id'] for item in value['occurrences'] if item.get('wake_id')}
         uncertain = []
+        held = []
         if identifiers:
             if wake_records is None:
                 wake_records = {item.record['id']: item.record for item in all_records(self.root, include_archive=True)}
             for wake_id, occurrence_id in identifiers.items():
-                delivery = wake_records.get(wake_id, {}).get('native_delivery', {})
+                wake = wake_records.get(wake_id, {})
+                delivery = wake.get('native_delivery', {})
+                outcome = wake.get('policy_outcome', {})
+                if delivery.get('state') != 'uncertain' and outcome.get('state') == 'held':
+                    observed = wake.get('runtime_observation', {})
+                    held.append(dict(occurrence_id=occurrence_id, wake_id=wake_id,
+                        wake_status=wake.get('status'), reason=outcome.get('reason'),
+                        recipient_state=observed.get('state'), recipient_reason=observed.get('reason'),
+                        native_status=observed.get('native_status'),
+                        observation_recorded_by=observed.get('recorded_by'),
+                        next_check_at=wake.get('next_attempt_at'),
+                        timing_reason=wake.get('time_recovery', {}).get('reason')))
                 if delivery.get('state') == 'uncertain':
                     reason = delivery.get('reconciliation', {}).get('reason') or 'delivery_outcome_unknown'
                     uncertain.append(dict(occurrence_id=occurrence_id, wake_id=wake_id,
@@ -305,7 +317,7 @@ class ScheduleStore:
             persistence=dict(saved=True),
             restoration=LiveWakeRestorer(self.root).inspect(
                 dict(value['target'], session_mode=value['request']['session_mode'])),
-            delivery=dict(uncertain=bool(uncertain), uncertain_occurrences=uncertain),
+            delivery=dict(uncertain=bool(uncertain), uncertain_occurrences=uncertain, held_occurrences=held),
             armed=ready and value['state'] == 'enabled',
             scheduling_status='armed' if ready and value['state']=='enabled' else 'retained_unmonitored' if not ready and value['state']=='enabled' else value['state'],
             monitor=dict(ready=ready, wake_root=str(self.root)))
