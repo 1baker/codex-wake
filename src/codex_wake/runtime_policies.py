@@ -32,6 +32,15 @@ def bounded_native_unqualified(observation):
     capability = observation.capabilities.get('busy_queue')
     return capability is not None and capability.state == 'not_qualified'
 
+def use_idle_native_submission(target, observation):
+    """Use standard Codex submission only for an idle, wait-policy recipient."""
+    capability = observation.capabilities.get('idle_submit')
+    return (observation.state == 'ready'
+            and target.get('busy_policy', 'wait') == 'wait'
+            and bounded_native_unqualified(observation)
+            and capability is not None and capability.state == 'supported')
+
+
 def terminal_fallback(recipient, prompt, preferred, terminal):
     """Switch only on explicit, definitive native-unavailable pre-I/O evidence.
 

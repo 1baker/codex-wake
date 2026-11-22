@@ -40,7 +40,7 @@
     },
     {
       "path": "docs/dev/policies/0003-runtime-state-and-wake-semantics.md",
-      "sha256": "f5ea32a977d1e08a55a0ec68aacb9a430c762476ff058dd2ca5dabebfc22a3a5"
+      "sha256": "bf40f68920855e0e90c6c148141221bae2004171b2515a12511828a14c3e97ff"
     },
     {
       "path": "docs/dev/policies/0004-agent-runtime-governance.md",

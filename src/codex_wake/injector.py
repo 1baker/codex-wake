@@ -443,6 +443,7 @@ def dispatch_firing_record(
             thread_identity_resolver=thread_identity_resolver,
             app_server_client=app_server_client,
             runtime_adapter=runtime_adapter,
+            time_provider=time_provider,
         )
 
 
@@ -458,6 +459,7 @@ def _dispatch_firing_record_unlocked(
     thread_identity_resolver: Callable[[str], dict[str, str]] | None = None,
     app_server_client: Any | None = None,
     runtime_adapter=None,
+    time_provider=None,
 ) -> DispatchResult:
     record = dict(found.record)
     if record.get("status") != "firing":
@@ -515,7 +517,7 @@ def _dispatch_firing_record_unlocked(
     target = record.get("target")
     if isinstance(target, dict) and target.get('transport') == 'native':
         from .native_delivery import dispatch_native
-        return dispatch_native(root, found, current, runtime_adapter=runtime_adapter)
+        return dispatch_native(root, found, current, clock_provider=time_provider, runtime_adapter=runtime_adapter)
     if isinstance(target, dict) and target.get("transport") == "app-server":
         from .app_server import dispatch_app_server_record
 

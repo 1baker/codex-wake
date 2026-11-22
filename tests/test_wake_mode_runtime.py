@@ -160,7 +160,7 @@ class QualifiedServerAbsence(unittest.TestCase):
             if child.poll() is None: child.terminate(); child.wait(timeout=5)
 
 class BackgroundDispatch(unittest.TestCase):
-    def test_native_dispatch_holds_background_without_qualified_bounded_backend(self):
+    def test_native_dispatch_starts_background_turn_on_stock_codex(self):
         import contextlib
         import io
         import sys
@@ -179,15 +179,13 @@ class BackgroundDispatch(unittest.TestCase):
             with patch('codex_wake.native_clock.snapshot', return_value=due), patch('codex_wake.native_protocol.native_request', return_value=dict(threadId=THREAD, turn=dict(id='turn-background'))) as start:
                 poll_once(root, dispatch=False)
                 result = dispatch_firing_record(root, all_records(root)[0], runtime_adapter=base)
-                self.assertEqual(result.status, 'requeued', result)
-                self.assertEqual(result.message, 'bounded_native_backend_not_qualified')
-                start.assert_not_called()
+                self.assertEqual(result.status, 'submitted', result)
+                self.assertEqual(start.call_args.args[2], 'turn/start')
                 runner.assert_not_called()
-                self.assertNotIn('native_delivery', all_records(root)[0].record)
                 record = all_records(root)[0].record
-                self.assertEqual(record['attempts'], 0)
-                self.assertFalse(any(e['type'] == 'native_submission_started' for e in record['events']))
-                self.assertEqual(poll_once(root, dispatch=False).fired, 0)
+                self.assertEqual(record['native_delivery']['turn_id'], 'turn-background')
+                self.assertEqual(record['attempts'], 1)
+
 
 
 class HistoricalAdmissionBudget(unittest.TestCase):

@@ -148,8 +148,8 @@ def submit_bounded(adapter, recipient, prompt, envelope):
 
 
 def reconcile_submission(adapter, recipient, prompt, record):
-    # Historical attempts lacking the persisted bounded discriminator are read
-    # through their original reconciliation contract. Never migrate or resend.
+    # Standard Codex submissions and historical attempts use exact queue/turn
+    # evidence. Bounded submissions retain their original admission contract.
     if 'expires_at_unix_micros' not in record.get('native_delivery', {}):
         return adapter.reconcile(recipient, prompt)
     method = getattr(adapter, 'reconcile_bounded', None)

@@ -73,6 +73,7 @@ class CodexRuntimeAdapter:
     def observe(self, recipient: RuntimeRecipient) -> RuntimeObservation:
         target = recipient.binding
         capabilities = {
+            "idle_submit": RuntimeCapability("supported", "standard_codex_queue"),
             "submit": RuntimeCapability("supported", "native_queue_acceptance"),
             "reconcile": RuntimeCapability("supported", "exact_native_evidence"),
             "saved_resume": RuntimeCapability("supported", "explicit_same_thread_policy"),

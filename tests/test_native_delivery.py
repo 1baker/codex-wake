@@ -305,7 +305,7 @@ class NativeDeliveryTests(unittest.TestCase):
                 if reason == 'queue_exit_nonzero': self.assertEqual(result.failure['stderr']['hints'], ['thread_not_found'])
                 runner.assert_called_once()
 
-    def test_registered_due_wake_holds_without_qualified_bounded_backend(self):
+    def test_registered_due_wake_submits_to_idle_stock_codex(self):
         thread = '01a1227e-a041-7b72-9c36-18349e7dd22c'
         queue = '01a12280-80ef-7772-a00a-c68bd32ecbba'
         with tempfile.TemporaryDirectory() as tmp:
@@ -323,11 +323,11 @@ class NativeDeliveryTests(unittest.TestCase):
                        'codex_wake.injector.SubprocessTmuxRunner') as tmux:
                 result = poll_once(root, datetime(2026, 10, 9, tzinfo=UTC), time_provider=lambda: TimeDecision('network', ('a', 'b'), 1791504001, 1791504001.1))
             tmux.assert_not_called()
-            self.assertEqual(result.submitted, 0)
+            self.assertEqual(result.submitted, 1)
             record = all_records(root)[0].record
-            self.assertEqual(record['status'], 'pending')
-            self.assertNotIn('native_delivery', record)
-            self.assertEqual(record['policy_outcome']['reason'], 'bounded_native_backend_not_qualified')
+            self.assertEqual(record['status'], 'submitted')
+            self.assertEqual(record['native_delivery']['queue_id'], queue)
+            self.assertNotIn('expires_at_unix_micros', record['native_delivery'])
 
     def test_reconcile_recovers_exact_native_turn_without_resending(self):
         from codex_wake.records import replace_record
@@ -445,8 +445,8 @@ class NativeDeliveryTests(unittest.TestCase):
                     'codex_wake.native_delivery.native_request',return_value={'thread':{'id':thread}}) as native, patch(
                     'codex_wake.injector.SubprocessTmuxRunner') as tmux:
                 result=poll_once(root,datetime(2026,10,9,tzinfo=UTC), time_provider=lambda: TimeDecision('network', ('a', 'b'), 1791504001, 1791504001.1))
-            self.assertEqual(result.submitted,0)
-            self.assertEqual(all_records(root)[0].record['policy_outcome']['reason'], 'bounded_native_backend_not_qualified')
+            self.assertEqual(result.submitted,1)
+            self.assertEqual(all_records(root)[0].record['native_delivery']['queue_id'], queue)
             self.assertEqual(native.call_args.args[2:4],('thread/resume',{'threadId':thread}))
             tmux.assert_not_called()
             self.assertEqual(all_records(root)[0].record['target']['thread_id'],thread)

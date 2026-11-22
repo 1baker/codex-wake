@@ -189,7 +189,7 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
             record['runtime_observation']=observation.summary(recipient)
             if not supported(route,observation):
                 reasons.append(route+':unsupported');continue
-            from .runtime_policies import bounded_native_unqualified, native_delivery_ready
+            from .runtime_policies import bounded_native_unqualified, native_delivery_ready, use_idle_native_submission
             if not native_delivery_ready(record['target'], observation):
                 reasons.append(route+':'+observation.reason);break
             record['permission_check']=check_route(root,record,route)
@@ -208,14 +208,17 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
         except (ValueError, TypeError, KeyError):
             reasons.append(route + ':bounded_native_absolute_expiry_unavailable')
             break
-        if bounded_native_unqualified(observation):
+        idle_submit = use_idle_native_submission(record['target'], observation)
+        if bounded_native_unqualified(observation) and not idle_submit:
             record.update(status='pending', policy_outcome=dict(
                 state='held', reason='bounded_native_backend_not_qualified'))
             defer_recipient_check(record, clock_provider())
             replace_record(root, found, record)
             return DispatchResult('requeued', 'bounded_native_backend_not_qualified')
-        delivery=dict(expires_at_unix_micros=original_expiry, state='uncertain',execution='not_observed',acknowledgment='not_observed',
+        delivery=dict(state='uncertain',execution='not_observed',acknowledgment='not_observed',
             submission_id=str(uuid4()),route=route)
+        if not idle_submit:
+            delivery['expires_at_unix_micros'] = original_expiry
         record.pop('policy_outcome',None)
         record['native_delivery']=delivery
         prompt=native_prompt(root,record)
@@ -226,7 +229,10 @@ def dispatch_native(root,found,now,*,clock_provider,adapter):
         replace_record(root,found,record)
         try:
             record['permission_check']=check_route(root,record,route)
-            submitted=submit_bounded(selected,recipient,prompt,submission_envelope(record))
+            if idle_submit:
+                submitted = selected.submit(recipient, prompt)
+            else:
+                submitted = submit_bounded(selected, recipient, prompt, submission_envelope(record))
             from .runtime_delivery import validate_native_submission
             validate_native_submission(submitted, record['target']['thread_id'],
                 allow_background=route == 'background' and record['target'].get('session_mode') == 'background')

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 import hashlib
 import json
 import os
@@ -185,7 +185,7 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
         record['runtime_observation'] = observation.summary(recipient)
         from .wake_policy import startup_reason
         policy_reason = startup_reason(record, observation)
-        from .runtime_policies import bounded_native_unqualified, native_delivery_ready
+        from .runtime_policies import bounded_native_unqualified, native_delivery_ready, use_idle_native_submission
         ready = native_delivery_ready(target, observation) and policy_reason is None
         if policy_reason or (target.get('session_mode') and not ready):
             record['policy_outcome'] = dict(state='held', reason=policy_reason or observation.reason)
@@ -228,7 +228,16 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
         record.update(status='pending', policy_outcome=dict(state='held', reason='bounded_native_absolute_expiry_unavailable'))
         replace_record(root, found, record)
         return DispatchResult('requeued', 'bounded_native_absolute_expiry_unavailable')
-    if bounded_native_unqualified(observation):
+    idle_submit = use_idle_native_submission(target, observation)
+    if idle_submit and not intent:
+        from .network_wakes import read_time
+        try:
+            observed_time = read_time(clock_provider)
+        except WakeError:
+            return DispatchResult('requeued', 'native dispatch time unavailable')
+        if datetime.fromtimestamp(observed_time.upper, UTC) >= expiry:
+            return DispatchResult('requeued', 'native recipient deadline reached or uncertain')
+    if bounded_native_unqualified(observation) and not idle_submit:
         record.update(status='pending', policy_outcome=dict(
             state='held', reason='bounded_native_backend_not_qualified'))
         if intent:
@@ -238,9 +247,13 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
         return DispatchResult('requeued', 'bounded_native_backend_not_qualified')
     # Persist ambiguity BEFORE making the external effect. A crashed caller must
     # never assume the queue did not accept its submission.
-    record['native_delivery'] = {'expires_at_unix_micros': original_expiry, 'state': 'uncertain', 'execution': 'not_observed',
+    record['native_delivery'] = {'state': 'uncertain', 'execution': 'not_observed',
                                  'acknowledgment': 'not_observed',
                                  'submission_id': str(uuid4())}
+    if idle_submit:
+        record.pop('policy_outcome', None)
+    else:
+        record['native_delivery']['expires_at_unix_micros'] = original_expiry
     if target.get('session_mode'):
         for route in ('existing_tab', 'background', 'new_tab'):
             capability = observation.capabilities.get('wake.' + route)
@@ -255,7 +268,10 @@ def dispatch_native(root, found, now, *, clock_provider=None, runtime_adapter: R
     record = append_event(record, 'native_submission_started', 'native queue submission started', now)
     replace_record(root, found, record)
     try:
-        submitted = submit_bounded(adapter, recipient, prompt, submission_envelope(record))
+        if idle_submit:
+            submitted = adapter.submit(recipient, prompt)
+        else:
+            submitted = submit_bounded(adapter, recipient, prompt, submission_envelope(record))
         from .runtime_delivery import validate_native_submission
         validate_native_submission(submitted, target['thread_id'], allow_background=target.get('session_mode') == 'background')
     except Exception as exc:

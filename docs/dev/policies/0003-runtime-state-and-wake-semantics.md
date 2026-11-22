@@ -13,6 +13,11 @@
 - Make state schema changes deliberate and documented.
 - Keep secrets, raw credentials, and private transcript bodies out of tracked fixtures and examples.
 
+## Codex Compatibility
+
+- Offer Wake features to stock Codex wherever its standard interfaces support them. Gate advanced Wake Codex behavior on the specific capability it requires.
+- For the default wait policy, submit to an idle stock Codex recipient within the wake's dispatch window and recheck busy recipients. Standard queue acceptance can precede execution beyond the deadline. Busy queueing with receiver-enforced expiry requires a qualified peer.
+
 ## Wake Record Contract
 
 A wake record should make these fields explicit when applicable:

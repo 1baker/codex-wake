@@ -2,7 +2,7 @@
 import unittest
 
 from codex_wake.codex_runtime import CodexRuntimeAdapter
-from codex_wake.runtime_delivery import RuntimeSubmissionEnvelope
+from codex_wake.runtime_delivery import RuntimeCapability, RuntimeSubmissionEnvelope
 
 
 class BoundedNativeDeliveryTests(unittest.TestCase):
@@ -122,7 +122,8 @@ class BoundedNativeDeliveryTests(unittest.TestCase):
             record['status'] = 'firing'; write_record(root, record)
             adapter = CodexRuntimeAdapter(read_thread=lambda unused:dict(id=target['thread_id'], status=dict(type='idle')),
                 request=request, run=lambda *a, **k:self.fail('unbounded submission'), project_failure=lambda *a:None,
-                bounded_adapter=BoundedNativeAdapter(request=request))
+                bounded_adapter=BoundedNativeAdapter(request=request,
+                    qualification=lambda recipient: RuntimeCapability('supported', 'host_qualified_bounded_native')))
             dispatch_firing_record(root, all_records(root)[0], now=datetime(2026,10,9,tzinfo=UTC), runtime_adapter=adapter)
             pending = all_records(root)[0]
             before_bytes = pending.path.read_bytes()
@@ -202,7 +203,7 @@ class BoundedNativeDeliveryTests(unittest.TestCase):
             ttl_seconds=600.75, stop_at='2026-10-09T00:10:00.125Z'))
         self.assertEqual(original_submission_expiry(record), 1791504600125000)
 
-    def test_durable_dispatch_never_downgrades_to_unbounded_cli(self):
+    def test_explicit_busy_queue_never_downgrades_to_idle_submission(self):
         from datetime import UTC, datetime
         from pathlib import Path
         import tempfile
@@ -212,7 +213,7 @@ class BoundedNativeDeliveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             target = dict(transport='native', thread_id='01a1227e-a041-7b72-9c36-18349e7dd22c', endpoint='unix://',
-                codex_cmd='/codex', expires_at='2026-10-09T00:10:00Z')
+                codex_cmd='/codex', busy_policy='queue', expires_at='2026-10-09T00:10:00Z')
             write_record(root, build_record(predicate=dict(type='not_before', due_at='2026-10-09T00:00:00Z'),
                 prompt='wake', cwd=root, target=target, now=datetime(2026, 10, 9, tzinfo=UTC)))
             with patch('codex_wake.native_delivery.read_native_thread', return_value=dict(id='01a1227e-a041-7b72-9c36-18349e7dd22c', status=dict(type='idle'))), patch(
