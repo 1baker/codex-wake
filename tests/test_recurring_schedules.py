@@ -192,3 +192,48 @@ class RecurringSchedules(unittest.TestCase):
             with patch('codex_wake.process.process_identity',return_value={'boot_id':'new-monitor-boot','start_time_ticks':123}):
                 poll_schedules(root,clock(2000000061))
             self.assertEqual(self.cli(root,'show',saved['id'])['occurrences'][0]['state'],'skipped')
+
+class RecurringAttention(unittest.TestCase):
+    def test_taskless_schedule_publishes_attention_notice(self):
+        observed = self.poll_after_route_hold('restoration_configuration_missing')
+        self.assertEqual(observed['state'], 'attention')
+        occurrence, = observed['occurrences']
+        self.assertIn('attention_id', occurrence, occurrence)
+
+    def test_transient_route_hold_leaves_recurrence_enabled(self):
+        for reason in ('recipient_ownership_unknown', 'mode_route_not_selected'):
+            with self.subTest(reason=reason):
+                observed = self.poll_after_route_hold(reason)
+                self.assertEqual(observed['state'], 'enabled')
+                occurrence, = observed['occurrences']
+                self.assertEqual(occurrence['state'], 'pending')
+                self.assertNotIn('attention_id', occurrence)
+
+    def test_permission_denial_preserves_attention_on_mixed_route_hold(self):
+        observed = self.poll_after_route_hold(
+            'mode_route_not_selected', routes=['existing_tab:permission_deny', 'background:unsupported'])
+        self.assertEqual(observed['state'], 'attention')
+        self.assertIn('attention_id', observed['occurrences'][0])
+
+    def poll_after_route_hold(self, reason, *, routes=None):
+        from codex_wake.recurring_schedules import ScheduleStore, poll_schedules
+        from codex_wake.records import replace_record
+        from codex_wake.session_permissions import PermissionStore, Principal
+
+        with tempfile.TemporaryDirectory() as directory, patch(
+                'codex_wake.sessions.observe', return_value={'complete': False, 'sessions': []}):
+            root = Path(directory)
+            PermissionStore(root).configure({'version': 1, 'global': {'actions': {'attention.request': 'allow'}}},
+                                            Principal('operator', 'operator'), expected_revision=0)
+            clock = {'utc': {'lower': 2000000000, 'upper': 2000000000,
+                             'status': 'network', 'sources': ['a', 'b']}, 'counter': None}
+            store = ScheduleStore(root)
+            registered = store.register(request(), codex_path=sys.executable, principal=Principal(THREAD))
+            poll_schedules(root, clock)
+            wake, = all_records(root)
+            replace_record(root, wake, dict(wake.record,
+                policy_outcome={'state': 'held', 'reason': 'wake_route_unavailable',
+                                'routes': routes or ['existing_tab:unsupported', 'background:unsupported']},
+                runtime_observation={'state': 'unavailable', 'reason': reason}))
+            poll_schedules(root, clock)
+            return store.read(registered['id'])

@@ -399,7 +399,14 @@ def poll_schedules(root, clock, *, runtime_adapter=None):
                     outcome = wake.get('policy_outcome', {})
                     observation = wake.get('runtime_observation', {})
                     reason = outcome.get('reason') or observation.get('reason')
-                    if reason and reason not in ('conversation_check_in_progress', 'recipient_busy', 'mode_route_not_selected') and observation.get('state') in ('unavailable', 'unsupported'):
+                    transient_route = (
+                        reason == 'wake_route_unavailable'
+                        and observation.get('reason') in ('recipient_ownership_unknown', 'mode_route_not_selected')
+                        and all(route.endswith(':unsupported') for route in outcome.get('routes', ()))
+                    )
+                    if (reason and not transient_route
+                            and reason not in ('conversation_check_in_progress', 'recipient_busy', 'mode_route_not_selected')
+                            and observation.get('state') in ('unavailable', 'unsupported')):
                         item['state'] = 'attention'
                         item['reason'] = reason
                         value['attention'] = reason
@@ -516,7 +523,7 @@ def publish_attention(store, value, occurrence, now):
             options=['acknowledge'], evidence=[value['id'], occurrence['id']], priority='normal',
             expires_at=timestamp(occurrence['expires_at']).timestamp(), permission_decision=False,
             context=dict(owner=principal.subject, operation_id=occurrence['id'], attempt=1,
-                task_id=context.get('task_id') or 'none', allocation_id='unchanged', runtime='codex',
+                task_id=context.get('task_id'), allocation_id='unchanged', runtime='codex',
                 conversation_id=value['request']['thread_id'], account='not_attested', target=value['request']['thread_id'],
                 action='wake.background' if value['request']['session_mode']=='background' else 'wake.new_tab',
                 effect_scope='resume_existing_scope', policy_root=str(permissions.root), policy_revision=revision, operation_state='blocked'))

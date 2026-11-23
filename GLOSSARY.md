@@ -227,6 +227,9 @@ conditions. A worker's completion report alone is not that decision.
 **Recurring schedule**:
 An agreement defining when repeated checks become due, which conversation receives
 them, their session mode, and the conditions under which scheduling ends.
+A temporary uncertainty about the recipient tab keeps the occurrence pending
+within its original delivery window. A route or permission block that needs
+operator action can put the schedule in attention.
 
 **Scheduled occurrence**:
 One planned execution arising from a recurring schedule, distinct from attempts

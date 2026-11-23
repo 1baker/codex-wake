@@ -52,10 +52,12 @@ def _unique(pairs):
     return result
 
 
-def _context(value):
+def _context(value, *, task_optional=False):
     if type(value) is not dict or set(value) != CONTEXT_FIELDS:
         _fail('context_invalid', 'exact operation context required')
     for key in CONTEXT_FIELDS - {'attempt', 'policy_revision'}:
+        if key == 'task_id' and task_optional and value[key] is None:
+            continue
         if type(value[key]) is not str or not value[key] or len(value[key]) > 2048:
             _fail('context_invalid', 'operation context fields must be bounded nonempty strings')
     for key in ('attempt', 'policy_revision'):
@@ -234,7 +236,7 @@ class AttentionQueue:
             _fail('request_invalid', 'notices may only be acknowledged and grant nothing')
         if request['kind'] == 'decision' and request['options'] != ['accept', 'decline']:
             _fail('request_invalid', 'decision options are accept and decline')
-        _context(request['context'])
+        _context(request['context'], task_optional=request['kind'] == 'notice')
 
     @staticmethod
     def _owner(principal, row):
