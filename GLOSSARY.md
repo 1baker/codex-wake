@@ -275,6 +275,8 @@ its pane or tab is destroyed. Detaching a terminal client is not session closure
 **Re-open session live**:
 A wake session mode that restores the same conversation in a visible terminal
 when needed, using its most recently verified harness and working directory.
+For an owned tmux server at a pinned private socket, a confirmed dead socket
+can be recovered through normal tmux startup.
 
 **Background**:
 A wake session mode that uses the same conversation in its live terminal when

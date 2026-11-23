@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import errno
 import os
 from pathlib import Path
 import re
+import socket
+import stat
 import subprocess
 import time
 from typing import Any
@@ -24,21 +27,37 @@ def now() -> str:
 
 
 def explicit_terminal_absent(socket_path: str | None) -> bool:
-    """Qualify absence only at an explicit address in a physical private directory."""
+    """Recognize an absent or dead owned socket in a physical private directory."""
     if socket_path is None:
         return False
     path = Path(socket_path)
     if not path.is_absolute() or '..' in path.parts:
         raise SharedSourceError('explicit terminal socket must be absolute')
     try:
-        path.lstat()
-        return False  # Existing, stale, symlinked and inaccessible sockets are not absence.
+        socket_info = path.lstat()
     except FileNotFoundError:
-        parent = path.parent.resolve(strict=True)
-        info = parent.stat()
-        if parent != path.parent or info.st_uid != os.geteuid() or info.st_mode & 0o077:
-            raise SharedSourceError('missing terminal requires a physical owned private directory')
+        socket_info = None
+    if socket_info is not None and (
+            not stat.S_ISSOCK(socket_info.st_mode) or socket_info.st_uid != os.geteuid()):
+        return False
+    parent = path.parent.resolve(strict=True)
+    info = parent.stat()
+    if parent != path.parent or info.st_uid != os.geteuid() or info.st_mode & 0o077:
+        if socket_info is not None:
+            return False
+        raise SharedSourceError('missing terminal requires a physical owned private directory')
+    if socket_info is None:
         return True
+    # Defer stale-path replacement to tmux's own server startup and lock.
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+        probe.setblocking(False)
+        if probe.connect_ex(str(path)) != errno.ECONNREFUSED:
+            return False
+    try:
+        current = path.lstat()
+    except FileNotFoundError:
+        return False
+    return (current.st_dev, current.st_ino) == (socket_info.st_dev, socket_info.st_ino)
 
 
 def tmux_inventory(socket_path: str | None, timeout: float, *, shell_metadata: bool = False) -> list[dict[str, Any]]:

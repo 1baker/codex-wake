@@ -269,3 +269,46 @@ class EmptyComposerRenderTests(unittest.TestCase):
                       '\x1b[1m›\x1b[0m\x1b[48;2;41;41;41m UNSUBMITTED_DRAFT',
                       self.CAPTURED.replace('\x1b[2m', '')):           # placeholder no longer dim = real text
             self.assertFalse(empty_composer_line(draft), draft)
+
+
+class StaleTerminalInventory(unittest.TestCase):
+    def test_dead_private_socket_allows_tmux_to_recreate_server(self):
+        import socket
+        import tempfile
+        from pathlib import Path
+        import subprocess
+        from codex_wake.sessions import tmux_inventory
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / 'terminal.sock')
+            with socket.socket(socket.AF_UNIX) as dead:
+                dead.bind(path)
+            self.assertEqual(tmux_inventory(path, 2), [])
+            command = ['tmux', '-f', '/dev/null', '-S', path]
+            try:
+                subprocess.run(command + ['new-session', '-d', '-s', 'restored'],
+                               check=True, capture_output=True, timeout=4)
+                rows = tmux_inventory(path, 2)
+                self.assertEqual([row['session_name'] for row in rows], ['restored'])
+            finally:
+                subprocess.run(command + ['kill-server'], capture_output=True, timeout=4)
+
+    def test_listening_socket_and_indirect_paths_are_not_absent(self):
+        import socket
+        import tempfile
+        from pathlib import Path
+        from codex_wake.sessions import explicit_terminal_absent
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / 'terminal.sock'
+            with socket.socket(socket.AF_UNIX) as server:
+                server.bind(str(path))
+                server.listen()
+                self.assertFalse(explicit_terminal_absent(str(path)))
+            symlink = root / 'indirect.sock'
+            symlink.symlink_to(path)
+            self.assertFalse(explicit_terminal_absent(str(symlink)))
+            path.unlink()
+            path.touch()
+            self.assertFalse(explicit_terminal_absent(str(path)))
