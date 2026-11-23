@@ -297,6 +297,8 @@ class _RestoreRuntime(SavedRuntime):
     AgentResume journals the launch before entering this method, so lost session
     creation responses retain the same crash fence as lost tab creation responses.
     """
+    allow_idle_saved = True
+
     def __init__(self, root, *, now=None, identity=None, placement=None):
         super().__init__(now=now)
         self.root = root
@@ -325,7 +327,6 @@ class _RestoreRuntime(SavedRuntime):
         if self.placement is not None:
             profile = dict(profile, tmux_session=self.placement['session'])
         runtime = SimpleNamespace(**({'tmux_socket': None} | profile), effect_guard=guard)
-        recreated = False
         try:
             tmux_command(runtime, 'has-session', '-t', '=' + profile['tmux_session'])
         except WakeError:
@@ -348,7 +349,6 @@ class _RestoreRuntime(SavedRuntime):
             sessions = TerminalSessions(self.root, tabs=tabs)
             sessions.execute('tabs.session.ensure', dict(name=profile['tmux_session'], backend='byobu',
                 server=socket, start=True, defaults=dict(cwd=profile['cwd'])), container_only=True)
-            recreated = True
         from .tab_restore_marker import mark_restored, read_launched_placement
         launcher = super().launch
         if self.placement is None:
@@ -360,7 +360,7 @@ class _RestoreRuntime(SavedRuntime):
         else:
             actual = launch_placed(tmux_command, runtime, self.placement, record['root'],
                                    lambda title, target: launcher(record, profile, guard, title,
-                                                                  window_target=target), recreated=recreated)
+                                                                  window_target=target))
         if isinstance(actual, dict):
             try:
                 mark_restored(tmux_command, runtime, actual)

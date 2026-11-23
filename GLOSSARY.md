@@ -275,6 +275,10 @@ its pane or tab is destroyed. Detaching a terminal client is not session closure
 **Re-open session live**:
 A wake session mode that restores the same conversation in a visible terminal
 when needed, using its most recently verified harness and working directory.
+Stock Codex can retain the conversation as idle after its terminal closes.
+Wake can restore that conversation when complete inventory verifies detachment.
+When the original slot is vacant and there is no matching idle placeholder,
+Wake uses that slot without moving other tabs.
 For an owned tmux server at a pinned private socket, a confirmed dead socket
 can be recovered through normal tmux startup.
 

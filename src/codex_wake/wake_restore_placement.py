@@ -110,7 +110,7 @@ def _title(rows, desired):
         index += 1
 
 
-def launch_placed(terminal, runtime, saved, cwd, launch, *, recreated=False):
+def launch_placed(terminal, runtime, saved, cwd, launch):
     from .process import process_identity
 
     rows = _panes(terminal, runtime, '=' + saved['session'])
@@ -120,7 +120,7 @@ def launch_placed(terminal, runtime, saved, cwd, launch, *, recreated=False):
     name = _title(rows, saved['title'])
     occupied = {int(row['window_index']) for row in rows}
     destination = max(occupied) + 1
-    if recreated and saved['index'] not in occupied and candidate is None:
+    if saved['index'] not in occupied and candidate is None:
         destination = saved['index']
     target = session + ':' + str(destination)
     result = launch(name, target)

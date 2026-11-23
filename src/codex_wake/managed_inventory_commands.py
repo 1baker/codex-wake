@@ -58,10 +58,11 @@ def execute(action, arguments, root, *, native_context=None, observer=None,
 class RuntimeObserver:
     """Read existing runtime evidence without any terminal input or native turn."""
     def __init__(self, *, endpoint='unix://', socket_path=None, timeout=10,
-                 grok_runtime=None, bus=None, capability=None, operator=False, now=None):
+                 grok_runtime=None, bus=None, capability=None, operator=False, now=None, allow_idle_saved=False):
         self.endpoint, self.socket_path, self.timeout = endpoint, socket_path, timeout
         self.grok_runtime, self.bus, self.capability = grok_runtime, bus, capability
         self.operator, self.now = operator, now
+        self.allow_idle_saved = allow_idle_saved
 
     def _time_observation(self):
         if self.now is not None:
@@ -114,6 +115,12 @@ class RuntimeObserver:
                 row = dict(cwd=identity.cwd, attachments=[])
             else:
                 row = resolve(snapshot, 'thread:' + conversation_id)
+            idle_detached = (
+                self.allow_idle_saved and not saved_only and not row['attachments']
+                and snapshot.get('complete') and thread.get('status', {}).get('type') == 'idle'
+                and not any(conversation_id in candidate.get('candidates', [])
+                            for candidate in snapshot['sessions'])
+            )
             current = reader.read_thread(conversation_id)
             repeated = RuntimeIdentity.from_metadata(current, reader.server_metadata)
             if (repeated != identity or row['cwd'] != identity.cwd
@@ -139,7 +146,10 @@ class RuntimeObserver:
         return Observation('codex', identity.namespace, conversation_id, identity.cwd,
                            state, observed_at, 'native_metadata', process, projected,
                            {'inspect': 'supported', 'lifecycle_control': 'not_qualified',
-                            'saved_resume': 'supported' if not attachments and current.get('status', {}).get('type') == 'notLoaded' else 'not_qualified'},
+                            'saved_resume': 'supported' if not attachments and (
+                                current.get('status', {}).get('type') == 'notLoaded'
+                                or (idle_detached and current.get('status', {}).get('type') == 'idle')
+                            ) else 'not_qualified'},
                            clock_observation=clock)
 
     def _grok(self, arguments):

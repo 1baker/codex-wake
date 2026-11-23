@@ -46,6 +46,8 @@ def resume_profile(config, name):
 
 class SavedRuntime:
     """Existing owned Unix protocol plus exact terminal/process observation."""
+    allow_idle_saved = False
+
     def __init__(self, *, binding_source=None, terminal=None, now=None):
         from .lifecycle_budget import trusted_upper
         self.now = now or trusted_upper
@@ -66,9 +68,10 @@ class SavedRuntime:
             return self.binding_source(record, profile)
         from .managed_inventory_commands import RuntimeObserver
         sample = RuntimeObserver(endpoint=profile['app_server'], socket_path=profile.get('tmux_socket'),
-                                 timeout=profile['timeout'], now=self.now)({'conversation_id': record['conversation_id']})
+                                 timeout=profile['timeout'], now=self.now,
+                                 allow_idle_saved=self.allow_idle_saved)({'conversation_id': record['conversation_id']})
         if not sample.attachments and sample.capabilities.get('saved_resume') != 'supported':
-            raise InventoryError('identity_unavailable', 'saved recovery requires native notLoaded evidence')
+            raise InventoryError('identity_unavailable', 'saved recovery requires qualified detached-thread evidence')
         return sample
 
     def launch(self, record, profile, guard, name, *, window_target=None):

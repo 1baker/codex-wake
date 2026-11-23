@@ -141,6 +141,9 @@ class LiveWakeRestoreTests(unittest.TestCase):
     def test_absent_recipient_uses_latest_private_profile_through_existing_resume_owner(self):
         self.exercise_restore()
 
+    def test_idle_recipient_with_no_tab_is_restored_once(self):
+        self.exercise_restore(idle_detached=True)
+
     def test_missing_pinned_byobu_server_is_recreated_before_exact_resume(self):
         self.exercise_restore(missing_server=True)
 
@@ -149,6 +152,28 @@ class LiveWakeRestoreTests(unittest.TestCase):
 
     def test_visible_restore_reconciles_one_launch_until_native_attachment_is_ready(self):
         self.exercise_restore(delayed_attachment=True)
+
+    def test_placement_reuses_vacant_original_slot_with_later_tab(self):
+        from types import SimpleNamespace
+        from codex_wake.session_lifecycle import tmux_command
+        from codex_wake.wake_restore_placement import launch_placed
+
+        with tempfile.TemporaryDirectory() as cwd:
+            runtime = SimpleNamespace(tmux_socket=str(Path(cwd) / 'tmux.sock'), timeout=3)
+            tmux_command(runtime, 'new-session', '-d', '-s', 'main', '-c', cwd)
+            try:
+                def launch(title, target):
+                    return tmux_command(runtime, 'new-window', '-dP', '-F', '#{window_id}\t#{pane_id}',
+                                        '-t', target, '-n', title, '-c', cwd, 'sleep 30')
+
+                later_window, _ = launch('later', 'main:7').split('\t')
+                actual = launch_placed(tmux_command, runtime, dict(session='main', title='wake', index=1),
+                                       cwd, launch)
+                self.assertEqual((actual['index'], actual['title']), (1, 'wake'))
+                self.assertEqual(tmux_command(runtime, 'display-message', '-p', '-t', later_window,
+                                              '#{window_index}:#{window_name}'), '7:later')
+            finally:
+                tmux_command(runtime, 'kill-server')
 
     def test_placement_reclaims_idle_shell_and_appends_when_slot_is_occupied(self):
         from types import SimpleNamespace
@@ -246,7 +271,7 @@ class LiveWakeRestoreTests(unittest.TestCase):
             finally:
                 tmux_command(runtime, 'kill-server')
 
-    def exercise_restore(self, missing_server=False, clock=time.time, delayed_attachment=False):
+    def exercise_restore(self, missing_server=False, clock=time.time, delayed_attachment=False, idle_detached=False):
         from codex_wake.a2a_identity import RuntimeIdentity
         from codex_wake.managed_inventory import ManagedInventory, Observation
         from codex_wake.process import process_identity
@@ -327,13 +352,7 @@ class LiveWakeRestoreTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeTargetError, 'live_restore_runtime_state_unverified'):
                     LiveWakeRestorer(root, now=clock).prepare(target)
                 self.assertEqual(commands, [])
-                thread['status'] = {'type':'idle'}
-                with self.assertRaisesRegex(RuntimeTargetError, 'identity_unavailable'):
-                    LiveWakeRestorer(root, now=clock).prepare(target)
-                self.assertEqual(commands, [])
-                # An absent frontend is recoverable only with native saved-thread
-                # evidence; idle-without-attachment remains an ownership hold.
-                thread['status'] = {'type':'notLoaded'}
+                thread['status'] = {'type': 'idle' if idle_detached else 'notLoaded'}
                 prepared = LiveWakeRestorer(root, now=clock).prepare(target)
                 self.assertEqual(LiveWakeRestorer(root, now=clock).prepare(target)['thread_id'], THREAD)
             launches = [cmd for cmd in commands if 'new-window' in cmd]

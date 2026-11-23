@@ -73,6 +73,27 @@ class ManagedInventoryCommandTests(unittest.TestCase):
                 attachments=[dict(client_pid=123,client_start_time_ticks=42)])]
             with self.assertRaises(Exception):observer({'conversation_id':THREAD})
 
+    def test_idle_detachment_requires_complete_unambiguous_inventory_and_two_idle_reads(self):
+        from unittest.mock import Mock
+        idle = {'id': THREAD, 'cwd': '/fixture/repo', 'modelProvider': 'openai', 'status': {'type': 'idle'}}
+        row = dict(thread_id=THREAD, cwd='/fixture/repo', attachments=[])
+        observer = RuntimeObserver(endpoint='unix:///fixture/server', now=lambda: 1,
+                                   allow_idle_saved=True)
+        for complete, other, final_status, expected in (
+                (True, [], 'idle', 'supported'),
+                (False, [], 'idle', 'not_qualified'),
+                (True, [{'thread_id': None, 'candidates': [THREAD]}], 'idle', 'not_qualified'),
+                (True, [], 'active', 'not_qualified')):
+            with self.subTest(complete=complete, other=other, final_status=final_status):
+                reader = Reader('unix:///fixture/server')
+                reader.read_thread = Mock(side_effect=[idle, dict(idle, status={'type': final_status})])
+                snapshot = dict(complete=complete, sources={'app_server': {'availability': 'available'}},
+                                sessions=[row, *other])
+                with patch('codex_wake.shared_app_server.SharedAppServerReader', return_value=reader), patch(
+                        'codex_wake.sessions.observe', return_value=snapshot):
+                    sample = observer({'conversation_id': THREAD})
+                self.assertEqual(sample.capabilities['saved_resume'], expected)
+
     def test_saved_recovery_holds_loaded_native_recipient_without_visible_attachment(self):
         from codex_wake.agent_resume import SavedRuntime
         from codex_wake.managed_inventory import InventoryError
