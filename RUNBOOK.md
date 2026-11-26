@@ -10874,3 +10874,23 @@ restart, preserved the shell, completed one correlated wake, and cleared the
 first-focus marker while retaining placement. Plan 0264 records the source
 commits, one Standards and Spec review, one red/green remediation pass,
 dual-Python validation and receipt hashes. No production restart or deployment.
+
+## Upgrade build cache retention
+
+The autonomous upgrade owner retains Cargo intermediates under its private
+compiler-cache root. The working job and compiler cache share the configured
+temporary byte budget. Once the owner is idle, it retains at most half that
+budget in compiler output. A cache above the idle limit is dropped as a unit
+so the next upgrade starts with room for source, review, and package output.
+
+The upgrade job owner sweeps at terminal completion, cancel or disable, before
+admitting another job, and on each authorized discovery tick. It also removes
+retired job-local Cargo scratch for known terminal jobs. A worker or unresolved
+phase holds cleanup. The sweep preserves staged packages, rollback state,
+historical receipts, and unknown directories. Operator cache cleanup still
+requires exact host write authority and idle ownership.
+
+Live migration and other Cargo target roots are separate. Verify producer
+custody, live references, and Cargo locks before retiring those outputs. Measure
+single-link allocated bytes separately from observed filesystem free-space
+change.
