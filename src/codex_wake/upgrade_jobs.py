@@ -13,7 +13,6 @@ import math
 import os
 from pathlib import Path
 import signal
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -23,7 +22,7 @@ import uuid
 from codex_profiles.upgrades import _atomic
 from .managed_inventory import InventoryError
 from . import measurements
-from .upgrade_storage import owned_storage_bytes
+from .upgrade_storage import owned_storage_bytes, remove_owned_cache
 
 DEFAULT_LIMITS = dict(repair_attempts=3, total_seconds=7200, compiler_jobs=2,
                       temporary_bytes=24 * 1024**3)
@@ -200,11 +199,8 @@ class UpgradeJobs:
                 elif verb == 'cache_cleanup':
                     if any(occupies_upgrade_slot(job) for job in state['jobs'].values()):
                         raise InventoryError('upgrade_busy','compiler cache owner remains active or uncertain')
-                    cache=self.compiler_cache(config)
-                    path=Path(cache['path'])
-                    if path.exists():shutil.rmtree(path)
-                    self.event(state,'compiler_cache_cleaned',bytes=cache['bytes'])
-                    result=dict(compiler_cache=self.compiler_cache(config),reclaimed_bytes=cache['bytes'])
+                    reclaimed = self.sweep_idle_cache(state, config, force=True)
+                    result = dict(compiler_cache=self.compiler_cache(config), reclaimed_bytes=reclaimed)
                 elif verb == 'list':
                     result = dict(jobs=list(state['jobs'].values()))
                 elif verb in ('show', 'cancel'):
@@ -241,6 +237,7 @@ class UpgradeJobs:
                     else:
                         if any(occupies_upgrade_slot(job) for job in state['jobs'].values()):
                             raise InventoryError('upgrade_busy', 'one upgrade candidate at a time')
+                        self.sweep_idle_cache(state, config)
                         job = dict(id=uuid.uuid4().hex, key=key, recipe=name,
                             recipe_path=str(recipe_path), recipe_sha256=hashlib.sha256(recipe_path.read_bytes()).hexdigest(),
                             version=recipe.get('upstream_version'), target=config['target'], state='queued',
@@ -257,8 +254,8 @@ class UpgradeJobs:
                         self.event(state, 'queued', job)
                         result = dict(job=job)
                 self.save(state)
-        if verb == 'advance':
-            self.reclaim_terminal_cache(arguments['job_id'])
+        if verb in ('advance', 'cancel', 'disable'):
+            result['cache_maintenance'] = self.reconcile_cache(actor, arguments, authorize=authorize)
         if verb not in READS:
             self.notify(actor, authorize)
         return dict(schema_version=1, operation=operation, status='completed', result=result)
@@ -300,29 +297,59 @@ class UpgradeJobs:
             yield
         finally:os.close(fd)
 
-    def reclaim_terminal_cache(self, identifier):
-        with self.locked():
-            state=self.load();job=self.job(state,identifier)
-            if job['state'] not in TERMINAL or job.get('active_phase') or job.get('worker'):
-                return
-            # Legacy job-local scratch only; the shared compiler cache survives holds.
-            cache=self.store/identifier/'cargo-target'
-            if cache.exists() or cache.is_symlink():
-                if cache.is_symlink() or not cache.resolve().is_relative_to((self.store/identifier).resolve()):
-                    job['cache_reclamation']=dict(status='held',reason='owned_cache_path_changed')
-                else:
-                    size=owned_storage_bytes((cache,))
-                    shutil.rmtree(cache)
-                    job['cache_reclamation']=dict(status='reclaimed',bytes=size,at=self.now())
-                self.save(state)
+    def reconcile_cache(self, actor, arguments, *, authorize=None):
+        """Sweep abandoned output through the same write grant as the producer."""
+        try:
+            with self.locked():
+                config = self.config()
+                state = self.load()
+                self.guard(actor, config['target'], arguments, authorize, write=True)
+                if (state.get('target', config['target']) != config['target']
+                        or any(job['target'] != config['target'] for job in state['jobs'].values())):
+                    raise InventoryError('unauthorized_target', 'upgrade store is sealed to its original host scope')
+                reclaimed = self.sweep_idle_cache(state, config)
+                if reclaimed is not None:
+                    self.save(state)
+                return dict(status='completed', compiler_cache_bytes_reclaimed=reclaimed or 0)
+        except (InventoryError, OSError) as error:
+            return dict(status='held', reason=getattr(error, 'code', type(error).__name__))
+
+    def sweep_idle_cache(self, state, config, *, force=False):
+        """Run under the store lock. Unresolved workers retain all scratch."""
+        if any(occupies_upgrade_slot(job) for job in state['jobs'].values()):
+            return None
+        changed = False
+        for identifier, job in state['jobs'].items():
+            directory = self.store / identifier
+            if len(identifier) != 32 or any(char not in '0123456789abcdef' for char in identifier):
+                continue
+            if directory.is_symlink():
+                continue
+            cache = directory / 'cargo-target'
+            if not cache.is_dir() or cache.is_symlink():
+                continue
+            size = owned_storage_bytes((cache,))
+            remove_owned_cache(cache)
+            job['cache_reclamation'] = dict(status='reclaimed', bytes=size, at=self.now())
+            changed = True
+        cache = self.compiler_cache(config)
+        if force or cache['bytes'] > cache['retained_limit_bytes']:
+            path = Path(cache['path'])
+            if path.exists():
+                remove_owned_cache(path)
+            self.event(state, 'compiler_cache_cleaned', bytes=cache['bytes'],
+                       reason='operator_requested' if force else 'retention_budget_exceeded')
+            return cache['bytes']
+        return 0 if changed else None
 
     def compiler_cache(self, config):
-        path=self.root/'upgrade-compiler-cache'
-        if path.is_symlink() or (path.exists() and (not path.is_dir() or path.stat().st_uid!=os.getuid() or path.stat().st_mode & 0o022)):
-            raise InventoryError('invalid_configuration','compiler cache ownership or permissions invalid')
-        return dict(path=str(path), identity=digest(dict(root=str(self.root.resolve()),target=config['target'])),
-            bytes=owned_storage_bytes((path,)), limit_bytes=config['limits']['temporary_bytes'],
-            retention='until_explicit_cleanup', invalidation='cargo_fingerprints')
+        path = self.root / 'upgrade-compiler-cache'
+        if path.is_symlink() or (path.exists() and (not path.is_dir() or path.stat().st_uid != os.getuid() or path.stat().st_mode & 0o022)):
+            raise InventoryError('invalid_configuration', 'compiler cache ownership or permissions invalid')
+        limit = config['limits']['temporary_bytes']
+        return dict(path=str(path), identity=digest(dict(root=str(self.root.resolve()), target=config['target'])),
+                    bytes=owned_storage_bytes((path,)), limit_bytes=limit, retained_limit_bytes=limit // 2,
+                    retention='idle_budget', invalidation='cargo_fingerprints')
 
     def notice_summary(self):
         from .upgrade_notices import UpgradeNotices

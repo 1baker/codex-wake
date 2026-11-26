@@ -77,6 +77,55 @@ class UpgradeDiscoveryTests(unittest.TestCase):
             self.assertEqual(all_jobs[0]['id'],first['job_id'])
             self.assertEqual(all_jobs[0]['deadline'],7300)
 
+    def test_cache_sweep_holds_active_output_and_reclaims_after_completion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            owner, jobs, actor, target, _ = self.fixture(root, [100.0])
+            config_path = root / 'upgrade-bot.json'
+            config = json.loads(config_path.read_text())
+            config['limits'] = {'temporary_bytes': 100}
+            config_path.write_text(json.dumps(config))
+            args = {'expected_target': target}
+            jobs.execute(actor, 'upgrades.enable', args)
+            job_id = owner.poll(actor)['job_id']
+            cache = root / 'upgrade-compiler-cache'
+            cache.mkdir()
+            (cache / 'build.o').write_bytes(b'x' * 60)
+            legacy_cache = jobs.store / job_id / 'cargo-target'
+            legacy_cache.mkdir(parents=True)
+            (legacy_cache / 'build.o').write_bytes(b'old')
+            evidence = legacy_cache.parent / 'receipt.json'
+            evidence.write_text('{}')
+            jobs.reconcile_cache(actor, args)
+            self.assertTrue(cache.is_dir())
+            self.assertTrue(legacy_cache.is_dir())
+            jobs.executor = lambda _: dict(status='failed', reason='compile_rejected')
+            result = owner.tick(actor)
+            self.assertEqual(result['job']['state'], 'held')
+            self.assertEqual(result['cache_maintenance']['compiler_cache_bytes_reclaimed'], 60)
+            self.assertFalse(cache.exists())
+            self.assertFalse(legacy_cache.exists())
+            self.assertTrue(evidence.is_file())
+            idle = owner.tick(actor)
+            self.assertEqual(idle['cache_maintenance']['compiler_cache_bytes_reclaimed'], 0)
+
+    def test_idle_tick_reconciles_abandoned_shared_cache(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            owner, jobs, actor, target, _ = self.fixture(root, [100.0])
+            config_path = root / 'upgrade-bot.json'
+            config = json.loads(config_path.read_text())
+            config['limits'] = {'temporary_bytes': 100}
+            config_path.write_text(json.dumps(config))
+            cache = root / 'upgrade-compiler-cache'
+            cache.mkdir()
+            (cache / 'abandoned.o').write_bytes(b'x' * 51)
+            self.assertEqual(jobs.execute(actor, 'upgrades.status', {'expected_target': target})
+                             ['result']['compiler_cache']['bytes'], 51)
+            self.assertTrue(cache.is_dir())
+            self.assertIsNone(owner.tick(actor)['job'])
+            self.assertFalse(cache.exists())
+
     def test_template_source_resolution_pins_annotated_official_tag_and_archive(self):
         import hashlib
         import io

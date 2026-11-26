@@ -221,23 +221,24 @@ class UpgradeDiscovery:
 
     def tick(self, actor, *, authorize=None):
         """Poll when due and drive at most one currently accepted job stage."""
-        discovery = self.poll(actor, authorize=authorize)
         config, _ = self.configuration()
         args = dict(expected_target=config['target'])
+        cache = self.jobs.reconcile_cache(actor, args, authorize=authorize)
+        discovery = self.poll(actor, authorize=authorize)
         current = self.jobs.execute(actor, 'upgrades.status', args, authorize=authorize)['result']
         if not current['enabled']:
-            return dict(discovery=discovery, job=None)
+            return dict(discovery=discovery, job=None, cache_maintenance=cache)
         jobs = self.jobs.execute(actor, 'upgrades.list', args, authorize=authorize)['result']['jobs']
         active = [job for job in jobs if job['state'] not in TERMINAL]
         if not active:
-            return dict(discovery=discovery, job=None)
+            return dict(discovery=discovery, job=None, cache_maintenance=cache)
         # A concurrent owner may still hold this worker. The public job owner
         # decides whether to advance, reconcile, or report busy; never resubmit.
         try:
             result = self.jobs.execute(actor, 'upgrades.advance', dict(args,job_id=active[0]['id']), authorize=authorize)
-            return dict(discovery=discovery, job=result['result']['job'])
+            return dict(discovery=discovery, job=result['result']['job'], cache_maintenance=result['result']['cache_maintenance'])
         except InventoryError as error:
-            return dict(discovery=discovery, job=active[0], drive=dict(status='held',reason=error.code))
+            return dict(discovery=discovery, job=active[0], cache_maintenance=cache, drive=dict(status='held',reason=error.code))
 
 
 def main(argv=None):
