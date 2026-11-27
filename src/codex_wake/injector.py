@@ -212,6 +212,7 @@ def active_pane_region(text: str) -> tuple[list[str], int, int]:
 def classify_pane_safety(text: str) -> tuple[str, dict[str, Any]] | None:
     lines, _start, total_lines = active_pane_region(text)
     patterns = (
+        (r"^\s*resume paused goal\?\s*$", "paused_goal_question", "paused goal prompt visible"),
         (r"^\s*approve(?: this)? command\?\s*$", "approval_question", "approval prompt visible"),
         (r"^\s*allow\b.*\bcommand\b.*\?\s*$", "command_permission_question", "command approval prompt visible"),
         (r"^\s*deny\b.*\ballow\b.*\?\s*$", "deny_allow_question", "confirmation prompt visible"),
@@ -219,7 +220,7 @@ def classify_pane_safety(text: str) -> tuple[str, dict[str, Any]] | None:
         (r"^\s*press enter to continue\s*$|^\s*continue\?\s*$", "continue_question", "confirmation prompt visible"),
     )
     for offset, line in enumerate(lines):
-        lowered = line.lower()
+        lowered = re.sub(r"\x1b\[[0-9;]*m", "", line).lower()
         for pattern, rule_id, reason in patterns:
             if re.search(pattern, lowered):
                 return reason, {

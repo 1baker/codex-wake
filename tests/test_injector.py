@@ -709,6 +709,58 @@ class InjectorTests(unittest.TestCase):
             )
             self.assertNotIn("Approve command?", json.dumps(data["events"][-2]))
 
+    def test_paused_goal_capture_requeues_without_consuming_attempt_or_input(self) -> None:
+        # Historical plain-text capture; non-modal context is redacted, not live.
+        capture = (Path(__file__).parent / "fixtures" / "paused-goal-captured-redacted.txt").read_text(
+            encoding="utf-8"
+        )
+        # Synthetic SGR derivative, including a style change inside the title.
+        colored = "\n".join(f"\x1b[1m{line}\x1b[0m" if line else line for line in capture.splitlines())
+        colored = colored.replace("paused", "\x1b[7mpaused\x1b[27m")
+        for name, text in (("captured_plain", capture), ("synthetic_ansi", colored)):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp) / "wake"
+                found = self.make_firing_record(root, Path(tmp), max_attempts=1)
+                runner = FakeTmuxRunner(capture=text)
+                client = FakeAppServerClient()
+
+                result = dispatch_firing_record(
+                    root, found, runner=runner, app_server_client=client,
+                    thread_identity_resolver=self.identity,
+                    now=datetime(2026, 5, 18, 21, 15, tzinfo=UTC), ack_timeout_override=0,
+                )
+
+                self.assertEqual(result.status, "requeued")
+                self.assertEqual(runner.pastes, [])
+                self.assertEqual(client.calls, [])
+                data = find_record(root, "wake_test").record
+                self.assertEqual(data["status"], "pending")
+                self.assertEqual(data["attempts"], 0)
+                self.assertEqual(data["max_attempts"], 1)
+                self.assertEqual(data["safety_deferrals"], 1)
+                unsafe_event = next(event for event in data["events"] if event["type"] == "unsafe_pane")
+                self.assertEqual(unsafe_event["pane_safety"]["rule_id"], "paused_goal_question")
+                self.assertNotIn("Resume paused goal?", json.dumps(data["events"]))
+                self.assertNotIn("dispatch_attempt", [event["type"] for event in data["events"]])
+
+    def test_paused_goal_in_inert_history_does_not_block_current_prompt(self) -> None:
+        history = "Resume paused goal?\n› 1. Resume goal   Mark it active and continue\n"
+        recent = "\n".join(f"completed output {index}" for index in range(13))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wake"
+            found = self.make_firing_record(root, Path(tmp))
+            runner = FakeTmuxRunner(capture=history + recent + "\nCodex ready")
+
+            dispatch_firing_record(
+                root, found, runner=runner, thread_identity_resolver=self.identity,
+                now=datetime(2026, 5, 18, 21, 15, tzinfo=UTC), ack_timeout_override=0,
+            )
+
+            self.assertEqual(len(runner.pastes), 1)
+            data = find_record(root, "wake_test").record
+            self.assertEqual(data["attempts"], 1)
+            self.assertNotIn("unsafe_pane", [event["type"] for event in data["events"]])
+
     def test_unsafe_preflight_does_not_consume_sole_delivery_attempt(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "wake"
