@@ -1,6 +1,6 @@
 ---
 name: codex-wake
-description: Use Codex Wake for resource allowances and optional existing-native-goal supervision. Honor numeric ceilings and the operator-selected manual or supervised mode; reading a handoff continues already-authorized work without reset, repeated approval or optional enrollment. When external supervision is selected, register token/time limits through MCP; an independent watcher requests checkpoint then pauses the goal and interrupts its exact active turn. Dedicated host-approved executors provide separate memory/CPU controls. Also use it for durable agent-to-agent requests, correlated replies, exclusive work claims, suspended reply wakes, session/tab lookup, wake listing/cancellation and persistent emergency pause, host-approved worker spawn, self-refresh of MCP resources through an approved selected-thread reload, or skill/MCP resources through approved client replacement or shared reload after idle checks, fresh-context handoff, and scheduled follow-ups. Prefer its MCP tools for tracked exchanges when configured; use the CLI otherwise.
+description: Use Codex Wake for durable recurring clock/interval monitoring, one-shot follow-ups, exact saved-conversation tab recovery, tracked agent exchanges, session discovery, and optional resource supervision. Honor existing numeric ceilings, manual or supervised mode, host grants, exact identities and uncertain-effect reconciliation. Prefer scheduler-owned recurrence over worker self-rearming. Distinguish persistence, monitor readiness, restoration qualification and actual execution. Prefer configured MCP tools; use the supported CLI otherwise.
 ---
 
 # Codex Wake
@@ -19,6 +19,7 @@ registration, delivery, enforcement or refresh.
 | List/cancel wakes or emergency pause/interrupt/resume | [Wake controls](references/wake-controls.md) |
 | Durable peer request, claim, reply or suspended reply wake | [Tracked work](references/workflows.md#tracked-agent-to-agent-work) and [mailbox workflow](references/workflows.md#local-agent-mailbox-workflow) |
 | Find a session/tab or address a human tab target | [Human targets](references/workflows.md#human-tab-targets-through-mcp) |
+| Repeated clock/interval monitoring | [Durable recurring schedules](references/workflows.md#durable-recurring-schedules) |
 | Scheduled follow-up, transport choice or host readiness | [Native workflow and preconditions](references/workflows.md#native-workflow-first) and [patterns](references/workflows.md#common-patterns) |
 
 Use your actual native caller identity and existing objective allocation.

@@ -16,6 +16,16 @@ from codex_wake.process import process_identity
 THREAD = "11111111-1111-4111-8111-111111111111"
 CLOCK = {"utc": {"lower": 2000000000, "upper": 2000000000, "status": "network", "sources": ["clock-a", "clock-b"]}, "counter": None}
 class WakeSessionModes(unittest.TestCase):
+    def test_live_registration_exposes_missing_restoration_before_claiming_armed(self):
+        out = io.StringIO()
+        reader = type('Reader', (), dict(schema_versions=[8]))()
+        health = dict(mode='loop', reader_capabilities=['wake_session_modes_v1'])
+        with tempfile.TemporaryDirectory() as d, patch('codex_wake.sessions.observe', return_value={'complete': True, 'sessions': []}), patch('codex_wake.native_clock.snapshot', return_value=CLOCK), patch('codex_wake.native_protocol.native_request', return_value={'thread': {'id': THREAD, 'status': {'type': 'notLoaded'}}}), patch('codex_wake.signal_records.probe_managed_reader_capability', return_value=reader), patch('codex_wake.monitor.read_monitor_health', return_value=health), contextlib.redirect_stdout(out):
+            self.assertEqual(run(['--wake-root', d, 'native', 'after', '--json', '--session-mode', 'reopen_live', '--codex-path', sys.executable, THREAD, '1h', '--', 'check']), 0)
+            receipt = json.loads(out.getvalue())
+            self.assertFalse(receipt['armed'])
+            self.assertEqual(receipt['harness']['reason'], 'live_restore_configuration_required')
+
     def test_session_only_survives_detach_and_cancels_after_exact_process_exits(self):
         with tempfile.TemporaryDirectory() as d:
             child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])

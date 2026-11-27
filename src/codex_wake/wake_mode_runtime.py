@@ -281,6 +281,11 @@ def registration_harness_readiness(root, record):
             return dict(state='unavailable', reason='recipient_identity_unverified')
         if thread.get('status', {}).get('type') not in ('idle', 'active', 'notLoaded'):
             return dict(state='unavailable', reason='recipient_state_unverified')
+        if target.get('session_mode') == 'reopen_live':
+            from .wake_live_restore import LiveWakeRestorer
+            restoration = LiveWakeRestorer(root).inspect(target)
+            if restoration.get('status') == 'blocked':
+                return dict(state='unavailable', reason=restoration['reason'], restoration=restoration)
         from .runtime_delivery import bounded_nonadmitted_terminal
         for peer in _peer_records(root, time.monotonic() + 5):
             other = peer.get('target', {})

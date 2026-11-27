@@ -1,6 +1,19 @@
 schema_version: 1
 work_item_tracking: required
 lanes:
+  - id: REGISTRATION-READINESS-742
+    owner: primary / ecochran76
+    objective: Expose missing tab restoration before claiming armed
+    work_items: [https://github.com/CochranResearchGroup/codex-wake/issues/742]
+    plan: docs/dev/plans/issue742-registration-readiness.md
+    branch: fix/issue-742-registration-readiness
+    target: origin/main
+    plan_state: OPEN
+    custody_state: LOCAL
+    dependencies: []
+    overlaps: [WAKE-STARTUP-749]
+    updated_at: 2026-11-27
+    disposition: Readiness-only follow-up; preserves separate tab-placement lane.
   - id: RECURRING-DELIVERY-755
     owner: primary / ecochran76
     objective: Show and bound recurring wake delivery holds

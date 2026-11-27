@@ -162,6 +162,37 @@ tab. Retain the returned exact pane/thread; split-window ambiguity is intentiona
 never a new key. Preparation does not enroll an actor or prove message delivery.
 No caller-side CLI inventory, typo repair or arbitrary launch commands are needed.
 
+## Durable recurring schedules
+
+For operator-authorized repeated monitoring, prefer `schedules register` (or
+`wake_schedules_register`) over a prompt that creates the next one-shot wake.
+The scheduler owns recurrence even if an occurrence expires, fails, or never
+starts. First inspect `schedules list` and existing one-shot intents; reconcile
+uncertain submissions before replacing anything. Never run both chains.
+
+Freeze the agreed exact conversation, cadence/timezone, end, missed-slot policy,
+overlap policy and delivery window. Use `schedules register --request FILE`;
+`register --help` and the tool schema define the request. Use IANA clock cadence
+for fixed local times so DST is honored. A monitor occurrence must not re-arm
+itself when the schedule owns recurrence. Skip missed slots rather than bursting
+catch-up unless explicitly authorized otherwise. Cancel only the superseded
+pending one-shot after the durable schedule has been verified.
+
+For `reopen_live`, inspect the receipt's restoration section separately from
+monitor health. A healthy monitor is not proof of a working tab-restoration path.
+Use the supported `schedules bind-restoration --profiles FILE
+--managed-agent-id ID --profile NAME SCHEDULE_ID` with an existing qualified
+exact-conversation profile; do not hand-write a binding or guess a terminal,
+account or workspace. Missing setup must remain an explicit blocker. Verify a
+closed-tab recovery in isolated owned resources before claiming restoration
+works. `active_tab` requires an existing attachment; it does not recover one.
+
+When authorized monitoring must continue without a qualified visible-tab route,
+use the agreed background mode and report the recovery limitation. A fallback
+must be explicit and must preserve the exact conversation; do not silently
+weaken a user requirement. Keep persistence, monitor readiness, restoration
+configuration, accepted delivery and actual execution as separate claims.
+
 ## Native workflow first
 
 Use native Codex tools for ordinary immediate messages. Wake is for durable

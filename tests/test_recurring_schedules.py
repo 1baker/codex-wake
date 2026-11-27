@@ -26,6 +26,20 @@ class RecurringSchedules(unittest.TestCase):
             code = run(['--wake-root', str(root), 'schedules', *args])
         self.assertEqual(code, 0)
         return json.loads(out.getvalue())
+    def test_live_schedule_is_not_armed_without_missing_tab_restoration(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            spec = root / 'request.json'
+            spec.write_text(json.dumps(request(session_mode='reopen_live')))
+            reader = type('Reader', (), dict(schema_versions=[8]))()
+            health = dict(mode='loop', reader_capabilities=['recurring_schedules_v1', 'wake_session_modes_v1'])
+            with patch('codex_wake.signal_records.probe_managed_reader_capability', return_value=reader), patch('codex_wake.monitor.read_monitor_health', return_value=health):
+                receipt = self.cli(root, 'register', '--request', str(spec), '--codex-path', sys.executable)
+                self.assertTrue(receipt['monitor']['ready'])
+                self.assertFalse(receipt['armed'])
+                self.assertEqual(receipt['restoration']['reason'], 'live_restore_configuration_required')
+                self.assertEqual(receipt['scheduling_status'], 'held_restoration')
+
     def test_interval_occurrences_survive_restart_without_rearming_or_duplicate(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d); spec=root/'request.json'; spec.write_text(json.dumps(request()))
