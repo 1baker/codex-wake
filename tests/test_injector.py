@@ -515,7 +515,9 @@ class InjectorTests(unittest.TestCase):
 
     def test_unsafe_pane_reason_rejects_shell_prompt_and_approval(self) -> None:
         self.assertEqual(unsafe_pane_reason("Approve command?"), "approval prompt visible")
+        self.assertEqual(unsafe_pane_reason("\x1b[1mApprove command?\x1b[0m"), "approval prompt visible")
         self.assertEqual(unsafe_pane_reason("user@host:~/repo$ "), "pane appears to be a shell prompt")
+        self.assertEqual(unsafe_pane_reason("\x1b[32muser@host:~/repo$ \x1b[0m"), "pane appears to be a shell prompt")
         self.assertIsNone(unsafe_pane_reason("Codex\nready for input"))
 
     def test_unsafe_pane_reason_ignores_approval_words_in_inert_history(self) -> None:
@@ -717,7 +719,13 @@ class InjectorTests(unittest.TestCase):
         # Synthetic SGR derivative, including a style change inside the title.
         colored = "\n".join(f"\x1b[1m{line}\x1b[0m" if line else line for line in capture.splitlines())
         colored = colored.replace("paused", "\x1b[7mpaused\x1b[27m")
-        for name, text in (("captured_plain", capture), ("synthetic_ansi", colored)):
+        # Styling-only blank lines must not inflate the active nonempty region.
+        colored_blanks = "\n".join(f"\x1b[0m{line}\x1b[0m" for line in capture.splitlines())
+        for name, text in (
+            ("captured_plain", capture),
+            ("synthetic_ansi", colored),
+            ("synthetic_ansi_blank_lines", colored_blanks),
+        ):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp) / "wake"
                 found = self.make_firing_record(root, Path(tmp), max_attempts=1)
