@@ -721,10 +721,15 @@ class InjectorTests(unittest.TestCase):
         colored = colored.replace("paused", "\x1b[7mpaused\x1b[27m")
         # Styling-only blank lines must not inflate the active nonempty region.
         colored_blanks = "\n".join(f"\x1b[0m{line}\x1b[0m" for line in capture.splitlines())
+        # Synthetic colon-delimited SGR, empty subparameter and C1 CSI forms.
+        colon_colored = capture.replace("Resume paused goal?", "\x1b[38:2:255:0:0mResume paused goal?\x1b[0m")
         for name, text in (
             ("captured_plain", capture),
             ("synthetic_ansi", colored),
             ("synthetic_ansi_blank_lines", colored_blanks),
+            ("synthetic_colon_sgr", colon_colored),
+            ("synthetic_colon_sgr_empty_parameter", colon_colored.replace("38:2:", "38:2::")),
+            ("synthetic_c1_sgr", colon_colored.replace("\x1b[", "\x9b")),
         ):
             with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp) / "wake"
