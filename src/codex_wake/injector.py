@@ -314,6 +314,7 @@ def dispatch_firing_record(
             if paused_goal:
                 return requeue_or_fail(
                     root, found, record, "unsafe pane: paused goal prompt visible", current, "unsafe_pane",
+                    enforce_attempt_limit=False,
                 )
             unsafe = unsafe_pane_reason(captured)
             if unsafe:
@@ -371,13 +372,15 @@ def requeue_or_fail(
     message: str,
     now: datetime,
     event_type: str,
+    *,
+    enforce_attempt_limit: bool = True,
 ) -> DispatchResult:
     attempts = int(record.get("attempts") or 0)
     max_attempts = int(record.get("max_attempts") or 3)
     record["updated_at"] = format_utc(now)
     record["last_error"] = message
     record = append_event(record, event_type, message, now, attempt=attempts)
-    if attempts >= max_attempts:
+    if enforce_attempt_limit and attempts >= max_attempts:
         record["status"] = "failed"
         record = append_event(record, "failed", "Maximum dispatch attempts reached", now, attempt=attempts)
         replace_record(root, found, record)

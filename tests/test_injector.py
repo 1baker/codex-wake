@@ -255,7 +255,7 @@ class InjectorTests(unittest.TestCase):
             ("C1", colon.replace("\x1b[", "\x9b")),
             ("modal_above_idle_composer", "Resume paused goal?\n›\n80% context left"),
         ):
-            for attempts, maximum in ((0, 1), (2, 3)):
+            for attempts, maximum in ((0, 1), (2, 3), (1, 1), (3, 3), (4, 3)):
                 with self.subTest(name=name, attempts=attempts), tempfile.TemporaryDirectory() as tmp:
                     root = Path(tmp) / "wake"
                     found = self.make_firing_record(root, Path(tmp))
@@ -325,6 +325,61 @@ class InjectorTests(unittest.TestCase):
             data = json.loads((root / "firing" / "wake_test.json").read_text())
             self.assertEqual(data["attempts"], 1)
             self.assertEqual(data["events"][-1]["type"], "dispatch_attempt")
+
+    def test_paused_goal_defers_after_final_attempt_capture_interrupt(self) -> None:
+        for attempts, maximum in ((0, 1), (2, 3)):
+            with self.subTest(attempts=attempts), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp) / "wake"
+                found = self.make_firing_record(root, Path(tmp))
+                found.record.update(attempts=attempts, max_attempts=maximum)
+                write_record(root, found.record)
+                runner = FakeTmuxRunner(captures=[
+                    KeyboardInterrupt("synthetic final-attempt capture interrupt"),
+                    "Resume paused goal?\n›\n80% context left",
+                ])
+                now = datetime(2026, 5, 18, 21, 15, tzinfo=UTC)
+
+                with self.assertRaises(KeyboardInterrupt):
+                    dispatch_firing_record(root, found, runner=runner, now=now, ack_timeout_override=0)
+                interrupted = json.loads(found.path.read_text())
+                self.assertEqual(interrupted["attempts"], maximum)
+                self.assertEqual(interrupted["status"], "firing")
+
+                result = dispatch_firing_record(
+                    root, WakePath(found.path, interrupted), runner=runner, now=now, ack_timeout_override=0,
+                )
+
+                self.assertEqual(result.status, "requeued")
+                self.assertEqual(runner.pastes, [])
+                data = json.loads((root / "pending" / "wake_test.json").read_text())
+                self.assertEqual(data["attempts"], maximum)
+                self.assertEqual(data["max_attempts"], maximum)
+                self.assertEqual([event["type"] for event in data["events"][-3:]],
+                                 ["dispatch_attempt", "unsafe_pane", "requeued"])
+                self.assertNotIn("Resume paused goal?", json.dumps(data["events"]))
+                self.assertFalse(found.path.exists())
+                self.assertFalse((root / "failed" / "wake_test.json").exists())
+
+    def test_capture_failure_on_final_attempt_keeps_legacy_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wake"
+            found = self.make_firing_record(root, Path(tmp))
+            found.record["max_attempts"] = 1
+            write_record(root, found.record)
+            runner = FakeTmuxRunner(captures=[OSError("synthetic final-attempt capture failure")])
+
+            result = dispatch_firing_record(
+                root, found, runner=runner,
+                now=datetime(2026, 5, 18, 21, 15, tzinfo=UTC), ack_timeout_override=0,
+            )
+
+            self.assertEqual(result.status, "failed")
+            self.assertEqual(runner.pastes, [])
+            data = json.loads((root / "failed" / "wake_test.json").read_text())
+            self.assertEqual(data["attempts"], 1)
+            self.assertEqual([event["type"] for event in data["events"][-3:]],
+                             ["dispatch_attempt", "failed", "failed"])
+            self.assertFalse((root / "pending" / "wake_test.json").exists())
 
     def test_unsafe_pane_requeues_and_does_not_paste(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
