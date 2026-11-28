@@ -132,7 +132,15 @@ def tmux_visibility_result(
     return result
 
 
+def _paused_goal_prompt_visible(text: str) -> bool:
+    visible = re.sub(r"(?:\x1b\[|\x9b)[0-9;:]*m", "", text)
+    lines = [line.strip().lower() for line in visible.splitlines() if line.strip()]
+    return "resume paused goal?" in lines[-12:]
+
+
 def unsafe_pane_reason(text: str) -> str | None:
+    if _paused_goal_prompt_visible(text):
+        return "paused goal prompt visible"
     # A confirmed bottom composer separates live controls from transcript text.
     # Keep the conservative legacy checks when this UI shape is not recognized.
     lines = [line.rstrip() for line in text.splitlines() if line.strip()]
@@ -284,18 +292,30 @@ def dispatch_firing_record(
 
     try:
         with PaneLock(root, socket, pane):
-            attempt = int(record.get("attempts") or 0) + 1
-            record["attempts"] = attempt
-            record["updated_at"] = format_utc(current)
-            record = append_event(
-                record,
-                "dispatch_attempt",
-                f"Pasting canonical wake prompt into tmux pane {pane}",
-                current,
-                attempt=attempt,
-            )
-            replace_record(root, found, record)
-            captured = tmux.capture_pane(socket, pane)
+            paused_goal = False
+            try:
+                captured = tmux.capture_pane(socket, pane)
+                paused_goal = _paused_goal_prompt_visible(captured)
+            finally:
+                # Keep legacy attempt accounting, including capture failures.
+                # Only the new paused-goal preflight defers without an attempt.
+                if not paused_goal:
+                    attempt = int(record.get("attempts") or 0) + 1
+                    record["attempts"] = attempt
+                    record["updated_at"] = format_utc(current)
+                    record = append_event(
+                        record,
+                        "dispatch_attempt",
+                        f"Pasting canonical wake prompt into tmux pane {pane}",
+                        current,
+                        attempt=attempt,
+                    )
+                    replace_record(root, found, record)
+            if paused_goal:
+                return requeue_or_fail(
+                    root, found, record, "unsafe pane: paused goal prompt visible", current, "unsafe_pane",
+                    enforce_attempt_limit=False,
+                )
             unsafe = unsafe_pane_reason(captured)
             if unsafe:
                 return requeue_or_fail(root, WakePath(root / "firing" / f"{wake_id}.json", record), record, f"unsafe pane: {unsafe}", current, "unsafe_pane")
@@ -352,13 +372,15 @@ def requeue_or_fail(
     message: str,
     now: datetime,
     event_type: str,
+    *,
+    enforce_attempt_limit: bool = True,
 ) -> DispatchResult:
     attempts = int(record.get("attempts") or 0)
     max_attempts = int(record.get("max_attempts") or 3)
     record["updated_at"] = format_utc(now)
     record["last_error"] = message
     record = append_event(record, event_type, message, now, attempt=attempts)
-    if attempts >= max_attempts:
+    if enforce_attempt_limit and attempts >= max_attempts:
         record["status"] = "failed"
         record = append_event(record, "failed", "Maximum dispatch attempts reached", now, attempt=attempts)
         replace_record(root, found, record)
