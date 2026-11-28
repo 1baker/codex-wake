@@ -241,6 +241,91 @@ class InjectorTests(unittest.TestCase):
             self.assertEqual(data["events"][-1]["type"], "tmux_visibility_checked")
             self.assertEqual(data["status"], "submitted")
 
+    def test_paused_goal_requeues_without_input_or_attempt(self) -> None:
+        # Historical plain capture, with all private non-modal context redacted.
+        capture = (Path(__file__).parent / "fixtures" / "paused-goal-captured-redacted.txt").read_text()
+        # Remaining variants are synthetic, not captured ANSI or live panes.
+        colored = "\n".join(f"\x1b[1m{line}\x1b[0m" if line else line for line in capture.splitlines())
+        colored = colored.replace("paused", "\x1b[7mpaused\x1b[27m")
+        colored_blanks = "\n".join(f"\x1b[0m{line}\x1b[0m" for line in capture.splitlines())
+        colon = capture.replace("Resume paused goal?", "\x1b[38:2:255:0:0mResume paused goal?\x1b[0m")
+        for name, text in (
+            ("plain", capture), ("styled_title", colored), ("styled_blank_lines", colored_blanks),
+            ("colon", colon), ("empty_subparameter", colon.replace("38:2:", "38:2::")),
+            ("C1", colon.replace("\x1b[", "\x9b")),
+            ("modal_above_idle_composer", "Resume paused goal?\n›\n80% context left"),
+        ):
+            for attempts, maximum in ((0, 1), (2, 3)):
+                with self.subTest(name=name, attempts=attempts), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp) / "wake"
+                    found = self.make_firing_record(root, Path(tmp))
+                    found.record.update(attempts=attempts, max_attempts=maximum)
+                    write_record(root, found.record)
+                    runner = FakeTmuxRunner(capture=text)
+
+                    self.assertEqual(unsafe_pane_reason(text), "paused goal prompt visible")
+                    result = dispatch_firing_record(
+                        root, found, runner=runner,
+                        now=datetime(2026, 5, 18, 21, 15, tzinfo=UTC), ack_timeout_override=0,
+                    )
+
+                    self.assertEqual(result.status, "requeued")
+                    self.assertEqual(runner.pastes, [])
+                    data = json.loads((root / "pending" / "wake_test.json").read_text())
+                    self.assertEqual(data["attempts"], attempts)
+                    self.assertEqual(data["max_attempts"], maximum)
+                    self.assertEqual(data["events"][-2]["type"], "unsafe_pane")
+                    self.assertNotIn("dispatch_attempt", [event["type"] for event in data["events"]])
+                    self.assertNotIn("Resume paused goal?", json.dumps(data["events"]))
+
+    def test_old_paused_goal_text_does_not_block_idle_composer(self) -> None:
+        history = "Resume paused goal?\n" + "\n".join(f"completed output {i}" for i in range(13))
+        capture = history + "\n›\n80% context left"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wake"
+            found = self.make_firing_record(root, Path(tmp))
+            runner = FakeTmuxRunner(capture=capture)
+            self.assertIsNone(unsafe_pane_reason(capture))
+            dispatch_firing_record(
+                root, found, runner=runner,
+                now=datetime(2026, 5, 18, 21, 15, tzinfo=UTC), ack_timeout_override=0,
+            )
+            self.assertEqual(len(runner.pastes), 1)
+            data = json.loads((root / "pending" / "wake_test.json").read_text())
+            self.assertEqual(data["attempts"], 1)
+            self.assertNotIn("unsafe_pane", [event["type"] for event in data["events"]])
+
+    def test_capture_failure_keeps_legacy_attempt_and_event_accounting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wake"
+            found = self.make_firing_record(root, Path(tmp))
+            runner = FakeTmuxRunner(captures=[OSError("synthetic capture failure")])
+            result = dispatch_firing_record(
+                root, found, runner=runner,
+                now=datetime(2026, 5, 18, 21, 15, tzinfo=UTC), ack_timeout_override=0,
+            )
+            self.assertEqual(result.status, "requeued")
+            self.assertEqual(runner.pastes, [])
+            data = json.loads((root / "pending" / "wake_test.json").read_text())
+            self.assertEqual(data["attempts"], 1)
+            self.assertEqual([event["type"] for event in data["events"]][-3:],
+                             ["dispatch_attempt", "failed", "requeued"])
+
+    def test_synthetic_capture_interrupt_keeps_legacy_attempt_record(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "wake"
+            found = self.make_firing_record(root, Path(tmp))
+            runner = FakeTmuxRunner(captures=[KeyboardInterrupt("synthetic capture interrupt")])
+            with self.assertRaises(KeyboardInterrupt):
+                dispatch_firing_record(
+                    root, found, runner=runner,
+                    now=datetime(2026, 5, 18, 21, 15, tzinfo=UTC), ack_timeout_override=0,
+                )
+            self.assertEqual(runner.pastes, [])
+            data = json.loads((root / "firing" / "wake_test.json").read_text())
+            self.assertEqual(data["attempts"], 1)
+            self.assertEqual(data["events"][-1]["type"], "dispatch_attempt")
+
     def test_unsafe_pane_requeues_and_does_not_paste(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "wake"
